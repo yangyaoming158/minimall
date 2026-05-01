@@ -1,0 +1,13 @@
+{
+  "name": "mini-mall-order",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "tm": "task-master",
+    "taskmaster": "task-master",
+    "parse-prd": "task-master parse-prd .taskmaster/docs/prd.txt --num-tasks 10 --force"
+  },
+  "devDependencies": {
+    "task-master-ai": "0.43.1"
+  }
+}

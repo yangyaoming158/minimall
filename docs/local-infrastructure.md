@@ -1,0 +1,69 @@
+# Local Infrastructure
+
+Task 2 provisions local development dependencies with Docker Compose:
+
+- MySQL: `127.0.0.1:${MYSQL_PORT}`
+- Redis: `127.0.0.1:${REDIS_PORT}`
+- RabbitMQ AMQP: `127.0.0.1:${RABBITMQ_AMQP_PORT}`
+- RabbitMQ management UI: `http://127.0.0.1:${RABBITMQ_MANAGEMENT_PORT}`
+
+Copy `.env.example` to `.env` before starting Docker Compose, then replace all `change-me-*` values locally. The real `.env` file is ignored by Git.
+
+## Compose Variables
+
+Docker Compose reads these variables from `.env`:
+
+- `MYSQL_PORT`
+- `MYSQL_DATABASE`
+- `MYSQL_USER`
+- `MYSQL_PASSWORD`
+- `MYSQL_ROOT_PASSWORD`
+- `REDIS_PORT`
+- `REDIS_PASSWORD`
+- `RABBITMQ_AMQP_PORT`
+- `RABBITMQ_MANAGEMENT_PORT`
+- `RABBITMQ_DEFAULT_USER`
+- `RABBITMQ_DEFAULT_PASS`
+
+## Spring Service Variables
+
+Spring services should use these environment variable names when database, cache, and message queue integration is implemented:
+
+- `SPRING_DATASOURCE_URL`
+- `SPRING_DATASOURCE_USERNAME`
+- `SPRING_DATASOURCE_PASSWORD`
+- `SPRING_DATA_REDIS_HOST`
+- `SPRING_DATA_REDIS_PORT`
+- `SPRING_DATA_REDIS_PASSWORD`
+- `SPRING_RABBITMQ_HOST`
+- `SPRING_RABBITMQ_PORT`
+- `SPRING_RABBITMQ_USERNAME`
+- `SPRING_RABBITMQ_PASSWORD`
+
+For services running directly from WSL or the host, use `127.0.0.1` with the published ports. For services later running inside the Compose network, use service names `mysql`, `redis`, and `rabbitmq` with container ports `3306`, `6379`, and `5672`.
+
+## Commands
+
+Validate configuration:
+
+```bash
+docker compose --env-file .env.example config --quiet
+```
+
+Start local infrastructure:
+
+```bash
+docker compose --env-file .env up -d
+```
+
+Stop local infrastructure without deleting data:
+
+```bash
+docker compose down
+```
+
+Delete local infrastructure data volumes:
+
+```bash
+docker compose down -v
+```

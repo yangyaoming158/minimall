@@ -1,0 +1,1113 @@
+# Product Requirements Document
+
+# MiniMall Order 微服务电商订单系统
+
+## 1. Introduction
+
+MiniMall Order 是一个面向后端开发、微服务架构和高并发订单场景的简化电商系统。项目目标不是构建复杂前端页面，而是实现一个可运行、可压测、可部署、可观测，并可用于简历展示的后端微服务项目。
+
+该系统重点覆盖：
+
+```text
+微服务拆分
+网关鉴权
+服务间调用
+缓存
+消息队列
+订单状态流转
+库存一致性
+幂等控制
+限流
+压测
+可观测性
+Docker Compose 部署
+```
+
+---
+
+## 2. Product Overview
+
+MiniMall Order 模拟一个简化电商订单系统，用户可以注册登录、浏览商品、创建订单、模拟支付、取消订单。系统内部通过多个微服务协同完成商品校验、库存扣减、订单状态流转、支付事件处理和通知记录。
+
+系统采用 Java 后端微服务架构，核心服务包括：
+
+```text
+api-gateway
+user-service
+product-service
+inventory-service
+order-service
+payment-service
+notification-service
+common-lib
+```
+
+项目第一版优先保证核心链路跑通：
+
+```text
+用户登录
+商品查询
+库存扣减
+创建订单
+取消订单
+模拟支付
+支付成功后订单状态更新
+RabbitMQ 事件通知
+Docker Compose 启动基础依赖
+```
+
+后续阶段逐步加入限流、缓存、压测、Prometheus、Grafana、OpenTelemetry、Jaeger / Tempo 等工程化能力。
+
+---
+
+## 3. Goals and Objectives
+
+### 3.1 Product Goals
+
+| Goal ID | Goal | Description |
+|---|---|---|
+| G-001 | 构建可运行的微服务订单系统 | 系统应支持用户、商品、库存、订单、支付、通知和网关服务 |
+| G-002 | 实现核心下单链路 | 用户可通过网关创建订单，系统完成商品校验、库存扣减和订单生成 |
+| G-003 | 保证库存一致性 | 并发下单时库存不能被扣成负数 |
+| G-004 | 支持订单状态流转 | 订单状态必须通过状态机校验，不允许任意更新 |
+| G-005 | 支持支付事件驱动 | 支付成功后通过 MQ 通知订单服务和通知服务 |
+| G-006 | 支持幂等控制 | 创建订单、扣减库存、释放库存、支付回调、MQ 消费都必须幂等 |
+| G-007 | 支持压测与可观测性 | 提供 k6 / JMeter 压测脚本，后续支持 Prometheus、Grafana 和链路追踪 |
+| G-008 | 支持 Docker Compose 部署 | MySQL、Redis、RabbitMQ 和业务服务可以通过 Docker Compose 启动 |
+
+### 3.2 Success Metrics
+
+| Metric ID | Metric | Target |
+|---|---|---|
+| M-001 | 项目可编译 | `mvn clean package -DskipTests` 成功 |
+| M-002 | 基础依赖可启动 | `docker compose up -d` 可启动 MySQL、Redis、RabbitMQ |
+| M-003 | 核心接口可访问 | 用户、商品、库存、订单、支付接口可通过网关访问 |
+| M-004 | 库存安全 | 并发扣减后 `available_stock` 不小于 0 |
+| M-005 | 幂等有效 | 重复扣减、重复支付、重复 MQ 消费不会造成重复业务影响 |
+| M-006 | 文档完整 | README、架构文档、数据库文档、接口文档、部署文档、压测文档齐全 |
+
+---
+
+## 4. Target Users
+
+| User Type | Description | Needs |
+|---|---|---|
+| 后端开发学习者 | 希望学习 Java 微服务、电商订单、高并发一致性设计 | 需要清晰架构、可运行代码、阶段化任务 |
+| 求职者 / 简历项目使用者 | 希望构建可写入简历的后端项目 | 需要项目亮点、压测结果、部署说明、可观测性 |
+| AI Coding Agent 使用者 | 使用 Codex / Cline / Cursor 辅助开发 | 需要结构化 PRD、清晰阶段、验收标准 |
+| 面试准备者 | 准备微服务、电商、高并发、MQ、Redis、幂等相关面试 | 需要完整业务链路和设计理由 |
+
+---
+
+## 5. Scope
+
+### 5.1 MVP Scope
+
+MVP 必须包含：
+
+```text
+user-service 注册、登录、查询当前用户
+product-service 商品列表、商品详情、商品创建、商品上下架
+inventory-service 库存查询、扣减、释放、库存流水
+order-service 创建订单、查询订单、我的订单、取消订单
+payment-service 创建支付单、模拟支付成功、查询支付单
+notification-service 消费支付事件并记录通知日志
+api-gateway 路由转发、JWT 鉴权、用户信息透传
+common-lib 公共响应、异常、JWT、DTO、常量
+MySQL 数据库表
+Redis 基础缓存和防重复提交
+RabbitMQ 支付成功事件
+Docker Compose 基础依赖
+README 和 docs 文档
+```
+
+### 5.2 Out of Scope for MVP
+
+第一版不强制实现：
+
+```text
+Kubernetes
+Nacos
+Seata
+复杂分布式事务
+完整前端页面
+真实支付网关
+真实短信 / 邮件服务
+完整权限管理系统
+复杂搜索系统
+完整秒杀系统
+```
+
+---
+
+## 6. System Architecture Requirements
+
+### 6.1 Service Modules
+
+| Requirement ID | Service | Description | Priority |
+|---|---|---|---|
+| ARCH-001 | common-lib | 提供统一响应、异常、JWT、用户上下文、通用 DTO | High |
+| ARCH-002 | api-gateway | 统一入口，负责路由、JWT 鉴权、跨域、日志、限流 | High |
+| ARCH-003 | user-service | 用户注册、登录、查询当前用户、JWT 签发 | High |
+| ARCH-004 | product-service | 商品创建、查询、上下架、商品详情缓存 | High |
+| ARCH-005 | inventory-service | 库存查询、扣减、释放、库存流水和幂等 | High |
+| ARCH-006 | order-service | 创建订单、取消订单、状态流转、支付事件消费 | High |
+| ARCH-007 | payment-service | 创建支付单、模拟支付成功、发送支付事件 | High |
+| ARCH-008 | notification-service | 消费订单 / 支付事件，记录通知日志 | Medium |
+
+### 6.2 Repository Structure
+
+系统应使用 Maven 多模块结构：
+
+```text
+mini-mall-order/
+├── common-lib
+├── api-gateway
+├── user-service
+├── product-service
+├── inventory-service
+├── order-service
+├── payment-service
+└── notification-service
+```
+
+---
+
+## 7. Functional Requirements
+
+### 7.1 Common Library
+
+| Requirement ID | Requirement | Description | Priority |
+|---|---|---|---|
+| COMMON-001 | 统一响应结构 | 提供 `ApiResponse<T>`，所有接口返回统一格式 | High |
+| COMMON-002 | 统一错误码 | 提供 `ErrorCode` 枚举或常量 | High |
+| COMMON-003 | 业务异常 | 提供 `BusinessException` | High |
+| COMMON-004 | JWT 工具 | 提供 `JwtUtils`，支持生成与解析 token | High |
+| COMMON-005 | 用户上下文 | 提供 `UserContext`，用于下游服务获取用户信息 | High |
+| COMMON-006 | 通用 DTO | 提供服务间调用常用 DTO | Medium |
+| COMMON-007 | 全局异常结构 | 业务异常和系统异常应以统一 JSON 返回 | High |
+
+---
+
+### 7.2 User Service
+
+| Requirement ID | Requirement | Description | Priority |
+|---|---|---|---|
+| USER-001 | 用户注册 | 用户可通过用户名、密码、手机号或邮箱注册 | High |
+| USER-002 | 密码加密 | 密码必须使用 BCrypt 哈希存储，不得明文存储 | High |
+| USER-003 | 用户登录 | 用户可登录并获得 JWT token | High |
+| USER-004 | 查询当前用户 | 携带 token 可访问 `/api/users/me` | High |
+| USER-005 | 用户名唯一 | 用户名必须唯一 | High |
+| USER-006 | 登录失败处理 | 密码错误或用户不存在时返回统一错误响应 | Medium |
+
+#### User Service APIs
+
+```http
+POST /api/users/register
+POST /api/users/login
+GET /api/users/me
+```
+
+---
+
+### 7.3 Product Service
+
+| Requirement ID | Requirement | Description | Priority |
+|---|---|---|---|
+| PRODUCT-001 | 商品创建 | 支持创建商品，包括名称、描述、价格、状态 | High |
+| PRODUCT-002 | 商品列表 | 支持查询商品列表 | High |
+| PRODUCT-003 | 商品详情 | 支持通过商品 ID 查询商品详情 | High |
+| PRODUCT-004 | 商品上下架 | 支持修改商品状态 | High |
+| PRODUCT-005 | 商品详情缓存 | 商品详情查询应使用 Redis 缓存 | Medium |
+| PRODUCT-006 | 缓存失效 | 商品修改或上下架后必须删除对应缓存 | Medium |
+| PRODUCT-007 | 下架商品不可下单 | order-service 校验商品时，下架商品不能创建订单 | High |
+
+#### Product Service APIs
+
+```http
+GET /api/products
+GET /api/products/{id}
+POST /api/products
+PUT /api/products/{id}/status
+```
+
+---
+
+### 7.4 Inventory Service
+
+| Requirement ID | Requirement | Description | Priority |
+|---|---|---|---|
+| INVENTORY-001 | 库存查询 | 支持根据 productId 查询库存 | High |
+| INVENTORY-002 | 库存扣减 | 支持根据 productId、orderNo、quantity 扣减库存 | High |
+| INVENTORY-003 | 库存释放 | 订单取消后支持释放库存 | High |
+| INVENTORY-004 | 防止负库存 | 并发扣减时库存不能小于 0 | High |
+| INVENTORY-005 | 数据库条件更新 | 扣减库存必须使用条件更新保证原子性 | High |
+| INVENTORY-006 | 库存流水 | 每次扣减或释放都必须记录 inventory_records | High |
+| INVENTORY-007 | 扣减幂等 | 同一 orderNo 的扣减不能重复生效 | High |
+| INVENTORY-008 | 释放幂等 | 同一 orderNo 的释放不能重复生效 | High |
+
+#### Inventory Service APIs
+
+```http
+GET /api/inventory/{productId}
+POST /api/inventory/deduct
+POST /api/inventory/release
+```
+
+---
+
+### 7.5 Order Service
+
+| Requirement ID | Requirement | Description | Priority |
+|---|---|---|---|
+| ORDER-001 | 创建订单 | 用户可创建订单，初始状态为 `PENDING_PAYMENT` | High |
+| ORDER-002 | 商品校验 | 创建订单前必须校验商品存在且已上架 | High |
+| ORDER-003 | 库存扣减 | 创建订单前必须调用库存服务扣减库存 | High |
+| ORDER-004 | 库存不足处理 | 库存不足时订单创建失败 | High |
+| ORDER-005 | 订单号生成 | 系统必须生成唯一订单号 | High |
+| ORDER-006 | 订单详情 | 支持根据 orderNo 查询订单详情 | High |
+| ORDER-007 | 我的订单 | 用户可查询自己的订单列表 | High |
+| ORDER-008 | 取消订单 | 待支付订单可取消，取消后释放库存 | High |
+| ORDER-009 | 防重复下单 | 短时间内重复提交不能产生重复订单 | High |
+| ORDER-010 | 状态机校验 | 所有订单状态变更必须通过状态机校验 | High |
+| ORDER-011 | 支付成功事件处理 | 消费 `PaymentSuccessEvent` 后将订单改为 `PAID` | High |
+| ORDER-012 | 超时取消 | 定时扫描过期未支付订单并取消 | Medium |
+
+#### Order Service APIs
+
+```http
+POST /api/orders
+GET /api/orders/{orderNo}
+GET /api/orders/my
+POST /api/orders/{orderNo}/cancel
+```
+
+---
+
+### 7.6 Payment Service
+
+| Requirement ID | Requirement | Description | Priority |
+|---|---|---|---|
+| PAYMENT-001 | 创建支付单 | 支付前创建 payment 记录 | High |
+| PAYMENT-002 | 模拟支付成功 | 支持模拟支付成功接口 | High |
+| PAYMENT-003 | 支付状态查询 | 支持根据 orderNo 查询支付单 | Medium |
+| PAYMENT-004 | 支付成功事件 | 支付成功后发送 `PaymentSuccessEvent` | High |
+| PAYMENT-005 | 支付幂等 | 同一订单重复支付不能重复修改支付状态 | High |
+| PAYMENT-006 | 已取消订单支付处理 | 已取消订单收到支付请求或支付事件应拒绝或进入异常处理 | High |
+
+#### Payment Service APIs
+
+```http
+POST /api/payments/{orderNo}/pay
+GET /api/payments/order/{orderNo}
+```
+
+---
+
+### 7.7 Notification Service
+
+| Requirement ID | Requirement | Description | Priority |
+|---|---|---|---|
+| NOTICE-001 | 消费支付事件 | 消费 `PaymentSuccessEvent` | Medium |
+| NOTICE-002 | 消费订单事件 | 后续支持消费 `OrderCreatedEvent`、`OrderCancelledEvent` | Low |
+| NOTICE-003 | 记录通知日志 | 模拟站内信、短信或邮件通知，记录日志即可 | Medium |
+| NOTICE-004 | 消费幂等 | 基于 eventId 防止重复通知 | High |
+
+---
+
+### 7.8 API Gateway
+
+| Requirement ID | Requirement | Description | Priority |
+|---|---|---|---|
+| GATEWAY-001 | 路由转发 | 配置 user、product、inventory、order、payment 路由 | High |
+| GATEWAY-002 | 登录注册放行 | 注册和登录接口不需要 token | High |
+| GATEWAY-003 | JWT 鉴权 | 其他接口必须携带有效 JWT | High |
+| GATEWAY-004 | 用户信息透传 | 向下游传递 `X-User-Id` 和 `X-Username` | High |
+| GATEWAY-005 | 跨域配置 | 支持前端跨域访问 | Medium |
+| GATEWAY-006 | 请求日志 | 记录基础请求日志 | Medium |
+| GATEWAY-007 | 基础限流 | 网关支持 IP 级别基础限流 | Medium |
+
+---
+
+## 8. Business Workflows
+
+### 8.1 Create Order Flow
+
+```text
+用户请求创建订单
+→ api-gateway 校验 JWT
+→ order-service 获取用户 ID
+→ order-service 调用 product-service 校验商品存在且上架
+→ order-service 调用 inventory-service 扣减库存
+→ 库存扣减成功
+→ order-service 创建订单，状态为 PENDING_PAYMENT
+→ 返回订单号、订单状态、总金额、过期时间
+```
+
+#### Acceptance Criteria
+
+```text
+库存不足不能创建订单
+商品不存在不能创建订单
+商品下架不能创建订单
+重复提交不能创建重复订单
+订单创建成功后库存 available_stock 减少，locked_stock 增加
+```
+
+---
+
+### 8.2 Payment Success Flow
+
+```text
+用户模拟支付
+→ payment-service 修改支付单为 SUCCESS
+→ payment-service 发送 PaymentSuccessEvent
+→ order-service 消费事件
+→ order-service 将订单状态改为 PAID
+→ notification-service 消费事件并记录通知日志
+```
+
+#### Acceptance Criteria
+
+```text
+待支付订单可以支付成功
+支付成功后订单状态变为 PAID
+重复支付不会重复修改订单
+重复 MQ 消息不会重复消费
+已取消订单收到支付成功事件必须拒绝或记录异常
+```
+
+---
+
+### 8.3 Order Timeout Cancellation Flow
+
+```text
+订单创建后状态为 PENDING_PAYMENT
+→ 定时任务每 30 秒扫描过期订单
+→ 如果 expire_at < now 且状态仍为 PENDING_PAYMENT
+→ 修改订单状态为 CANCELLED
+→ 调用 inventory-service 释放库存
+→ 记录取消原因 PAYMENT_TIMEOUT
+```
+
+#### Acceptance Criteria
+
+```text
+超时未支付订单会自动取消
+自动取消后库存会释放
+已支付订单不会被取消
+重复取消不会重复释放库存
+```
+
+---
+
+## 9. Order State Machine
+
+### 9.1 Order Status
+
+```text
+PENDING_PAYMENT：待支付
+PAID：已支付
+CANCELLED：已取消
+CLOSED：已完成 / 已关闭
+REFUNDED：已退款，可选
+```
+
+### 9.2 Allowed Transitions
+
+```text
+PENDING_PAYMENT → PAID
+PENDING_PAYMENT → CANCELLED
+PAID → CLOSED
+PAID → REFUNDED
+```
+
+### 9.3 Forbidden Transitions
+
+```text
+CANCELLED → PAID
+CLOSED → PAID
+REFUNDED → PAID
+PAID → PENDING_PAYMENT
+```
+
+### 9.4 Requirements
+
+| Requirement ID | Requirement | Description | Priority |
+|---|---|---|---|
+| STATE-001 | 状态枚举 | 订单状态必须使用枚举 | High |
+| STATE-002 | 状态机校验 | 所有状态变更必须经过状态机校验 | High |
+| STATE-003 | 禁止随意 update | 不允许绕过状态机直接更新订单状态 | High |
+| STATE-004 | 非法状态错误 | 非法状态流转应返回业务异常 | High |
+
+---
+
+## 10. Data Requirements
+
+### 10.1 Core Tables
+
+系统至少需要以下表：
+
+```text
+users
+products
+inventory
+inventory_records
+orders
+order_events
+payments
+```
+
+### 10.2 Required Constraints
+
+| Requirement ID | Table | Constraint | Purpose |
+|---|---|---|---|
+| DB-001 | users | username unique | 防止重复注册 |
+| DB-002 | products | id primary key | 商品唯一标识 |
+| DB-003 | inventory | product_id unique | 一个商品一条库存记录 |
+| DB-004 | inventory_records | unique(order_no, change_type) | 库存扣减 / 释放幂等 |
+| DB-005 | orders | order_no unique | 订单号唯一 |
+| DB-006 | order_events | event_id unique | MQ 消费幂等 |
+| DB-007 | payments | payment_no unique | 支付单号唯一 |
+| DB-008 | payments | order_no unique | 一个订单一个支付单 |
+
+---
+
+## 11. Message Event Requirements
+
+### 11.1 Event Types
+
+| Requirement ID | Event | Producer | Consumer | Priority |
+|---|---|---|---|---|
+| EVENT-001 | OrderCreatedEvent | order-service | notification-service，可选 | Low |
+| EVENT-002 | PaymentSuccessEvent | payment-service | order-service, notification-service | High |
+| EVENT-003 | OrderCancelledEvent | order-service | notification-service，可选 | Medium |
+
+### 11.2 Event Idempotency
+
+| Requirement ID | Requirement | Description | Priority |
+|---|---|---|---|
+| EVENT-004 | eventId 唯一 | 每个事件必须包含唯一 eventId | High |
+| EVENT-005 | 消费幂等 | 消费者必须基于 eventId 做幂等 | High |
+| EVENT-006 | 重复消息处理 | RabbitMQ 重复投递不能导致重复业务影响 | High |
+| EVENT-007 | 异常消息处理 | 消费失败需要记录日志，后续可扩展重试 / 死信队列 | Medium |
+
+---
+
+## 12. Cache and Rate Limit Requirements
+
+### 12.1 Redis Keys
+
+```text
+product:detail:{productId}
+inventory:stock:{productId}
+order:submit:{userId}:{productId}
+rate:ip:{ip}
+rate:user:{userId}
+```
+
+### 12.2 Cache Requirements
+
+| Requirement ID | Requirement | Description | Priority |
+|---|---|---|---|
+| CACHE-001 | 商品详情缓存 | 商品详情查询时写入 Redis | Medium |
+| CACHE-002 | 商品缓存删除 | 商品修改或上下架时删除缓存 | Medium |
+| CACHE-003 | 库存缓存 | 第一版以数据库为准，后续可缓存库存 | Low |
+| CACHE-004 | 防重复提交 | 使用 Redis SETNX + 短 TTL 防止重复提交订单 | High |
+| CACHE-005 | IP 限流 | 网关使用 Redis 计数器或令牌桶实现 IP 限流 | Medium |
+| CACHE-006 | 用户限流 | 订单创建接口支持用户级限流 | Medium |
+
+---
+
+## 13. Consistency and Idempotency Requirements
+
+### 13.1 Inventory Consistency
+
+库存扣减必须使用数据库条件更新：
+
+```sql
+UPDATE inventory
+SET available_stock = available_stock - #{quantity},
+    locked_stock = locked_stock + #{quantity},
+    version = version + 1
+WHERE product_id = #{productId}
+  AND available_stock >= #{quantity};
+```
+
+影响行数为 1 表示成功，0 表示库存不足或并发竞争失败。
+
+### 13.2 Idempotent Operations
+
+| Requirement ID | Operation | Required Method |
+|---|---|---|
+| IDEMP-001 | 创建订单 | Redis SETNX / 数据库唯一约束 / 业务状态判断 |
+| IDEMP-002 | 扣减库存 | inventory_records 唯一约束 |
+| IDEMP-003 | 释放库存 | inventory_records 唯一约束 |
+| IDEMP-004 | 支付回调 | payments.order_no unique + 状态判断 |
+| IDEMP-005 | MQ 消费 | event_id 唯一约束 |
+| IDEMP-006 | 订单取消 | 状态机判断 |
+
+### 13.3 Distributed Transaction Strategy
+
+MVP 不引入 Seata 或复杂分布式事务。
+
+推荐策略：
+
+```text
+本地事务
++ MQ 事件
++ 幂等消费
++ 定时补偿
+```
+
+---
+
+## 14. Non-Functional Requirements
+
+| Requirement ID | Requirement | Description | Priority |
+|---|---|---|---|
+| NFR-001 | 可编译 | 所有模块必须通过 Maven 编译 | High |
+| NFR-002 | 可运行 | 每个服务应能独立启动 | High |
+| NFR-003 | 可部署 | 支持 Docker Compose 启动基础依赖和后续完整系统 | High |
+| NFR-004 | 可测试 | 核心服务应有单元测试或接口测试 | Medium |
+| NFR-005 | 可压测 | 提供 k6 / JMeter 压测脚本 | Medium |
+| NFR-006 | 可观测 | 后续接入 Actuator、Prometheus、Grafana | Medium |
+| NFR-007 | 可追踪 | 后续接入 OpenTelemetry + Jaeger / Tempo | Medium |
+| NFR-008 | 安全配置 | 不硬编码数据库密码、JWT 密钥、服务地址 | High |
+| NFR-009 | 文档完整 | README 和 docs 目录必须持续更新 | High |
+
+---
+
+## 15. Technical Requirements
+
+### 15.1 Required Technology Stack
+
+| Area | Technology |
+|---|---|
+| Language | Java 17 |
+| Framework | Spring Boot 3.x |
+| Microservices | Spring Cloud 2023.x |
+| Gateway | Spring Cloud Gateway |
+| Service Call | OpenFeign |
+| ORM | MyBatis-Plus 或 MyBatis |
+| Database | MySQL 8 |
+| Cache | Redis 7 |
+| Message Queue | RabbitMQ |
+| Auth | JWT |
+| Build | Maven 多模块 |
+| API Docs | Springdoc OpenAPI / Knife4j |
+| Deployment | Docker Compose |
+| Pressure Test | k6 / JMeter |
+| Monitoring | Spring Boot Actuator + Prometheus + Grafana |
+| Tracing | OpenTelemetry + Jaeger / Tempo |
+| Testing | JUnit 5 + Mockito |
+
+### 15.2 First Version Technology Boundary
+
+第一版必须包含：
+
+```text
+Java 17
+Spring Boot 3
+Spring Cloud Gateway
+OpenFeign
+MySQL
+Redis
+RabbitMQ
+Docker Compose
+```
+
+第一版暂不引入：
+
+```text
+Kubernetes
+Nacos
+Seata
+复杂分布式事务
+```
+
+---
+
+## 16. API Response Standard
+
+所有接口必须使用统一响应格式。
+
+### Success Response
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {}
+}
+```
+
+### Error Response
+
+```json
+{
+  "code": 40001,
+  "message": "库存不足",
+  "data": null
+}
+```
+
+---
+
+## 17. User Stories and Acceptance Criteria
+
+### US-001 用户注册
+
+As a user, I want to register an account so that I can log in and create orders.
+
+Acceptance Criteria:
+
+```text
+用户可以通过注册接口创建账号
+用户名不能重复
+密码不能明文存储
+注册成功返回统一 ApiResponse
+注册失败返回统一错误响应
+```
+
+### US-002 用户登录
+
+As a user, I want to log in and receive a JWT token so that I can access protected APIs.
+
+Acceptance Criteria:
+
+```text
+正确用户名和密码可以登录
+登录成功返回 token、userId、username
+密码错误不能登录
+不存在的用户不能登录
+```
+
+### US-003 查询商品
+
+As a user, I want to view product list and product detail so that I can choose a product to order.
+
+Acceptance Criteria:
+
+```text
+用户可以查询商品列表
+用户可以查询商品详情
+商品详情第二次查询优先从 Redis 获取
+商品下架后不能被用于创建订单
+```
+
+### US-004 创建订单
+
+As a logged-in user, I want to create an order for an available product so that I can pay for it later.
+
+Acceptance Criteria:
+
+```text
+未登录用户不能创建订单
+商品不存在时创建失败
+商品下架时创建失败
+库存不足时创建失败
+库存充足时创建成功
+创建成功后订单状态为 PENDING_PAYMENT
+创建成功后库存被锁定
+重复提交不会创建重复订单
+```
+
+### US-005 取消订单
+
+As a user, I want to cancel a pending payment order so that locked inventory can be released.
+
+Acceptance Criteria:
+
+```text
+待支付订单可以取消
+取消后状态变为 CANCELLED
+取消后库存释放
+已支付订单不能直接取消
+重复取消不会重复释放库存
+```
+
+### US-006 模拟支付
+
+As a user, I want to simulate payment success so that the order can become paid.
+
+Acceptance Criteria:
+
+```text
+待支付订单可以支付成功
+支付成功后 payment 状态为 SUCCESS
+支付成功后发送 PaymentSuccessEvent
+order-service 消费事件后订单状态变为 PAID
+notification-service 消费事件后记录通知日志
+重复支付不会重复修改订单
+```
+
+### US-007 订单超时取消
+
+As the system, I want to automatically cancel expired pending orders so that locked stock can be released.
+
+Acceptance Criteria:
+
+```text
+系统每 30 秒扫描过期未支付订单
+过期 PENDING_PAYMENT 订单被取消
+库存被释放
+已支付订单不会被取消
+重复扫描不会造成重复释放
+```
+
+### US-008 管理商品状态
+
+As an admin or internal operator, I want to create products and update product status so that order creation can respect product availability.
+
+Acceptance Criteria:
+
+```text
+可以创建商品
+可以查询商品
+可以上下架商品
+商品状态变更后删除 Redis 缓存
+下架商品不能被下单
+```
+
+### US-009 压测订单接口
+
+As a developer, I want to run pressure tests so that I can evaluate order creation performance.
+
+Acceptance Criteria:
+
+```text
+提供 k6 或 JMeter 脚本
+压测覆盖商品详情查询和创建订单接口
+压测报告包含 QPS、平均响应时间、P95、错误率
+高并发下库存不能为负数
+```
+
+### US-010 查看监控和链路
+
+As a developer, I want to view metrics and tracing so that I can understand system performance and request flow.
+
+Acceptance Criteria:
+
+```text
+服务暴露 Actuator 指标
+Prometheus 可以抓取指标
+Grafana 可以展示 QPS、延迟和错误率
+Jaeger / Tempo 可以查看创建订单链路
+```
+
+---
+
+## 18. Development Phases
+
+### Phase 0: Project Initialization
+
+Goal:
+
+```text
+创建 Maven 多模块项目骨架。
+```
+
+Deliverables:
+
+```text
+父工程 mini-mall-order
+common-lib
+api-gateway
+user-service
+product-service
+inventory-service
+order-service
+payment-service
+notification-service
+每个服务提供 /health 接口
+docker-compose.yml 包含 MySQL、Redis、RabbitMQ
+README.md 和 docs 目录
+```
+
+Acceptance Criteria:
+
+```text
+mvn clean package -DskipTests 成功
+每个服务能单独启动
+docker compose up -d 能启动 MySQL、Redis、RabbitMQ
+README 有启动说明
+```
+
+### Phase 1: common-lib
+
+Goal:
+
+```text
+实现公共模块，统一响应、异常、JWT、用户上下文和基础 DTO。
+```
+
+Acceptance Criteria:
+
+```text
+所有服务能引用 common-lib
+统一响应格式可用
+统一异常结构可用
+编译无循环依赖
+```
+
+### Phase 2: user-service
+
+Goal:
+
+```text
+实现用户注册、登录、JWT、查询当前用户。
+```
+
+Acceptance Criteria:
+
+```text
+用户可以注册
+密码不明文存储
+用户可以登录并获得 token
+携带 token 可以访问 /api/users/me
+```
+
+### Phase 3: product-service
+
+Goal:
+
+```text
+实现商品管理和商品详情缓存。
+```
+
+Acceptance Criteria:
+
+```text
+商品列表可以查询
+商品详情可以查询
+商品详情第二次查询优先走 Redis
+商品下架后不能创建订单
+```
+
+### Phase 4: inventory-service
+
+Goal:
+
+```text
+实现库存查询、扣减、释放、库存流水和幂等。
+```
+
+Acceptance Criteria:
+
+```text
+库存不足时扣减失败
+并发扣减时库存不能为负数
+重复扣减同一订单不会重复减少库存
+取消订单后可以释放库存
+```
+
+### Phase 5: api-gateway
+
+Goal:
+
+```text
+实现统一入口、路由、JWT 鉴权、用户信息透传。
+```
+
+Acceptance Criteria:
+
+```text
+通过网关可以访问各服务接口
+未登录不能访问订单接口
+登录后可以访问受保护接口
+下游服务能拿到用户 ID
+```
+
+### Phase 6: order-service
+
+Goal:
+
+```text
+实现核心下单、查询、取消和状态流转。
+```
+
+Acceptance Criteria:
+
+```text
+正常商品且库存充足时可以创建订单
+商品不存在、下架、库存不足时不能创建订单
+创建订单后库存减少
+取消待支付订单后库存释放
+已支付订单不能直接取消
+重复提交不会产生异常重复订单
+```
+
+### Phase 7: payment-service and RabbitMQ
+
+Goal:
+
+```text
+实现支付单、模拟支付成功和支付事件驱动。
+```
+
+Acceptance Criteria:
+
+```text
+待支付订单可以支付成功
+支付成功后订单状态变为 PAID
+重复支付不会重复修改订单
+重复 MQ 消息不会重复消费
+notification-service 能记录通知日志
+```
+
+### Phase 8: Order Timeout Cancellation
+
+Goal:
+
+```text
+使用 Spring Scheduler 实现订单超时自动取消。
+```
+
+Acceptance Criteria:
+
+```text
+超时未支付订单自动取消
+自动取消后库存释放
+已支付订单不会被取消
+重复取消不会重复释放库存
+```
+
+### Phase 9: Rate Limit, Cache and Pressure Test
+
+Goal:
+
+```text
+实现基础限流、防重复提交、缓存和压测脚本。
+```
+
+Acceptance Criteria:
+
+```text
+高频请求会被限流
+重复提交订单会被拦截
+缓存命中后数据库查询减少
+压测报告包含 QPS、平均响应时间、P95、错误率
+```
+
+### Phase 10: Observability and Deployment
+
+Goal:
+
+```text
+接入 Actuator、Prometheus、Grafana、OpenTelemetry 和 Jaeger / Tempo。
+```
+
+Acceptance Criteria:
+
+```text
+Docker Compose 可以启动所有服务和依赖
+Prometheus 可以抓取服务指标
+Grafana 可以看到服务 QPS、延迟和错误率
+Jaeger / Tempo 可以看到创建订单链路
+README 能指导新用户启动项目
+```
+
+---
+
+## 19. Project Completion Criteria
+
+项目最终至少需要具备：
+
+```text
+GitHub 仓库
+清晰 README
+可运行后端服务
+Docker Compose 环境
+SQL 初始化脚本
+接口文档
+架构说明文档
+消息事件文档
+部署文档
+压测脚本
+基础测试
+监控配置
+项目截图或演示视频
+简历可用的项目描述
+```
+
+---
+
+## 20. Constraints for AI Coding Agent
+
+开发时 Codex / Cline / TaskMaster 必须遵守：
+
+```text
+1. 每次只实现一个 Phase 或一个明确的 task/subtask。
+2. 修改前先输出计划。
+3. 不要一次性生成全部项目。
+4. 不要引入当前阶段之外的复杂组件。
+5. 不要硬编码数据库密码、JWT 密钥或服务地址。
+6. 订单、库存、支付、MQ 消费相关逻辑必须考虑幂等。
+7. 状态字段必须使用枚举。
+8. 订单状态变更必须通过状态机校验。
+9. 所有接口使用 ApiResponse。
+10. 业务异常使用 BusinessException。
+11. 每完成一个阶段后更新 README 和 docs。
+12. 修改后运行 mvn clean package -DskipTests。
+13. 如果有测试，运行对应测试。
+14. 如果同一错误连续出现两次，停止自动修复并输出阻塞原因。
+```
+
+---
+
+## 21. Recommended First Task for TaskMaster
+
+TaskMaster 解析本 PRD 后，建议首先生成以下高层任务：
+
+```text
+1. Initialize Maven multi-module project
+2. Implement common-lib
+3. Implement user-service
+4. Implement product-service
+5. Implement inventory-service
+6. Implement api-gateway
+7. Implement order-service
+8. Implement payment-service and RabbitMQ events
+9. Implement notification-service
+10. Implement order timeout cancellation
+11. Implement rate limit, cache and pressure test
+12. Implement observability and deployment
+13. Complete documentation and final validation
+```
+
+Each task should be further expanded into subtasks with:
+
+```text
+implementation steps
+affected modules
+required files
+test strategy
+acceptance criteria
+dependencies
+risk notes
+```
+
+---
+
+## 22. Final MVP Definition
+
+MVP 完成的最低标准：
+
+```text
+用户可以注册、登录并获得 JWT
+网关可以鉴权并透传用户信息
+商品可以查询
+库存可以扣减和释放
+用户可以创建订单
+库存不足不能创建订单
+用户可以取消待支付订单
+取消订单后库存释放
+用户可以模拟支付
+支付成功后订单状态变为 PAID
+RabbitMQ 支付成功事件可被消费
+notification-service 可记录通知日志
+Docker Compose 可启动 MySQL、Redis、RabbitMQ
+项目可以通过 mvn clean package -DskipTests
+README 可以指导新用户启动项目
+```
