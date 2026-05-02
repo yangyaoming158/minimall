@@ -113,8 +113,47 @@
         "dependencies": [
           "1"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create migration directory and schema documentation",
+            "description": "Create database migration directory structure and document naming, execution, and verification conventions.",
+            "details": "Use docs/sql or migration directory. Define where V1 initial schema lives and how Task 3 verification should run against local MySQL.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 3,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-01T02:59:35.093Z"
+          },
+          {
+            "id": 2,
+            "title": "Create initial schema migration SQL",
+            "description": "Create the V1 initial MySQL schema migration for core MiniMall tables.",
+            "details": "Define users, products, inventory, inventory_records, orders, order_events, payments, and notification_logs with MVP fields, status fields as varchar values, timestamps, idempotency keys, and required unique constraints.",
+            "status": "done",
+            "dependencies": [
+              "3.1"
+            ],
+            "parentTaskId": 3,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-01T03:27:08.494Z"
+          },
+          {
+            "id": 3,
+            "title": "Verify schema on local MySQL",
+            "description": "Execute the initial schema against local MySQL and verify core tables and unique constraints.",
+            "details": "Use the running Docker Compose MySQL from Task 2. Verify required tables exist and key unique constraints exist: username, product_id, order_no, payment_no, payments.order_no, event_id, and inventory_records(order_no, change_type).",
+            "status": "done",
+            "dependencies": [
+              "3.2"
+            ],
+            "parentTaskId": 3,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-02T02:56:46.566Z"
+          }
+        ],
+        "updatedAt": "2026-05-02T02:56:46.566Z"
       },
       {
         "id": "4",
@@ -126,8 +165,47 @@
         "dependencies": [
           "1"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement ApiResponse ErrorCode and BusinessException contracts",
+            "description": "Create common-core response envelope, error code enum, and business exception types.",
+            "details": "Add ApiResponse<T> with success/failure factory methods, ErrorCode enum with stable code/message values, and BusinessException constructors/accessors. Add focused unit tests for response and exception behavior.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 4,
+            "updatedAt": "2026-05-02T03:10:50.251Z",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Implement global exception handler mappings",
+            "description": "Add Spring MVC global exception handler for business, validation, and fallback exceptions.",
+            "details": "Add required common-core dependencies, implement GlobalExceptionHandler returning ApiResponse for BusinessException, MethodArgumentNotValidException, ConstraintViolationException, and unexpected exceptions. Add focused handler tests.",
+            "status": "done",
+            "dependencies": [
+              "4.1"
+            ],
+            "parentTaskId": 4,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-02T03:23:12.858Z"
+          },
+          {
+            "id": 3,
+            "title": "Verify common-core integration and build",
+            "description": "Run common-core tests and full reactor compile/package checks after exception handling is complete.",
+            "details": "Run common-core unit tests, verify downstream modules that depend on common-core compile, run mvn clean package -DskipTests when relevant, and mark parent Task 4 complete only after verification.",
+            "status": "done",
+            "dependencies": [
+              "4.2"
+            ],
+            "parentTaskId": 4,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-02T04:34:03.762Z"
+          }
+        ],
+        "updatedAt": "2026-05-02T04:34:03.762Z"
       },
       {
         "id": "5",
@@ -139,8 +217,47 @@
         "dependencies": [
           "4"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "搭建 common-auth 基础结构：请求头常量与 UserContext ThreadLocal",
+            "description": "在 common-auth 模块内建立认证上下文共享的基础骨架，包含请求头约定与 ThreadLocal 上下文对象。",
+            "dependencies": [],
+            "details": "分析现状：`common-auth` 目前无 Java 源码，仅有 `pom.xml`；`common-core` 使用 `@AutoConfiguration` + `META-INF/spring/...AutoConfiguration.imports` 注册。此子任务需：1) 新建包 `com.minimall.common.auth`（如 `context`、`constants`、`config`）；2) 增加请求头常量类（至少 `X-User-Id`、`X-Username`）；3) 增加 `UserContext`（userId/username）与 `UserContextHolder`（ThreadLocal set/get/clear）；4) 在 `common-auth` 增加 `spring-web`、`spring-context`、`spring-boot-autoconfigure` 等依赖，并准备后续自动装配文件目录结构（先不强绑定具体 Filter 实现）。",
+            "status": "done",
+            "testStrategy": null,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-02T05:05:04.630Z"
+          },
+          {
+            "id": 2,
+            "title": "实现 JwtUtils：基于配置生成/解析 JWT（含非法与过期识别）",
+            "description": "实现 JWT 的签发与校验工具类，支持从配置读取 secret 与过期时间，并将 userId/username 写入 claims。",
+            "dependencies": [
+              1
+            ],
+            "details": "在 `common-auth` 中新增 `JwtProperties`（例如前缀 `minimall.auth.jwt`，字段包含 `secret`、`expireSeconds`/`expireDuration`），并通过 `@ConfigurationProperties` 注入；实现 `JwtUtils`：1) `generateToken(userId, username)` 生成 Bearer 可用的 token；2) `parseToken(token)` 解析并返回 userId/username；3) 对签名不匹配、格式错误、过期等场景统一识别并抛出 `BusinessException(ErrorCode.UNAUTHORIZED, ...)`（符合项目硬规则）；4) 在 `pom.xml` 引入选定 JWT 库（如 `jjwt` 或 `java-jwt`）并保持依赖最小化。",
+            "status": "done",
+            "testStrategy": "新增 `common-auth` 单元测试：覆盖 token 生成/解析成功、篡改 token 识别、过期 token 识别（可用极短过期时间或手工构造 exp）。",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-02T07:52:36.506Z"
+          },
+          {
+            "id": 3,
+            "title": "实现 UserContextFilter + 自动装配：读取 JWT/透传头并在请求结束清理",
+            "description": "提供可复用的 Web 过滤器，将用户信息写入 UserContext，并保证请求结束后 ThreadLocal 清理；同时固化服务间透传约定。",
+            "dependencies": [
+              2
+            ],
+            "details": "实现 `UserContextFilter`（建议继承 `OncePerRequestFilter`）：1) 优先从透传请求头 `X-User-Id`/`X-Username` 读取并写入 `UserContextHolder`；2) 若透传头不存在，则从 `Authorization: Bearer <token>` 解析 JWT 并写入；3) 对非法/过期 token 返回 401 且响应体为 `ApiResponse.failure(ErrorCode.UNAUTHORIZED, ...)`（避免默认错误响应破坏统一返回结构）；4) 在 `finally` 中调用 `UserContextHolder.clear()` 确保请求结束必清理；5) 增加 `CommonAuthAutoConfiguration` 并通过 `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports` 注册，按 `common-core` 既有模式提供可被覆盖的 Bean（`@ConditionalOnMissingBean`）；6) 补齐测试：Mock 请求验证 Filter 内可读到 UserContext、链路结束后已清理、非法 token 返回 ApiResponse；7) 按流程将进度追加到 `docs/dev-log.md`。",
+            "status": "done",
+            "testStrategy": "使用 `spring-test`/`MockHttpServletRequest`+`MockFilterChain` 编写 Filter 测试：验证 header 透传路径、JWT 路径、异常路径（401 + ApiResponse）、以及请求结束 ThreadLocal 清理。",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-02T08:07:33.581Z"
+          }
+        ],
+        "updatedAt": "2026-05-02T08:07:33.581Z"
       },
       {
         "id": "6",
@@ -394,9 +511,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-01T02:42:11.211Z",
+      "lastModified": "2026-05-02T08:07:33.595Z",
       "taskCount": 20,
-      "completedCount": 2,
+      "completedCount": 5,
       "tags": [
         "master"
       ]

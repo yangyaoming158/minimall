@@ -77,3 +77,88 @@ Append one entry per implementation task so future sessions can recover project 
 - Test result: docker compose up -d succeeded. MySQL, Redis, and RabbitMQ containers are running and healthy. RabbitMQ management endpoint returned HTTP 200.
 - Issues: Two inline Windows/WSL command strings failed due PowerShell parsing before Docker checks ran, so the health polling was executed through a temporary Bash script that was deleted afterward. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
 - Next: Mark Task 2.3 and parent Task 2 done, then continue to Task 3.
+## Task 3.1 - Create migration directory and schema documentation
+- Date: 2026-05-01
+- Status: Done
+- Implemented: Created docs/sql and docs/sql/migrations documentation. Defined Flyway-style migration naming, the required V1__initial_schema.sql location for Task 3.2, core table scope, required unique constraints, execution command conventions, and information_schema verification queries for Task 3.3.
+- Changed files: docs/sql/README.md; docs/sql/migrations/README.md; .taskmaster/tasks/tasks.json; docs/dev-log.md
+- Commands run: task-master next; task-master show 3; task-master add-subtask for 3.1, 3.2, 3.3; task-master remove-subtask --id=3.2,3.3 to fix an earlier parallel creation race; task-master set-status --id=3 --status=in-progress; task-master set-status --id=3.1 --status=in-progress; file presence checks; documentation reads
+- Test result: Verified docs/sql/README.md and docs/sql/migrations/README.md exist and include the migration path, required core tables, unique constraints, execution command, and verification queries. No Java compile was needed.
+- Issues: The first attempt to create 3.2 and 3.3 in parallel caused TaskMaster subtask numbering/dependency race; corrected using TaskMaster remove-subtask and sequential add-subtask. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
+- Next: Task 3.2 - Create initial schema migration SQL.
+## Task 3.2 - Create initial schema migration SQL
+- Date: 2026-05-01
+- Status: Done
+- Implemented: Created docs/sql/migrations/V1__initial_schema.sql for the MVP MySQL schema. The migration defines users, products, inventory, inventory_records, orders, order_events, payments, and notification_logs with bigint primary keys, varchar status fields, timestamps, idempotency/business keys, indexes, and required unique constraints.
+- Changed files: docs/sql/migrations/V1__initial_schema.sql; .taskmaster/tasks/tasks.json; docs/dev-log.md
+- Commands run: task-master show 3.2; task-master set-status --id=3.2 --status=in-progress; docker compose --env-file .env.example ps; temporary MySQL schema create; execute V1__initial_schema.sql; information_schema table and unique constraint checks; repeat migration execution; temporary MySQL schema cleanup; task-master set-status --id=3.2 --status=done
+- Test result: Migration executed successfully against temporary MySQL schema minimall_order_task32. information_schema returned all 8 required tables and required unique constraints. Re-running the migration against the same temporary schema succeeded.
+- Issues: One inline shell text-check command failed because Windows/WSL quoting expanded loop variables incorrectly; validation continued through direct file inspection and MySQL execution. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
+- Next: Task 3.3 - Verify schema on local MySQL.
+## Task 3.3 - Verify schema on local MySQL
+- Date: 2026-05-02
+- Status: Done
+- Implemented: Executed docs/sql/migrations/V1__initial_schema.sql against the local Docker Compose MySQL database minimall_order and verified the resulting schema through information_schema.
+- Changed files: .taskmaster/tasks/tasks.json; docs/dev-log.md
+- Commands run: task-master next; task-master show 3.3; task-master set-status --id=3.3 --status=in-progress; docker compose --env-file .env.example config --quiet; docker compose --env-file .env.example ps; docker compose --env-file .env.example exec -T mysql mysql ... minimall_order < docs/sql/migrations/V1__initial_schema.sql; information_schema table and unique constraint checks; task-master set-status --id=3.3 --status=done; task-master set-status --id=3 --status=done
+- Test result: Docker Compose services were running and healthy. Migration executed successfully against minimall_order. information_schema returned all 8 required tables and all required unique constraints: users.username, products.product_id, inventory.product_id, orders.order_no, order_events.event_id, payments.payment_no, payments.order_no, notification_logs.event_id, and inventory_records(order_no, change_type).
+- Issues: WSL still prints a NAT/localhost warning after commands, but commands completed successfully. MySQL CLI prints the expected command-line password warning when using .env.example credentials.
+- Next: Task 4 - Implement common-core: ApiResponse, ErrorCode, BusinessException, global exception handling.
+## Task 4.1 - Implement ApiResponse ErrorCode and BusinessException contracts
+- Date: 2026-05-02
+- Status: Done
+- Implemented: Split Task 4 into subtasks after task-master expand failed, then implemented the common-core response and exception contracts. Added ApiResponse<T> success/failure factories, ErrorCode enum values, BusinessException constructors/accessors, and focused unit tests.
+- Changed files: common-core/pom.xml; common-core/src/main/java/com/minimall/common/core/response/ApiResponse.java; common-core/src/main/java/com/minimall/common/core/exception/ErrorCode.java; common-core/src/main/java/com/minimall/common/core/exception/BusinessException.java; common-core/src/test/java/com/minimall/common/core/response/ApiResponseTest.java; common-core/src/test/java/com/minimall/common/core/exception/BusinessExceptionTest.java; .taskmaster/tasks/tasks.json; docs/dev-log.md
+- Commands run: task-master next; task-master show 4; task-master expand --id=4 --num=3; task-master add-subtask for 4.1, 4.2, 4.3; task-master set-status --id=4 --status=in-progress; task-master set-status --id=4.1 --status=in-progress; mvn -pl common-core test; mvn -pl common-core package -DskipTests; task-master set-status --id=4.1 --status=done
+- Test result: mvn -pl common-core test succeeded with 6 tests passing. mvn -pl common-core package -DskipTests succeeded.
+- Issues: task-master expand failed once because the Codex child process could not find node, then timed out when rerun with an explicit PATH. Subtasks were added sequentially through task-master add-subtask. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
+- Next: Task 4.2 - Implement global exception handler mappings.
+## Task 4.2 - Implement global exception handler mappings
+- Date: 2026-05-02
+- Status: Done
+- Implemented: Added GlobalExceptionHandler mappings for BusinessException, MethodArgumentNotValidException, ConstraintViolationException, and fallback Exception. Added Spring Boot auto-configuration so downstream services can discover the handler through common-core without widening component scan packages. Added focused tests for status/code/message mapping and auto-configuration registration/backoff.
+- Changed files: common-core/pom.xml; common-core/src/main/java/com/minimall/common/core/exception/GlobalExceptionHandler.java; common-core/src/main/java/com/minimall/common/core/config/CommonCoreAutoConfiguration.java; common-core/src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports; common-core/src/test/java/com/minimall/common/core/exception/GlobalExceptionHandlerTest.java; common-core/src/test/java/com/minimall/common/core/config/CommonCoreAutoConfigurationTest.java; .taskmaster/tasks/tasks.json; docs/dev-log.md
+- Commands run: task-master next; task-master show 4.2; task-master set-status --id=4.2 --status=in-progress; service package scan checks; mvn -pl common-core test; mvn -pl common-core package -DskipTests; task-master set-status --id=4.2 --status=done
+- Test result: mvn -pl common-core test succeeded with 12 tests passing. mvn -pl common-core package -DskipTests succeeded.
+- Issues: Initial test runs exposed missing spring-context compile scope and Jakarta Validation test-stub signature issues; both were fixed. ApplicationContextRunner requires assertj-core on the test classpath, so assertj-core was added as a test dependency. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
+- Next: Task 4.3 - Verify common-core integration and build.
+
+## Task 4.3 - Verify common-core integration and build
+- Date: 2026-05-02
+- Status: Done
+- Implemented: Verified common-core integration after the response and exception handling contracts were completed. Confirmed common-core unit tests pass, downstream modules that depend on common-core compile, and the full Maven reactor packages successfully with tests skipped.
+- Changed files: .taskmaster/tasks/tasks.json; docs/dev-log.md
+- Commands run: task-master next; task-master show 4.3; task-master set-status --id=4.3 --status=in-progress; mvn -pl common-core test; dependency search for common-core pom usages; mvn -pl common-auth,user-service,product-service,inventory-service,order-service,payment-service,notification-service -am compile; mvn clean package -DskipTests; task-master set-status --id=4.3 --status=done; task-master show 4
+- Test result: mvn -pl common-core test succeeded with 12 tests passing. Downstream common-core dependents compiled successfully. mvn clean package -DskipTests succeeded for the full 10-module reactor.
+- Issues: task-master was not on the WSL PATH, so the local TaskMaster CLI was run directly with /mnt/d/nodejs/node.exe. rg resolved to a non-executable WindowsApps path in WSL, so dependency discovery used find/grep. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
+- Next: Continue with the next TaskMaster task after running task-master next.
+
+## Task 5.1 - 搭建 common-auth 基础结构：请求头常量与 UserContext ThreadLocal
+- Date: 2026-05-02
+- Status: Done
+- Implemented: Started Task 5 and implemented the first common-auth subtask. Added shared auth request header constants for X-User-Id and X-Username. Added immutable UserContext and UserContextHolder ThreadLocal APIs for set/get/getOrNull/require/hasContext/clear. Added common-auth Spring dependencies needed by later auth subtasks and configured JUnit 5 test execution.
+- Changed files: common-auth/pom.xml; common-auth/src/main/java/com/minimall/common/auth/constants/AuthHeaders.java; common-auth/src/main/java/com/minimall/common/auth/context/UserContext.java; common-auth/src/main/java/com/minimall/common/auth/context/UserContextHolder.java; common-auth/src/test/java/com/minimall/common/auth/constants/AuthHeadersTest.java; common-auth/src/test/java/com/minimall/common/auth/context/UserContextTest.java; common-auth/src/test/java/com/minimall/common/auth/context/UserContextHolderTest.java; .taskmaster/tasks/tasks.json; docs/dev-log.md
+- Commands run: task-master next; task-master show 5; task-master expand --id=5 --num=3; task-master set-status --id=5 --status=in-progress; task-master add-subtask then remove-subtask for an accidental duplicate 5.4; task-master show 5.1; task-master set-status --id=5.1 --status=in-progress; mvn -pl common-auth test; mvn -pl common-auth -am test; mvn clean package -DskipTests; task-master set-status --id=5.1 --status=done
+- Test result: mvn -pl common-auth -am test succeeded with common-core 12 tests passing and common-auth 7 tests passing. mvn clean package -DskipTests succeeded for the full 10-module reactor.
+- Issues: task-master expand timed out, but Task 5 already had subtasks 5.1, 5.2, and 5.3. An attempted add-subtask created a duplicate 5.4 with a truncated title; it was removed immediately with TaskMaster CLI. mvn -pl common-auth test failed once because common-core was not installed in the local Maven repository after clean; rerunning with -am built the reactor dependency and passed. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
+- Next: Task 5.2 - 实现 JwtUtils：基于配置生成/解析 JWT（含非法与过期识别）.
+
+## Task 5.2 - 实现 JwtUtils：基于配置生成/解析 JWT（含非法与过期识别）
+- Date: 2026-05-02
+- Status: Done
+- Implemented: Added java-jwt as the selected JWT library for common-auth. Added JwtProperties with minimall.auth.jwt configuration fields for secret and expireSeconds. Added JwtUtils for generating HMAC256 JWTs with userId/username claims and parsing raw or Bearer-prefixed tokens back into UserContext. Invalid, tampered, expired, missing, and malformed-claims tokens are mapped to BusinessException with ErrorCode.UNAUTHORIZED.
+- Changed files: common-auth/pom.xml; common-auth/src/main/java/com/minimall/common/auth/config/JwtProperties.java; common-auth/src/main/java/com/minimall/common/auth/jwt/JwtUtils.java; common-auth/src/test/java/com/minimall/common/auth/config/JwtPropertiesTest.java; common-auth/src/test/java/com/minimall/common/auth/jwt/JwtUtilsTest.java; .taskmaster/tasks/tasks.json; docs/dev-log.md
+- Commands run: task-master next; task-master show 5.2; task-master set-status --id=5.2 --status=in-progress; local Maven cache check for JWT libraries; mvn -pl common-auth -am test; mvn clean package -DskipTests; task-master set-status --id=5.2 --status=done
+- Test result: Initial mvn -pl common-auth -am test exposed a Bearer-without-token edge case; after fixing normalizeToken, mvn -pl common-auth -am test succeeded with common-core 12 tests passing and common-auth 17 tests passing. mvn clean package -DskipTests succeeded for the full 10-module reactor.
+- Issues: No JWT library was found in the local Maven cache before implementation, so Maven resolved java-jwt during the test run. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
+- Next: Task 5.3 - 实现 UserContextFilter + 自动装配：读取 JWT/透传头并在请求结束清理.
+
+## Task 5.3 - 实现 UserContextFilter + 自动装配：读取 JWT/透传头并在请求结束清理
+- Date: 2026-05-02
+- Status: Done
+- Implemented: Added UserContextFilter as a reusable OncePerRequestFilter for common-auth. The filter prioritizes X-User-Id/X-Username propagation headers, falls back to Authorization Bearer JWT parsing when available, writes UserContextHolder for downstream code, returns 401 with ApiResponse on invalid auth input, and clears ThreadLocal state in finally. Added CommonAuthAutoConfiguration with JwtProperties binding, conditional JwtUtils registration when minimall.auth.jwt.secret is configured, UserContextFilter registration with bean backoff, and Spring Boot AutoConfiguration imports.
+- Changed files: common-auth/pom.xml; common-auth/src/main/java/com/minimall/common/auth/config/CommonAuthAutoConfiguration.java; common-auth/src/main/java/com/minimall/common/auth/web/UserContextFilter.java; common-auth/src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports; common-auth/src/test/java/com/minimall/common/auth/config/CommonAuthAutoConfigurationTest.java; common-auth/src/test/java/com/minimall/common/auth/web/UserContextFilterTest.java; .taskmaster/tasks/tasks.json; docs/dev-log.md
+- Commands run: task-master next; task-master show 5.3; task-master set-status --id=5.3 --status=in-progress; mvn -pl common-auth -am test; mvn clean package -DskipTests; task-master set-status --id=5.3 --status=done; task-master show 5
+- Test result: mvn -pl common-auth -am test succeeded with common-core 12 tests passing and common-auth 26 tests passing. mvn clean package -DskipTests succeeded for the full 10-module reactor.
+- Issues: WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
+- Next: Continue with the next TaskMaster task after running task-master next.
