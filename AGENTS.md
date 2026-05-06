@@ -24,8 +24,9 @@ After implementation:
 1. Run the task's testStrategy.
 2. Run `mvn clean package -DskipTests` when relevant.
 3. Summarize changed files.
-4. Mark the task/subtask done only after verification.
-5. Append progress to `docs/dev-log.md`.
+4. For every completed task/subtask, list every modified, added, or deleted file name in the final response so the user can review the exact scope.
+5. Mark the task/subtask done only after verification.
+6. Append progress to `docs/dev-log.md`.
 
 ## Hard Rules
 - All REST APIs must return `ApiResponse`.
@@ -34,4 +35,11 @@ After implementation:
 - Order, inventory, payment, and MQ consumers must be idempotent.
 - Do not hardcode database passwords, JWT secrets, hostnames, or ports.
 - Use configuration files and environment variables.
+- Frontend-ready acceptance criteria only require stable backend API contracts for future frontend/admin integration; do not implement frontend pages, admin consoles, UI assets, or frontend build tooling in the current backend task tree. Real frontend development must wait for the user's next PRD.
 - If the same error appears twice, stop and report the blocker.
+
+## Version Management
+- Keep `main` as the stable integration branch; do not commit accumulated task work directly to `main` unless the user explicitly requests it.
+- Create a `codex/` branch before committing a task group, checkpoint, or feature batch, for example `codex/task-8-inventory` or `codex/checkpoint-current-work`.
+- Prefer one commit per completed TaskMaster task or subtask after its testStrategy passes; if the working tree already contains multiple completed tasks, create a checkpoint commit on a `codex/` branch.
+- Commit `.taskmaster/tasks/tasks.json` and `docs/dev-log.md` together with the code changes for the task they describe.

@@ -162,3 +162,133 @@ Append one entry per implementation task so future sessions can recover project 
 - Test result: mvn -pl common-auth -am test succeeded with common-core 12 tests passing and common-auth 26 tests passing. mvn clean package -DskipTests succeeded for the full 10-module reactor.
 - Issues: WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
 - Next: Continue with the next TaskMaster task after running task-master next.
+
+## Task 6.1 - user-service persistence foundation
+- Date: 2026-05-02
+- Status: Done
+- Implemented: Started Task 6 after verifying Task 6 was pending and ready despite TaskMaster recommending Task 12. Split Task 6 into subtasks. Added user-service persistence dependencies, users table JPA mapping, UserStatus enum, UserRepository, environment-variable datasource/JPA configuration, BCrypt crypto dependency for the upcoming auth subtask, and focused repository tests.
+- Changed files: user-service/pom.xml; user-service/src/main/java/com/minimall/user/domain/User.java; user-service/src/main/java/com/minimall/user/domain/UserStatus.java; user-service/src/main/java/com/minimall/user/repository/UserRepository.java; user-service/src/main/resources/application.yml; user-service/src/test/java/com/minimall/user/repository/UserRepositoryTest.java; .taskmaster/tasks/tasks.json; docs/dev-log.md
+- Commands run: git add .; git commit -m "chore: checkpoint completed foundation tasks"; task-master show 6; task-master list --with-subtasks; task-master set-status --id=6 --status=in-progress; task-master expand --id=6 --num=3; task-master show 6; task-master set-status --id=6.1 --status=in-progress; task-master show 6.1; mvn -pl user-service -am test; mvn clean package -DskipTests
+- Test result: mvn -pl user-service -am test succeeded with common-core 12 tests, common-auth 26 tests, and user-service 3 repository tests passing. mvn clean package -DskipTests succeeded for the full 10-module reactor.
+- Issues: task-master expand timed out at the command level but still wrote subtasks 6.1, 6.2, and 6.3. The first user-service test run reported 0 tests because user-service inherited Maven Surefire 2.12.4; adding Surefire 3.2.5 to user-service made JUnit 5 tests execute. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
+- Next: Task 6.2 - implement register and login endpoints with BCrypt storage and JWT issuing.
+
+## Task 6.2 - Implement register and login endpoints
+- Date: 2026-05-02
+- Status: Done
+- Implemented: Added user-service register and login APIs at POST /api/users/register and POST /api/users/login. Added validation DTOs, response DTOs, UserAuthService, UserAuthController, BCrypt PasswordEncoder configuration, JWT issuing through common-auth JwtUtils, and environment-variable JWT configuration. Registration stores BCrypt password hashes and maps duplicate usernames to BusinessException(ErrorCode.CONFLICT). Login returns a Bearer token and maps missing users or wrong passwords to the same UNAUTHORIZED response.
+- Changed files: .env.example; user-service/pom.xml; user-service/src/main/resources/application.yml; user-service/src/main/java/com/minimall/user/config/UserSecurityConfig.java; user-service/src/main/java/com/minimall/user/dto/LoginRequest.java; user-service/src/main/java/com/minimall/user/dto/LoginResponse.java; user-service/src/main/java/com/minimall/user/dto/RegisterRequest.java; user-service/src/main/java/com/minimall/user/dto/UserResponse.java; user-service/src/main/java/com/minimall/user/service/UserAuthService.java; user-service/src/main/java/com/minimall/user/web/UserAuthController.java; user-service/src/test/java/com/minimall/user/web/UserAuthControllerTest.java; .taskmaster/tasks/tasks.json; docs/dev-log.md
+- Commands run: task-master next; task-master show 6.2; git status --short; task-master set-status --id=6.2 --status=in-progress; source and contract reads; mvn -pl user-service -am test; mvn clean package -DskipTests
+- Test result: mvn -pl user-service -am test succeeded with common-core 12 tests, common-auth 26 tests, and user-service 7 tests passing. mvn clean package -DskipTests succeeded for the full 10-module reactor.
+- Issues: WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
+- Next: Task 6.3 - implement /me endpoint using UserContext and complete endpoint-level verification.
+
+## Task 6.3 - Implement /me endpoint using UserContext
+- Date: 2026-05-02
+- Status: Done
+- Implemented: Added GET /api/users/me to user-service. The endpoint reads the current UserContext from UserContextHolder, returns ApiResponse.success(CurrentUserResponse), and maps missing context to BusinessException(ErrorCode.UNAUTHORIZED, "Unauthorized"). Added endpoint-level MockMvc coverage for X-User-Id/X-Username propagation headers, Authorization Bearer JWT, missing authentication, and post-request ThreadLocal cleanup.
+- Changed files: user-service/src/main/java/com/minimall/user/dto/CurrentUserResponse.java; user-service/src/main/java/com/minimall/user/web/UserAuthController.java; user-service/src/test/java/com/minimall/user/web/UserAuthControllerTest.java; .taskmaster/tasks/tasks.json; docs/dev-log.md
+- Commands run: task-master next; task-master show 6.3; git status --short; task-master set-status --id=6.3 --status=in-progress; mvn -pl user-service -am test; mvn clean package -DskipTests; task-master set-status --id=6.3 --status=done; task-master show 6
+- Test result: mvn -pl user-service -am test succeeded with common-core 12 tests, common-auth 26 tests, and user-service 10 tests passing. mvn clean package -DskipTests succeeded for the full 10-module reactor. TaskMaster shows Task 6.3 done and parent Task 6 done.
+- Issues: task-master was not on the WSL PATH, so the local TaskMaster CLI was run directly with /mnt/d/nodejs/node.exe. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
+- Next: Continue with the next TaskMaster task after running task-master next.
+
+## Task 7.1 - product-service persistence foundation
+- Date: 2026-05-03
+- Status: Done
+- Implemented: Started Task 7 and split it into subtasks. Implemented the product-service foundation by adding JPA, Redis, validation, MySQL runtime, H2 test, and JUnit 5 test dependencies. Added environment-variable driven datasource/JPA/Redis configuration, disabled Redis repository scanning, mapped the products table with Product and ProductStatus, added ProductRepository, and added repository/context tests.
+- Changed files: product-service/pom.xml; product-service/src/main/resources/application.yml; product-service/src/main/java/com/minimall/product/domain/Product.java; product-service/src/main/java/com/minimall/product/domain/ProductStatus.java; product-service/src/main/java/com/minimall/product/repository/ProductRepository.java; product-service/src/test/java/com/minimall/product/repository/ProductRepositoryTest.java; product-service/src/test/java/com/minimall/product/ProductServiceApplicationTest.java; .taskmaster/tasks/tasks.json; docs/dev-log.md
+- Commands run: task-master next; task-master show 7; task-master expand --id=7 --num=3; task-master set-status --id=7 --status=in-progress; task-master remove-subtask --id=7.4; task-master show 7.1; task-master set-status --id=7.1 --status=in-progress; mvn -pl product-service -am test; mvn clean package -DskipTests; task-master set-status --id=7.1 --status=done
+- Test result: mvn -pl product-service -am test succeeded with common-core 12 tests, common-auth 26 tests, and product-service 4 tests passing. mvn clean package -DskipTests succeeded for the full 10-module reactor.
+- Issues: task-master expand timed out but still created subtasks 7.1, 7.2, and 7.3. A duplicate 7.4 foundation subtask was accidentally created while checking the timeout result and was removed immediately with TaskMaster CLI. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
+- Next: Task 7.2 - implement product management REST APIs.
+
+## Task 7.2 - Implement product management REST APIs
+- Date: 2026-05-03
+- Status: Done
+- Implemented: Added product-service REST APIs for product creation, update, list with optional status filter and paging, detail lookup, on-shelf/off-shelf transitions, and internal product detail lookup for order-service. Added ProductService business logic, request/response/page DTOs, ApiResponse-wrapped controllers, Product domain update/shelf methods, and repository status paging support. Not found cases map to BusinessException(ErrorCode.NOT_FOUND); duplicate product IDs map to CONFLICT; invalid shelf transitions map to BAD_REQUEST.
+- Changed files: product-service/src/main/java/com/minimall/product/domain/Product.java; product-service/src/main/java/com/minimall/product/repository/ProductRepository.java; product-service/src/main/java/com/minimall/product/dto/CreateProductRequest.java; product-service/src/main/java/com/minimall/product/dto/UpdateProductRequest.java; product-service/src/main/java/com/minimall/product/dto/ProductResponse.java; product-service/src/main/java/com/minimall/product/dto/InternalProductResponse.java; product-service/src/main/java/com/minimall/product/dto/PageResponse.java; product-service/src/main/java/com/minimall/product/service/ProductService.java; product-service/src/main/java/com/minimall/product/web/ProductController.java; product-service/src/main/java/com/minimall/product/web/InternalProductController.java; product-service/src/test/java/com/minimall/product/web/ProductControllerTest.java; .taskmaster/tasks/tasks.json; docs/dev-log.md
+- Commands run: task-master next; task-master show 7.2; git status --short; task-master set-status --id=7.2 --status=in-progress; mvn -pl product-service -am test; mvn clean package -DskipTests; task-master set-status --id=7.2 --status=done
+- Test result: mvn -pl product-service -am test succeeded with common-core 12 tests, common-auth 26 tests, and product-service 10 tests passing. mvn clean package -DskipTests succeeded for the full 10-module reactor.
+- Issues: Initial REST API tests exposed missing explicit Spring MVC parameter names for path variables and the status request parameter because compiler parameter metadata is not available; fixed by naming bindings explicitly. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
+- Next: Task 7.3 - implement product cache/query behavior with Redis integration.
+
+## Task 7.3 - Implement product detail Redis cache
+- Date: 2026-05-03
+- Status: Done
+- Implemented: Added product detail cache-aside logic in ProductService using StringRedisTemplate and Jackson JSON serialization with key product:detail:{productId}. Detail and internal detail queries now share the cached read path. Cache misses fall back to DB and write Redis with a configurable TTL. Product update, on-shelf, and off-shelf operations delete the detail cache after transaction commit. Redis read/write/delete failures are logged and fall back to DB behavior so product APIs do not require Redis to be available for correctness.
+- Changed files: product-service/src/main/java/com/minimall/product/service/ProductService.java; product-service/src/main/resources/application.yml; product-service/src/test/java/com/minimall/product/web/ProductControllerTest.java; .taskmaster/tasks/tasks.json; docs/dev-log.md
+- Commands run: task-master next; task-master show 7.3; git status --short; task-master set-status --id=7.3 --status=in-progress; mvn -pl product-service -am test; mvn clean package -DskipTests; task-master set-status --id=7.3 --status=done
+- Test result: mvn -pl product-service -am test succeeded with common-core 12 tests, common-auth 26 tests, and product-service 13 tests passing. mvn clean package -DskipTests succeeded for the full 10-module reactor.
+- Issues: Redis behavior tests use a mocked StringRedisTemplate, so Docker Redis was not required for this subtask's automated verification. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
+- Next: Continue with the next TaskMaster task after running task-master next.
+
+## Task tree update - Frontend readiness acceptance
+- Date: 2026-05-03
+- Status: Done
+- Implemented: Reviewed the pending TaskMaster tree and added frontend-ready acceptance criteria to tasks that shape browser-facing APIs or final delivery. Updated tasks 8, 9, 10, 11, 13, 16, and 19 with requirements for stable ApiResponse DTOs, gateway-facing routes, retry/idempotency behavior, frontend-safe error codes/messages, CORS/JWT gateway behavior, and gateway-based performance scripts. Added subtask 20.1 for a frontend integration guide and readiness checklist because updating Task 20 directly through TaskMaster timed out due its full-tree context.
+- Changed files: .taskmaster/tasks/tasks.json; docs/dev-log.md
+- Commands run: task-master list --with-subtasks; task-master show 16; task-master show 18; task-master show 20; task-master update-task --append for tasks 8, 9, 10, 11, 13, 16, and 19; task-master add-subtask --parent=20 for 20.1; git status --short
+- Test result: Not a code change. Verified tasks 8, 9, 10, 11, 13, 16, and 19 contain appended frontend-readiness details and Task 20 has new pending subtask 20.1.
+- Issues: The first multi-command update only updated Task 8 because TaskMaster consumed stdin; subsequent updates used stdin isolation. Updating Task 20 directly with update-task hung, so the stuck process was stopped and a focused TaskMaster subtask 20.1 was inserted instead.
+- Next: Continue with TaskMaster next.
+
+## Development rule update - Frontend scope control
+- Date: 2026-05-05
+- Status: Done
+- Implemented: Updated AGENTS.md to clarify that frontend-ready acceptance criteria only require stable backend API contracts for future frontend/admin integration. The current task tree must not expand into frontend pages, admin consoles, UI assets, or frontend build tooling; real frontend development should wait for the user's next PRD.
+- Changed files: AGENTS.md; docs/dev-log.md
+- Commands run: Read AGENTS.md; read docs/dev-log.md; git status --short
+- Test result: Documentation-only rule change; no build required.
+- Issues: None.
+- Next: Continue backend microservice tasks without expanding scope into frontend implementation.
+
+## Task 8.1 - inventory-service persistence foundation
+- Date: 2026-05-06
+- Status: Done
+- Implemented: Implemented the inventory-service persistence foundation. Added JPA, validation, MySQL runtime, H2 test, Spring Boot test, and Surefire dependencies. Added datasource/JPA configuration. Mapped inventory and inventory_records tables with Inventory and InventoryRecord entities, enum status/change types, timestamps, unique constraints, indexes, and repository interfaces. Added H2 repository tests for lookup, enum persistence, uniqueness, orderNo+changeType idempotency key shape, and application context startup.
+- Changed files: inventory-service/pom.xml; inventory-service/src/main/resources/application.yml; inventory-service/src/main/java/com/minimall/inventory/domain/Inventory.java; inventory-service/src/main/java/com/minimall/inventory/domain/InventoryStatus.java; inventory-service/src/main/java/com/minimall/inventory/domain/InventoryChangeType.java; inventory-service/src/main/java/com/minimall/inventory/domain/InventoryRecord.java; inventory-service/src/main/java/com/minimall/inventory/domain/InventoryRecordStatus.java; inventory-service/src/main/java/com/minimall/inventory/repository/InventoryRepository.java; inventory-service/src/main/java/com/minimall/inventory/repository/InventoryRecordRepository.java; inventory-service/src/test/java/com/minimall/inventory/InventoryServiceApplicationTest.java; inventory-service/src/test/java/com/minimall/inventory/repository/InventoryRepositoryTest.java; inventory-service/src/test/java/com/minimall/inventory/repository/InventoryRecordRepositoryTest.java; .taskmaster/tasks/tasks.json; docs/dev-log.md
+- Commands run: task-master show 8.1; task-master set-status --id=8.1 --status=in-progress; source/schema reads; mvn -pl inventory-service -am test; mvn clean package -DskipTests; task-master set-status --id=8.1 --status=done
+- Test result: mvn -pl inventory-service -am test succeeded with common-core 12 tests, common-auth 26 tests, and inventory-service 7 tests passing. mvn clean package -DskipTests succeeded for the full 10-module reactor.
+- Issues: task-master next/list/expand were slow or timed out, but show/set-status/add/remove commands eventually worked. expand had already created subtasks 8.1-8.3; a duplicate 8.4 was accidentally added during recovery and was removed immediately with TaskMaster CLI before implementation. H2 duplicate-key logs in repository tests are expected from unique-constraint assertions.
+- Next: Continue with Task 8.2 - external inventory query API and stable DTOs.
+
+## Development rule update - Review file list requirement
+- Date: 2026-05-06
+- Status: Done
+- Implemented: Updated AGENTS.md to require that every completed task or subtask final response lists every modified, added, or deleted file name so the user can review the exact change scope.
+- Changed files: AGENTS.md; docs/dev-log.md
+- Commands run: Read AGENTS.md; git status --short
+- Test result: Documentation-only rule change; no build required.
+- Issues: None.
+- Next: Continue backend tasks and include the full changed-file list after each completed subtask.
+
+## Task 8.2 - Inventory read-only query API
+- Date: 2026-05-06
+- Status: Done
+- Implemented: Added the external read-only inventory detail API at GET /api/inventories/{productId}. Responses use ApiResponse and expose stable productId, availableStock, lockedStock, and stockState fields. Added StockState mapping: inactive inventory returns INACTIVE, active inventory with available stock returns IN_STOCK, and active inventory without available stock returns OUT_OF_STOCK. Missing inventory throws BusinessException(ErrorCode.NOT_FOUND, "Inventory not found").
+- Changed files: inventory-service/src/main/java/com/minimall/inventory/domain/StockState.java; inventory-service/src/main/java/com/minimall/inventory/dto/InventoryResponse.java; inventory-service/src/main/java/com/minimall/inventory/service/InventoryQueryService.java; inventory-service/src/main/java/com/minimall/inventory/web/InventoryController.java; inventory-service/src/test/java/com/minimall/inventory/web/InventoryControllerTest.java; .taskmaster/tasks/tasks.json; docs/dev-log.md
+- Commands run: task-master next; task-master show 8.2; git status --short; task-master set-status --id=8.2 --status=in-progress; mvn -pl inventory-service -am test; mvn clean package -DskipTests
+- Test result: mvn -pl inventory-service -am test succeeded with common-core 12 tests, common-auth 26 tests, and inventory-service 11 tests passing. mvn clean package -DskipTests succeeded for the full 10-module reactor.
+- Issues: Initial test run failed because PowerShell wrote UTF-8 BOM to newly added Java files; BOM was removed and the same test command passed. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
+- Next: Mark Task 8.2 done in TaskMaster, then continue with Task 8.3.
+
+## Task 8.3 - Inventory deduct/release records and idempotency
+- Date: 2026-05-06
+- Status: Done
+- Implemented: Added internal inventory command APIs at POST /internal/inventories/deduct and POST /internal/inventories/release. Added validated InventoryChangeRequest DTO, InventoryCommandService transaction logic, conditional stock updates to prevent negative inventory and invalid release, inventory_records writes for successful changes, and orderNo+changeType replay idempotency. Duplicate replay returns the inventory snapshot for the existing record without changing stock or adding another record.
+- Changed files: inventory-service/src/main/java/com/minimall/inventory/repository/InventoryRepository.java; inventory-service/src/main/java/com/minimall/inventory/dto/InventoryChangeRequest.java; inventory-service/src/main/java/com/minimall/inventory/service/InventoryCommandService.java; inventory-service/src/main/java/com/minimall/inventory/web/InternalInventoryController.java; inventory-service/src/test/java/com/minimall/inventory/web/InternalInventoryControllerTest.java; .taskmaster/tasks/tasks.json; docs/dev-log.md
+- Commands run: task-master next; task-master show 8.3; git status --short; task-master set-status --id=8.3 --status=in-progress; mvn -pl inventory-service -am test; mvn clean package -DskipTests
+- Test result: mvn -pl inventory-service -am test succeeded with common-core 12 tests, common-auth 26 tests, and inventory-service 16 tests passing. mvn clean package -DskipTests succeeded for the full 10-module reactor.
+- Issues: WSL still prints a NAT/localhost warning after commands, but commands completed successfully. H2 duplicate-key logs in existing repository tests are expected from unique-constraint assertions.
+- Next: Continue with the next TaskMaster task after running task-master next.
+
+## Version management rule update - Branch and checkpoint policy
+- Date: 2026-05-06
+- Status: Done
+- Implemented: Added AGENTS.md version management guidance to keep main stable, create codex/ branches for task groups or checkpoints, prefer one commit per verified TaskMaster task/subtask, and commit TaskMaster/dev-log metadata with related code changes.
+- Changed files: AGENTS.md; docs/dev-log.md
+- Commands run: git branch --show-current; git status --short
+- Test result: Documentation-only rule change; no build required. Current code changes were already verified in the preceding completed tasks.
+- Issues: None.
+- Next: Create a checkpoint branch and commit the current working tree.

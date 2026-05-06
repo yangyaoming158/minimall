@@ -272,8 +272,47 @@
           "4",
           "5"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "user-service 增加用户模型与持久层（users表映射+依赖配置）",
+            "description": "在 user-service 中引入访问 users 表所需的依赖与基础代码，包含实体/枚举、Repository/DAO、以及基础配置，为注册与登录逻辑提供数据读写能力。",
+            "dependencies": [],
+            "details": "1) 参考 `docs/sql/migrations/V1__initial_schema.sql` 中 users 表字段（id/username/password_hash/email/phone/status/created_at/updated_at）建立用户实体；status 字段用 `UserStatus` 枚举（如 ACTIVE/DISABLED），字符串落库。\n2) 在 `user-service/pom.xml` 增加数据库访问依赖（例如 Spring Data JPA 或 MyBatis 其一）与 MySQL 驱动；增加 BCrypt 依赖（推荐 `spring-security-crypto`，避免引入整套 security）。\n3) 在 `user-service/src/main/resources/application.yml` 补充最小化数据库配置策略：不硬编码地址/密码，优先使用环境变量（如 `SPRING_DATASOURCE_URL/USERNAME/PASSWORD`），并关闭自动建表（若用 JPA 则 `ddl-auto=none`）。\n4) 提供基础查询/写入能力：按 username 查询、保存新用户；为唯一约束 `users.username` 冲突预留异常处理入口（后续在业务层转 `BusinessException(ErrorCode.CONFLICT)`）。",
+            "status": "done",
+            "testStrategy": "增加 Repository/DAO 的基础单测或 `@DataJpaTest`：插入用户后可按 username 查询到；status 枚举可正确序列化/反序列化；保存重复 username 时能触发唯一约束异常（仅验证抛出即可）。",
+            "updatedAt": "2026-05-02T08:53:01.182Z",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "实现注册与登录接口（BCrypt 存储+JWT 签发）",
+            "description": "实现 `POST /api/users/register` 与 `POST /api/users/login`，确保返回统一 `ApiResponse`，并按约束处理重复用户名与登录失败场景。",
+            "dependencies": [
+              1
+            ],
+            "details": "1) 新增 Controller：`/api/users/register`、`/api/users/login` 路由；所有返回体包装为 `ApiResponse`（成功 `ApiResponse.success(data)`）。\n2) 新增 DTO：RegisterRequest（username/password/email/phone 可选）、LoginRequest（username/password）、LoginResponse（token 等必要字段）。\n3) 注册逻辑：校验请求参数（建议引入 `spring-boot-starter-validation` 并使用 `@Valid`），使用 `BCryptPasswordEncoder` 将明文密码转为 `password_hash`；创建用户时默认 status=ACTIVE；当 username 已存在或唯一索引冲突时，抛 `BusinessException(ErrorCode.CONFLICT, \"用户名已存在\")`。\n4) 登录逻辑：按 username 查询用户，不存在或 BCrypt 校验失败时，统一抛 `BusinessException(ErrorCode.UNAUTHORIZED, \"用户名或密码错误\")`（避免泄露信息）；成功后调用 `common-auth` 的 `JwtUtils.generateToken(userId, username)` 签发 JWT。\n5) JwtUtils 注入前提：确保 `minimall.auth.jwt.secret` 可通过环境变量（`MINIMALL_AUTH_JWT_SECRET`）或 yml 配置提供，避免运行期缺少 JWT 组件。",
+            "status": "done",
+            "testStrategy": "使用 `@SpringBootTest + MockMvc`：注册成功写入非明文 `password_hash`；重复用户名返回 CONFLICT（ApiResponse failure）；登录成功返回 token；用户不存在/密码错误返回同一 UNAUTHORIZED 错误码与消息结构。",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-02T09:25:27.908Z"
+          },
+          {
+            "id": 3,
+            "title": "实现 /me 接口（读取 UserContext）并补齐接口级验证",
+            "description": "实现 `GET /api/users/me`，从 `UserContextHolder` 获取当前登录用户信息并返回；补齐与 common-auth 过滤器配合的接口测试。",
+            "dependencies": [
+              2
+            ],
+            "details": "1) 新增 `/api/users/me` Controller 方法：从 `common-auth` 的 `UserContextHolder.require()`（或 get 并自行转业务异常）读取 `userId/username`，返回 `ApiResponse.success(MeResponse)`。\n2) 约束：未携带透传头或 Authorization Bearer JWT 时，`UserContextHolder` 为空；按统一策略返回业务错误（推荐 `BusinessException(ErrorCode.UNAUTHORIZED, \"Unauthorized\")` 或与现有 Filter 行为一致）。\n3) 与 `UserContextFilter` 行为对齐：Filter 优先读取 `X-User-Id/X-Username`，其次解析 Bearer JWT；因此 /me 测试覆盖两种方式。\n4) 文档与交付：在实现完成并验证后，按项目要求追加记录到 `docs/dev-log.md`（与 Task 6 相关的变更与验证结果）。",
+            "status": "done",
+            "testStrategy": "MockMvc 测试：带 `X-User-Id/X-Username` 请求 /me 返回对应用户；带 `Authorization: Bearer <token>` 请求 /me 返回对应用户；不带任何认证信息请求 /me 返回 UNAUTHORIZED 的 ApiResponse；请求结束后（同线程）`UserContextHolder` 不残留（可通过额外断言或 Filter 相关测试验证）。",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-02T14:57:51.372Z"
+          }
+        ],
+        "updatedAt": "2026-05-02T14:57:51.372Z"
       },
       {
         "id": "7",
@@ -288,14 +327,53 @@
           "3",
           "4"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "补齐 product-service 基础工程：依赖、配置、产品领域模型",
+            "description": "在现有仅包含启动类与 application.yml 的 product-service 中，补齐实现 CRUD 所需的基础设施与 products 表映射。",
+            "dependencies": [],
+            "details": "基于现有项目约定（`common-core` 的 `ApiResponse`/`BusinessException`/`ErrorCode`，以及 `user-service` 的 JPA Entity+Repository 模式）完成：1) 在 `product-service/pom.xml` 增加 `spring-boot-starter-data-jpa`、`mysql-connector-j`、`spring-boot-starter-validation`、`spring-boot-starter-data-redis` 等依赖；2) 在 `product-service/src/main/resources/application.yml` 增加 datasource 与 redis 配置，使用 `.env.example` 中的 `SPRING_DATASOURCE_*`、`SPRING_DATA_REDIS_*` 环境变量；3) 创建 `Product` 实体映射 `docs/sql/migrations/V1__initial_schema.sql` 的 `products` 表（字段：`productId`/`name`/`description`/`price`/`status`/`createdAt`/`updatedAt`），`status` 使用 `EnumType.STRING`；4) 新增 `ProductStatus` 枚举（至少包含 `ON_SHELF`、`OFF_SHELF`）；5) 新增 `ProductRepository extends JpaRepository`，提供按 `productId` 查询与存在性校验方法。",
+            "status": "done",
+            "testStrategy": "运行 product-service 的基础启动测试（如已有 `@SpringBootTest` 模板可复用）；验证应用能加载 JPA/Redis 配置且不报错（本地可通过 `mvn -pl product-service test`/启动应用进行验证）。",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-03T03:15:02.785Z"
+          },
+          {
+            "id": 2,
+            "title": "实现商品管理 REST API：创建、更新、列表、详情、上下架",
+            "description": "基于 products 表提供商品创建、更新、分页/列表、详情查询以及上架/下架接口，并遵循全局异常与返回体规范。",
+            "dependencies": [
+              1
+            ],
+            "details": "新增 `ProductController`（路径风格参考 `user-service/src/main/java/com/minimall/user/web/UserAuthController.java` 的 `/api/...` 约定），所有接口直接返回 `ApiResponse`；新增 `ProductService` 承载业务：1) 创建商品：生成/接收 `productId`（按任务要求决定是前端传入还是后端生成），保存默认状态 `ON_SHELF`；2) 更新商品：校验存在性，不存在抛 `new BusinessException(ErrorCode.NOT_FOUND, ...)`；3) 列表：支持按 `status` 过滤（可选）与分页（如使用 Spring Data `Pageable`）；4) 详情：按 `productId` 查询；5) 上下架：仅允许在两种状态间切换，非法操作抛 `BusinessException(ErrorCode.BAD_REQUEST, ...)`；6) 为 order-service 暴露“可查询商品详情和状态”的对内查询接口（建议新增单独的 `InternalProductController`，例如 `/internal/products/{productId}` 返回包含 `productId`、`name`、`price`、`status` 的 DTO，便于后续 order-service 调用）。",
+            "status": "done",
+            "testStrategy": "使用 `@SpringBootTest` + MockMvc（或 WebMvcTest）覆盖：CRUD 与上下架接口均返回 `ApiResponse`；不存在商品返回 `NOT_FOUND` 对应 code；非法上下架返回 `BAD_REQUEST` 对应 code；列表/详情字段与数据库一致。",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-03T03:42:41.426Z"
+          },
+          {
+            "id": 3,
+            "title": "实现商品详情 Redis 缓存：查询写缓存、变更/上下架失效、对内校验复用",
+            "description": "为商品详情查询增加 Redis 缓存（cache-aside），并在商品更新及上下架后删除缓存，保证 order-service 校验读取到最新状态。",
+            "dependencies": [
+              2
+            ],
+            "details": "在 `ProductService` 的详情查询路径实现 cache-aside：1) 设计缓存 key（例如 `product:detail:{productId}`），序列化使用 JSON（建议在 product-service 内新增 Redis 序列化配置或使用 `StringRedisTemplate`+Jackson，避免默认 JDK 序列化）；2) 查询流程：先查 Redis，命中直接返回；未命中查 DB，查到后写入 Redis（可设置合理 TTL，避免永久脏数据）；3) 缓存失效：在商品更新、上架、下架成功提交事务后删除对应 key（可通过 `@Transactional` + 事务后回调/或在成功分支显式删除，确保不会对失败事务误删）；4) 对内接口（子任务2的 internal 查询）复用同一查询逻辑与缓存策略，确保 order-service 校验商品状态时受益于缓存但在状态变更后能及时失效。",
+            "status": "done",
+            "testStrategy": "集成测试验证：详情首次请求走 DB 并写入 Redis，第二次命中 Redis（可通过统计 repository 调用次数/或在测试中先写入不同值验证命中）；更新/上下架后 key 被删除，下一次查询回源 DB 并重建缓存；下架商品通过 internal 查询可返回 `OFF_SHELF` 状态供 order-service 校验失败。",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-03T07:07:38.099Z"
+          }
+        ],
+        "updatedAt": "2026-05-03T07:07:38.099Z"
       },
       {
         "id": "8",
         "title": "实现 inventory-service：库存查询、扣减、释放、流水、幂等",
         "description": "实现库存服务的核心扣减、释放和幂等流水能力。",
-        "details": "基于 inventory 与 inventory_records 表提供库存查询、扣减、释放接口。扣减使用条件更新防止负库存，扣减/释放基于 orderNo + changeType 唯一约束保证幂等。",
+        "details": "基于 inventory 与 inventory_records 表提供库存查询、扣减、释放接口。扣减使用条件更新防止负库存，扣减/释放基于 orderNo + changeType 唯一约束保证幂等。\n<info added on 2026-05-03T07:59:08.314Z>\n面向前端/UI 可用的库存查询接口验收标准补充：所有对外暴露给浏览器/网关调用的库存 API（建议统一放在 `/api/inventories` 下）必须返回 `ApiResponse<T>`（字段形态与 `common-core/src/main/java/com/minimall/common/core/response/ApiResponse.java` 一致，测试断言参考 `product-service/src/test/java/com/minimall/product/web/ProductControllerTest.java` 的 `$.success/$.code/$.message/$.data`）。对外返回的库存 DTO 必须包含 `productId`、数值型 `availableStock`、数值型 `lockedStock`，并提供稳定的库存状态字段（使用 enum 并序列化为字符串，风格对齐 `product-service/src/main/java/com/minimall/product/domain/ProductStatus.java` 在 JSON 中输出 `ON_SHELF/OFF_SHELF` 的方式；库存状态可命名为 `stockState`/`state` 等，但必须是稳定的枚举/字符串字段而非临时计算字段名）。库存查询必须支持“安全查询语义”（只读 GET，不产生扣减/锁定副作用；支持按 `productId` 查询，必要时可扩展批量查询参数；对不存在的 `productId` 返回确定性的 HTTP/业务结果，不允许返回内部实现细节或内部专用字段）。同时补充 HTTP 级集成测试：在 `inventory-service` 增加类似 `ProductControllerTest`/`UserAuthControllerTest` 的 `@SpringBootTest + @AutoConfigureMockMvc` 测试，用 H2 配置验证 UI 查询接口返回的 `ApiResponse` 结构与字段（包含 `productId/availableStock/lockedStock/stockState`），确保网关可直接透传消费且不依赖 internal-only payload。\n</info added on 2026-05-03T07:59:08.314Z>",
         "testStrategy": "库存查询正确；并发扣减后 available_stock 不为负；库存不足返回业务错误；同一 orderNo 重复扣减或释放不会重复改变库存；流水记录完整。",
         "priority": "high",
         "dependencies": [
@@ -304,14 +382,54 @@
           "3",
           "4"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "补齐 inventory-service 持久化基础：JPA依赖、实体/枚举、Repository",
+            "description": "为库存服务补齐 Spring Data JPA、校验与测试依赖，并基于现有 SQL Schema（inventory、inventory_records）建立实体、枚举与数据访问层，为查询/扣减/释放与幂等打基础。",
+            "dependencies": [],
+            "details": "代码现状：`inventory-service/src/main/java/com/minimall/inventory/InventoryServiceApplication.java` 仅有启动类，`inventory-service/pom.xml` 尚无 JPA/validation/mysql/h2/test 依赖；DB schema 已在 `docs/sql/migrations/V1__initial_schema.sql` 定义 `inventory` 与 `inventory_records`（包含 `uk_inventory_product_id`、`uk_inventory_records_order_change(order_no,change_type)`）。本子任务建议落地：1）在 `inventory-service/pom.xml` 增加 `spring-boot-starter-data-jpa`、`spring-boot-starter-validation`、`mysql-connector-j`(runtime)、`h2`(test)、`spring-boot-starter-test`(test)，对齐 `product-service/pom.xml` 的依赖结构；2）新增实体 `Inventory` 映射 `inventory` 表，字段至少包含 `productId(String)`、`availableStock(int)`、`lockedStock(int)`、`status(枚举，EnumType.STRING)`、`createdAt/updatedAt(LocalDateTime)`，并仿照 `product-service/src/main/java/com/minimall/product/domain/Product.java` 使用 `@Table(uniqueConstraints/indexes)` 与 `@PrePersist/@PreUpdate`；3）新增实体 `InventoryRecord` 映射 `inventory_records` 表，字段至少包含 `productId`、`orderNo`、`changeType(枚举，EnumType.STRING)`、`quantity(int)`、`status(枚举，EnumType.STRING)`、时间戳，并声明唯一约束 `order_no + change_type`；4）新增枚举：`InventoryStatus`（对齐表默认 `ACTIVE`）、`InventoryChangeType`（如 `DEDUCT/RELEASE`，用于幂等键）、`InventoryRecordStatus`（如 `SUCCESS`，对齐表默认）；5）新增 `InventoryRepository`、`InventoryRecordRepository`（Spring Data JPA），为后续查询/条件更新/按 orderNo+changeType 查重提供方法签名。",
+            "status": "done",
+            "testStrategy": "先不做完整业务测试；仅验证可编译与基本上下文启动：后续子任务会通过 `@SpringBootTest + H2` 覆盖实体映射与接口返回。",
+            "updatedAt": "2026-05-06T11:56:44.456Z",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "实现对外库存查询 API（/api/inventories）+ 稳定 DTO/枚举 + MockMvc 集成测试",
+            "description": "实现面向网关/浏览器的安全只读库存查询接口，所有响应统一返回 `ApiResponse<T>`，DTO 字段满足 `productId/availableStock/lockedStock/stockState`，并补齐 H2+MockMvc 的 HTTP 级集成测试确保契约稳定。",
+            "dependencies": [
+              1
+            ],
+            "details": "对齐现有约定：`ApiResponse` 定义见 `common-core/src/main/java/com/minimall/common/core/response/ApiResponse.java`，HTTP 断言风格参考 `product-service/src/test/java/com/minimall/product/web/ProductControllerTest.java`（断言 `$.success/$.code/$.message/$.data`）。本子任务建议落地：1）新增对外 Controller（如 `com.minimall.inventory.web.InventoryController`）并统一前缀 `@RequestMapping(\"/api/inventories\")`；2）新增对外 DTO（建议 Java record，风格对齐 `user-service/src/main/java/com/minimall/user/dto/LoginResponse.java`），例如 `InventoryResponse(String productId, int availableStock, int lockedStock, StockState stockState)`；3）新增 `StockState` 枚举并确保 JSON 输出为字符串枚举名（对齐 `product-service/src/main/java/com/minimall/product/domain/ProductStatus.java` 的序列化效果）；`stockState` 可来自库存 `status` + 是否缺货的稳定判定（例如 `ACTIVE` 且 `availableStock>0` => `IN_STOCK`，否则 `OUT_OF_STOCK`，或直接映射为 `ACTIVE/INACTIVE`，但必须是稳定枚举字段）；4）提供查询路由：至少支持 `GET /api/inventories/{productId}`（可选扩展 `GET /api/inventories?productId=...` 或 `productIds=...`），语义必须只读、无扣减/锁定副作用；5）不存在的 `productId` 需要确定性返回（建议抛 `BusinessException(ErrorCode.NOT_FOUND, \"Inventory not found\")`，由 `common-core` 的 `GlobalExceptionHandler` 转为 `ApiResponse.failure`，避免泄露内部细节）。6）新增 `inventory-service` 集成测试（类名建议 `InventoryControllerTest`），使用 `@SpringBootTest + @AutoConfigureMockMvc + @TestPropertySource` 参考 `ProductControllerTest` 的 H2 配置；在测试内写入库存数据（走 Repository），断言返回的 `ApiResponse` 结构与字段齐全，且 `stockState` 为字符串枚举值。",
+            "status": "done",
+            "testStrategy": "新增 `inventory-service/src/test/java/.../InventoryControllerTest.java`：1）存在库存时断言 HTTP 200 且 `$.success=true`、`$.code=0`、`$.data.productId/availableStock/lockedStock/stockState`；2）不存在时断言 HTTP 404（或约定的业务 HTTP）且 `$.success=false`、`$.code=40400`、`$.message` 稳定。",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-06T12:35:50.436Z"
+          },
+          {
+            "id": 3,
+            "title": "实现库存扣减/释放/流水记录与幂等（orderNo+changeType 唯一约束）并补齐并发/幂等测试",
+            "description": "实现库存扣减与释放的核心写入链路：条件更新防止负库存、写入流水、用 `orderNo + changeType` 唯一约束实现幂等，确保重复请求与并发场景下库存正确且不会重复扣减/释放。",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "基于 schema（`docs/sql/migrations/V1__initial_schema.sql`）：`inventory(available_stock, locked_stock)` 与 `inventory_records(unique(order_no, change_type))`。本子任务建议落地：1）新增内部调用 Controller（避免暴露给浏览器；路径可采用 `/internal/inventories`，风格对齐 `product-service/src/main/java/com/minimall/product/web/InternalProductController.java`），提供 `POST /internal/inventories/deduct` 与 `POST /internal/inventories/release`；请求 DTO（record）包含 `orderNo`、`productId`、`quantity`；响应可返回 `ApiResponse<Void>` 或返回当前库存快照（但对外契约以 `ApiResponse` 包裹为准）；2）Service 层实现事务：先做幂等占位（优先插入 `InventoryRecord(orderNo, changeType, productId, quantity, SUCCESS)`；若命中唯一约束冲突则直接视为已处理并返回幂等成功），再执行库存条件更新；扣减使用条件更新确保不出现负库存（例如 `available_stock >= quantity` 才允许 `available_stock -= quantity; locked_stock += quantity`）；释放相反方向更新（例如 `locked_stock >= quantity` 才允许 `locked_stock -= quantity; available_stock += quantity`）；3）库存不足/非法释放抛 `BusinessException`（复用 `ErrorCode.BAD_REQUEST` 或 `ErrorCode.CONFLICT`，保证由 `GlobalExceptionHandler` 输出 `ApiResponse.failure`）；4）流水必须完整：每次成功扣减/释放都落一条 `inventory_records`，幂等重复请求不得新增重复流水、不得重复更新库存；5）补齐测试：在 `inventory-service` 新增 Service/Controller 层集成测试用例，覆盖并发扣减（可用多线程/循环调用）后 `availableStock` 不为负；同一 `orderNo` 重复扣减/释放库存值不变且流水数量不增加；库存不足返回业务错误码与稳定 message。",
+            "status": "done",
+            "testStrategy": "在 `inventory-service` 增加 `@SpringBootTest`（可复用 H2 配置）：1）扣减成功后断言库存字段变化与 `inventory_records` 新增；2）库存不足断言 HTTP 400/409 + `ApiResponse` 失败结构；3）同一 `orderNo+changeType` 重放两次断言库存与流水仅变更一次；4）并发扣减（多线程对同一 productId 扣减）结束后断言 `availableStock>=0` 且总扣减量不超过初始库存。",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-06T12:59:08.552Z"
+          }
+        ],
+        "updatedAt": "2026-05-06T12:59:08.552Z"
       },
       {
         "id": "9",
         "title": "实现 order-service 基础：订单模型、状态机、查询接口",
         "description": "建立订单服务基础模型、状态机和查询能力。",
-        "details": "基于 orders 表实现订单实体、OrderStatus、OrderStateMachine、订单详情查询和我的订单列表。所有状态变更必须通过状态机入口。",
+        "details": "基于 orders 表实现订单实体、OrderStatus、OrderStateMachine、订单详情查询和我的订单列表。所有状态变更必须通过状态机入口。\n<info added on 2026-05-03T08:05:45.614Z>\n补充前端可直接接入的验收标准（面向用户页面的稳定 DTO）：\n\n1) 订单详情与“我的订单列表”接口必须返回稳定 DTO（不要直接暴露 JPA Entity/数据库字段），响应外层统一为 `ApiResponse`（参见 `common-core/src/main/java/com/minimall/common/core/response/ApiResponse.java`），错误通过 `BusinessException` + `ErrorCode` 映射（参见 `common-core/src/main/java/com/minimall/common/core/exception/BusinessException.java`、`common-core/src/main/java/com/minimall/common/core/exception/ErrorCode.java`、`common-core/src/main/java/com/minimall/common/core/exception/GlobalExceptionHandler.java`）。\n\n2) DTO 字段要求（对齐 `docs/sql/migrations/V1__initial_schema.sql` 中 `orders` 表可用字段）：\n- 必须包含：`orderNo`（对应 `orders.order_no`）、`status`（返回 `OrderStatus` 枚举值字符串）、`amount` 或 `totalAmount`（对应 `orders.total_amount`）。\n- 必须包含商品摘要：建议使用 `items`（list，当前可只有 1 条）或明确的 `item` 摘要对象，字段至少包括 `productId`、`productName`、`quantity`、`unitPrice`（对应 `orders.product_id/product_name/quantity/unit_price`）。\n- 时间字段在有值时返回：`createdAt`、`updatedAt`、`expireAt`，以及可选的 `paidAt`、`closedAt`（对应 `orders.created_at/updated_at/expire_at/paid_at/closed_at`）。\n\n3) 严禁泄漏内部实现字段到用户 API DTO：不得返回 `orders.id`（自增主键）、`userId`、`username`、`idempotencyKey` 等仅用于内部/风控/幂等的字段；用户 API 以 `orderNo` 作为唯一外部标识。\n\n4) 我的订单列表必须支持分页：采用 Spring `Pageable` 入参并返回统一分页结构，分页返回结构建议与 `product-service/src/main/java/com/minimall/product/dto/PageResponse.java` 保持一致（`content/page/size/totalElements/totalPages`），外层仍包 `ApiResponse.success(...)`。\n\n5) 关键状态下的 `ApiResponse`/错误码形状需在测试中覆盖并对前端稳定：\n- 空列表：返回 HTTP 200，`ApiResponse.success`，`data.content` 为空数组且分页字段完整（不得用 404/错误码表示“没有订单”）。\n- 未登录/无用户上下文：返回 HTTP 401，`success=false`、`code=40100`、`message` 为 Unauthorized（参考 `user-service/src/main/java/com/minimall/user/web/UserAuthController.java` 获取用户上下文的处理方式）。\n- 订单不存在：返回 HTTP 404，`success=false`、`code=40400`，`message` 明确为 “Order not found/订单不存在”。\n- 订单不属于当前用户：对前端表现必须稳定，优先按“不可见”处理并返回与不存在一致的 404（避免暴露资源是否存在）。\n</info added on 2026-05-03T08:05:45.614Z>",
         "testStrategy": "订单模型映射正确；查询接口返回 ApiResponse；状态机允许 PENDING_PAYMENT->PAID/CANCELLED、PAID->CLOSED/REFUNDED 等合法流转；非法流转返回业务异常。",
         "priority": "high",
         "dependencies": [
@@ -327,7 +445,7 @@
         "id": "10",
         "title": "实现 order-service 下单链路：商品校验、库存扣减、防重复提交",
         "description": "实现创建订单的核心链路。",
-        "details": "POST /api/orders 从 UserContext 获取用户，使用 Redis SETNX 防重复提交，调用 product-service 校验商品上架，调用 inventory-service 扣减库存，创建 PENDING_PAYMENT 订单并设置过期时间。",
+        "details": "POST /api/orders 从 UserContext 获取用户，使用 Redis SETNX 防重复提交，调用 product-service 校验商品上架，调用 inventory-service 扣减库存，创建 PENDING_PAYMENT 订单并设置过期时间。\n<info added on 2026-05-03T08:10:18.010Z>\n补充前端可直接对接的验收标准（面向页面提交的稳定 DTO 与可重试幂等语义）：\n\n1) 创建订单接口必须提供清晰的请求 DTO，禁止让前端依赖内部字段/上下文推断。参考 product-service 的 record DTO 风格（例如 `product-service/src/main/java/com/minimall/product/dto/CreateProductRequest.java`），为 POST /api/orders 定义 `CreateOrderRequest`（record + `@Valid`），至少包含：productId（`@NotBlank`、`@Size(max=64)`）、quantity（`@NotNull`、`@Min(1)`）、idempotencyKey（`@NotBlank`、`@Size(max=128)`，由前端每次点击生成并在重试时复用）。userId/username 必须从 `common-auth/src/main/java/com/minimall/common/auth/context/UserContextHolder.java` 获取，不允许前端传入。\n\n2) 校验/错误返回必须对前端稳定且可预测：所有响应外层统一为 `ApiResponse`（`common-core/src/main/java/com/minimall/common/core/response/ApiResponse.java`）。参数校验失败必须走全局校验错误格式（`common-core/src/main/java/com/minimall/common/core/exception/GlobalExceptionHandler.java`），返回 code=40001（`ErrorCode.VALIDATION_ERROR`），message 由字段错误拼接（field: message; ...），因此请求 DTO 上的校验 message 必须固定、可读且与字段名一致。业务校验失败必须抛 `BusinessException`（`common-core/src/main/java/com/minimall/common/core/exception/BusinessException.java`），并使用 `ErrorCode`（`common-core/src/main/java/com/minimall/common/core/exception/ErrorCode.java`）保证 code 稳定；建议映射：商品不存在用 NOT_FOUND(40400)，商品下架/不可售用 BAD_REQUEST(40000)，库存不足/扣减冲突用 CONFLICT(40900)，并保持 message 为稳定常量以便前端做文案/分支处理。\n\n3) 幂等与重复提交行为必须对 UI “可安全重试”：同一用户在短时间内使用相同 idempotencyKey 重复调用时，服务端不得创建新订单；应返回与首次成功创建相同的成功响应（ApiResponse.success，包含相同 orderNo 等字段），使前端可无脑重试/网络抖动重放。Redis SETNX 仅作为并发窗口的快速拦截，但最终幂等应落到订单表的 `idempotency_key` 唯一约束（`docs/sql/migrations/V1__initial_schema.sql` 中 `uk_orders_idempotency_key`）保证；当检测到重复但订单尚未落库时，返回明确的 CONFLICT(40900) 且 message 固定（例如“订单创建中，请重试”），前端可按该错误码继续重试。\n\n4) 创建成功的响应必须包含前端跳转订单详情/支付流程所需信息，不依赖内部知识：为 POST /api/orders 定义 `CreateOrderResponse`（稳定 DTO，不直接暴露 Entity），至少包含 orderNo、status（枚举，PENDING_PAYMENT）、expireAt（用于倒计时/超时提示）、totalAmount（用于支付页展示）、productId、quantity。前端仅需基于 orderNo 即可跳转订单详情页或进入支付发起流程，无需理解内部表结构或服务间调用细节。\n</info added on 2026-05-03T08:10:18.010Z>",
         "testStrategy": "上架商品且库存充足时创建订单成功；商品不存在/下架/库存不足时失败且不创建订单；短时间重复提交只创建一笔订单；创建成功后库存扣减并锁定。",
         "priority": "high",
         "dependencies": [
@@ -342,7 +460,7 @@
         "id": "11",
         "title": "实现 order-service 取消链路：手动取消、库存释放、取消幂等",
         "description": "实现待支付订单的手动取消和库存释放。",
-        "details": "POST /api/orders/{orderNo}/cancel 仅允许 PENDING_PAYMENT 订单取消。取消成功后调用 inventory-service release。已取消订单重复取消直接成功或返回幂等结果，不重复释放库存。",
+        "details": "POST /api/orders/{orderNo}/cancel 仅允许 PENDING_PAYMENT 订单取消。取消成功后调用 inventory-service release。已取消订单重复取消直接成功或返回幂等结果，不重复释放库存。\n<info added on 2026-05-03T08:14:03.288Z>\n补充前端可直接接入的验收标准（取消接口稳定返回、UI 幂等渲染、错误信息安全）：\n\n1) 取消接口必须始终返回统一外层结构 ApiResponse（参见 common-core/src/main/java/com/minimall/common/core/response/ApiResponse.java），前端只依赖 success/code/message/data 四个字段判断与渲染，不依赖 HTTP body 的其他扩展字段。\n\n2) POST /api/orders/{orderNo}/cancel 成功取消与重复取消（幂等命中）都必须返回 ApiResponse.success(data)，且 data 必须包含当前订单状态（例如 status=OrderStatus.CANCELLED），保证前端在一次或多次点击“取消订单”后都能用同一套渲染逻辑刷新按钮态/文案，不需要额外再查一次订单状态。\n\n3) 对于“不可取消”的状态（例如已支付、已关闭、已退款等），必须抛出 BusinessException 并通过 ErrorCode 映射为明确的 HTTP 状态码与稳定错误码（参见 common-core/src/main/java/com/minimall/common/core/exception/BusinessException.java、common-core/src/main/java/com/minimall/common/core/exception/ErrorCode.java、common-core/src/main/java/com/minimall/common/core/exception/GlobalExceptionHandler.java），建议：\n- 规则不满足/状态不允许：ErrorCode.BAD_REQUEST（HTTP 400，code=40000）或 ErrorCode.CONFLICT（HTTP 409，code=40900），message 使用前端可直接展示的业务文案（例如“订单当前状态不可取消/订单已支付不可取消”），且必须包含当前订单状态供前端定位（通过 data.status 返回；若采用异常返回则 message 中不得包含下游细节）。\n- 订单不存在：ErrorCode.NOT_FOUND（HTTP 404，code=40400）。\n\n4) 取消链路涉及 inventory-service release 调用时，任何下游异常/错误响应都不得透传 inventory-service 的内部信息（例如下游服务名、URL、堆栈、超时/连接细节、库存流水/锁表等实现细节）到 ApiResponse.message；对外仅返回前端安全的通用失败文案（例如“取消失败，请稍后重试”）或使用 ErrorCode.INTERNAL_ERROR 的默认 message。异常泄露防线需与全局异常处理保持一致（参考 common-core/src/test/java/com/minimall/common/core/exception/GlobalExceptionHandlerTest.java 中 unexpectedExceptionMapsToInternalErrorWithoutLeakingMessage 用例的预期）。\n</info added on 2026-05-03T08:14:03.288Z>",
         "testStrategy": "待支付订单可取消并释放库存；已支付订单不可取消；重复取消不重复释放库存；订单状态和库存流水一致。",
         "priority": "high",
         "dependencies": [
@@ -361,7 +479,8 @@
         "priority": "high",
         "dependencies": [
           "2",
-          "4"
+          "4",
+          "9"
         ],
         "status": "pending",
         "subtasks": []
@@ -370,11 +489,11 @@
         "id": "13",
         "title": "实现 payment-service：支付单、幂等支付、发布 PaymentSuccessEvent",
         "description": "实现模拟支付成功能力和支付成功事件发布。",
-        "details": "基于 payments 表提供 POST /api/payments/{orderNo}/pay 和支付单查询。支付前查询订单状态，已取消订单拒绝支付，重复支付保持幂等。支付成功后发布 PaymentSuccessEvent。",
+        "details": "基于 payments 表提供 POST /api/payments/{orderNo}/pay 和支付单查询。支付前查询订单状态，已取消订单拒绝支付，重复支付保持幂等。支付成功后发布 PaymentSuccessEvent。\n<info added on 2026-05-03T08:19:28.099Z>\n补充前端可直接接入的验收标准（支付接口稳定 DTO、UI 展示字段、浏览器重试幂等与可区分业务错误码）：\n\n1）支付发起与支付状态查询必须对前端暴露稳定 DTO，禁止直接返回 JPA Entity 或让前端依赖数据库字段。参考 product-service/src/main/java/com/minimall/product/dto/CreateProductRequest.java、user-service/src/main/java/com/minimall/user/dto/LoginResponse.java 的 record DTO 风格，在 payment-service 定义用于“发起支付/查询支付”的请求与响应 DTO（建议放在 com.minimall.payment.dto 包下）。\n\n2）无论是发起支付还是查询支付状态，成功响应必须统一用 ApiResponse.success(data) 包裹（参见 common-core/src/main/java/com/minimall/common/core/response/ApiResponse.java），且 data 至少包含前端可直接展示的字段：paymentNo、orderNo、status、amount。status 必须使用枚举类型（例如 PaymentStatus，风格参考 product-service/src/main/java/com/minimall/product/domain/ProductStatus.java），序列化为稳定的枚举名字符串；amount 使用 BigDecimal，并与表结构 DECIMAL(12,2) 保持一致（参见 docs/sql/migrations/V1__initial_schema.sql 的 payments.amount）。\n\n3）POST /api/payments/{orderNo}/pay 的重复点击/浏览器重试必须幂等：同一 orderNo 重复调用不得重复生成支付单（利用 docs/sql/migrations/V1__initial_schema.sql 中 uk_payments_order_no/uk_payments_idempotency_key 的唯一约束作为最终防线），不得重复发布 PaymentSuccessEvent；响应必须稳定且可预测（要么返回首次创建的同一 paymentNo 的成功结果，要么返回可识别的“已成功支付”业务码，见第 4 点），确保前端可以安全重放请求而不引发重复扣款/重复跳转。\n\n4）错误返回必须让前端能区分业务分支，不能把“业务不可支付”混为同一 code：所有业务错误必须抛 BusinessException 并通过 ApiResponse 返回稳定 code（参见 common-core/src/main/java/com/minimall/common/core/exception/BusinessException.java、common-core/src/main/java/com/minimall/common/core/exception/ErrorCode.java、common-core/src/main/java/com/minimall/common/core/exception/GlobalExceptionHandler.java）。为满足前端区分要求，需要在 ErrorCode 中新增并固定以下业务码（并在 GlobalExceptionHandler.statusFor() 中映射到合理 HTTP 状态）：\n（1）订单已取消不可支付：ORDER_CANCELLED（建议 HTTP 400 或 409，code 独立于 40000/40900）\n（2）订单状态非法不可支付（非 PENDING_PAYMENT 且非已取消的其他状态）：ORDER_INVALID_STATE（建议 HTTP 409，code 独立）\n（3）重复支付且已成功（幂等命中）：PAYMENT_ALREADY_SUCCESS（建议 HTTP 409，code 独立），用于前端明确提示“订单已支付/无需重复支付”，同时保证不会重复创建支付单与重复发布事件\n</info added on 2026-05-03T08:19:28.099Z>",
         "testStrategy": "待支付订单支付成功并生成 payment；同一 orderNo 重复支付不重复生成支付单；已取消订单支付失败；支付成功后只发布一次 PaymentSuccessEvent。",
         "priority": "high",
         "dependencies": [
-          "9",
+          "10",
           "12"
         ],
         "status": "pending",
@@ -415,7 +534,7 @@
         "id": "16",
         "title": "实现 api-gateway：路由、JWT 鉴权、透传、CORS、日志、限流",
         "description": "实现统一 API 网关能力。",
-        "details": "配置 user/product/inventory/order/payment 等服务路由。注册和登录放行，其余接口校验 JWT，并向下游透传 X-User-Id/X-Username。实现 CORS、请求日志和基于 Redis 的 IP 或用户限流。",
+        "details": "配置 user/product/inventory/order/payment 等服务路由。注册和登录放行，其余接口校验 JWT，并向下游透传 X-User-Id/X-Username。实现 CORS、请求日志和基于 Redis 的 IP 或用户限流。\n<info added on 2026-05-03T08:23:17.824Z>\n前端验收补充（以 api-gateway 为浏览器唯一入口）：所有浏览器请求必须统一走网关端口（api-gateway，默认 8080），并且对外只暴露统一前缀路径 `/api/**`；网关需要将 `/api/{service}/**`（如 `/api/user/**`、`/api/product/**`、`/api/inventory/**`、`/api/order/**`、`/api/payment/**`）一致性路由到对应下游服务，并通过 `StripPrefix/RewritePath` 保持下游路径规则稳定（避免前端直接访问各服务端口）。\n\nJWT 与透传规则强化：网关必须从浏览器请求头 `Authorization: Bearer <token>` 读取并校验 JWT（可复用 `common-auth/src/main/java/com/minimall/common/auth/jwt/JwtUtils.java` 的解析逻辑与错误语义，JWT 配置沿用 `minimall.auth.jwt.*` 约定）；仅在 JWT 校验通过后，才允许向下游请求追加 `X-User-Id`、`X-Username`（常量见 `common-auth/src/main/java/com/minimall/common/auth/constants/AuthHeaders.java`）。来自浏览器的同名请求头必须被忽略/移除，防止客户端伪造（注意 `common-auth/src/main/java/com/minimall/common/auth/web/UserContextFilter.java` 当前支持从请求头解析 `X-User-Id/X-Username`，网关侧需确保这些头只能由网关注入而非外部传入）。\n\nCORS（前端本地开发友好）：网关需支持可配置的 CORS 白名单（建议配置项如 allowedOrigins/allowedOriginPatterns，包含本地前端常见源 `http://localhost:*` 等，但必须可通过配置覆盖），并确保预检 OPTIONS 请求对 `/api/**` 生效，返回正确的 `Access-Control-Allow-Origin/Methods/Headers`，同时不应对预检请求做 JWT 拦截或限流误伤。\n\n统一错误响应（ApiResponse 兼容）：网关对外返回的 401/403/429 必须使用 `common-core/src/main/java/com/minimall/common/core/response/ApiResponse.java` 结构；401/403 的业务错误码与语义需对齐 `common-core/src/main/java/com/minimall/common/core/exception/ErrorCode.java`（`UNAUTHORIZED`/`FORBIDDEN`），429（限流）也必须返回 ApiResponse.failure（可通过扩展 ErrorCode 增加 TOO_MANY_REQUESTS，或使用约定的自定义 code，但响应结构必须一致），并确保 HTTP 状态码分别为 401/403/429。\n\n测试补充：在 api-gateway 增加自动化测试覆盖两类关键场景：1）对 `/api/**` 的预检 OPTIONS（携带 Origin/Access-Control-Request-Method/Headers）验证 CORS 头与放行行为；2）通过网关访问受保护接口时，未携带或携带非法 JWT 返回 ApiResponse 结构的 401/403；携带合法 JWT 时可成功转发，并验证网关会在转发请求中注入 `X-User-Id/X-Username`（且客户端伪造同名头不会透传到下游）。\n</info added on 2026-05-03T08:23:17.824Z>",
         "testStrategy": "通过网关可访问下游服务；未登录访问受保护接口返回统一未授权错误；登录后用户信息正确透传；CORS 生效；高频请求触发 429 且响应结构统一。",
         "priority": "high",
         "dependencies": [
@@ -435,8 +554,7 @@
         "testStrategy": "过期待支付订单被自动取消并释放库存；未过期订单不受影响；已支付订单不被取消；重复调度不重复释放库存。",
         "priority": "medium",
         "dependencies": [
-          "8",
-          "9",
+          "10",
           "11"
         ],
         "status": "pending",
@@ -461,7 +579,7 @@
         "id": "19",
         "title": "编写 k6/JMeter 压测脚本与压测文档",
         "description": "提供商品详情和下单链路的压测脚本及使用文档。",
-        "details": "创建 pressure/ 目录，提供 k6 或 JMeter 脚本，覆盖登录、商品详情、创建订单等路径。文档说明参数、并发、运行方式和指标解释。",
+        "details": "创建 pressure/ 目录，提供 k6 或 JMeter 脚本，覆盖登录、商品详情、创建订单等路径。文档说明参数、并发、运行方式和指标解释。\n<info added on 2026-05-03T08:27:58.946Z>\n前端验收补充（脚本必须模拟真实前端调用方式）：\n1) 所有压测流量必须以 api-gateway 作为唯一入口（BASE_URL 指向网关，例如 http://localhost:8080），禁止直接打到各微服务端口（如 8101/8102）。\n2) 压测脚本覆盖的 URL 必须与前端一致，至少包含：登录、商品列表/详情、创建订单、取消订单/订单详情、支付相关链路（如支付创建/查询/回调等，按当前 payment-service 对外 API 实际实现为准）。\n3) 已有接口路径参考（用于脚本落地与断言）：\n- 登录/用户信息：user-service/src/main/java/com/minimall/user/web/UserAuthController.java 中 @RequestMapping(\"/api/users\")，包含 POST /api/users/login、GET /api/users/me。\n- 商品列表/详情：product-service/src/main/java/com/minimall/product/web/ProductController.java 中 @RequestMapping(\"/api/products\")，包含 GET /api/products（支持 status=ON_SHELF/OFF_SHELF 及 Spring Data Pageable 的 page/size/sort 参数）、GET /api/products/{productId}。\n如网关对外统一采用 /api/{service}/**（例如 /api/user/**、/api/product/**），文档需明确网关外部路径与下游实际 Controller 路径（如 /api/users、/api/products）之间的 StripPrefix/RewritePath 对应关系，确保脚本请求的就是前端最终会用的网关路径。\n4) 环境变量与参数文档必须写清（脚本内不得硬编码地址/账号等敏感信息）：至少包含 BASE_URL（网关）、USERNAME、PASSWORD；如需指定压测商品/订单，补充 PRODUCT_ID/PRODUCT_STATUS/page/size 等可配置项。\n5) Token 处理要求：脚本需先调用登录接口获取 ApiResponse.data.token 与 tokenType（当前实现为 \"Bearer\"，见 user-service/src/main/java/com/minimall/user/service/UserAuthService.java），并在后续请求统一携带 Authorization: Bearer <token>；需说明 token 的获取/缓存策略（每 VU 登录一次或共享 token）、401/过期时的重登处理。\n6) ApiResponse 断言要求：脚本需对成功与失败响应做结构校验，至少断言 success/code/message 字段存在且符合约定。参考 common-core/src/main/java/com/minimall/common/core/response/ApiResponse.java 与 common-core/src/main/java/com/minimall/common/core/exception/ErrorCode.java：\n- 成功：success=true 且 code=\"0\"（message=\"success\"）。\n- 典型错误（示例）：未授权 code=\"40100\"；参数校验失败 code=\"40001\"；冲突 code=\"40900\"。脚本与文档需说明各链路预期的成功/失败断言与错误率统计口径。\n</info added on 2026-05-03T08:27:58.946Z>",
         "testStrategy": "压测脚本可运行；输出 QPS、平均响应时间、P95、错误率；高并发下库存不为负；文档包含一次示例结果和瓶颈观察点。",
         "priority": "medium",
         "dependencies": [
@@ -469,10 +587,12 @@
           "7",
           "8",
           "10",
+          "11",
           "13",
           "14",
           "15",
-          "16"
+          "16",
+          "17"
         ],
         "status": "pending",
         "subtasks": []
@@ -506,14 +626,28 @@
           "19"
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Frontend integration guide and readiness acceptance checklist",
+            "description": "Add frontend-facing delivery documentation and acceptance checklist after backend tasks are complete.",
+            "details": "Document API base URL, gateway routing table, CORS configuration, auth token flow, ApiResponse and ErrorCode contract, user-facing API examples, local frontend environment variables, and admin/backoffice gaps if not implemented. Include a checklist that marks each backend endpoint as ready for frontend UI, admin UI, internal-only, or not yet exposed. The final acceptance must prove a browser frontend can use api-gateway as the single API entrypoint without calling service-internal URLs.",
+            "status": "pending",
+            "dependencies": [
+              16,
+              19
+            ],
+            "parentTaskId": 20,
+            "parentId": "undefined"
+          }
+        ]
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-02T08:07:33.595Z",
+      "lastModified": "2026-05-06T12:59:08.559Z",
       "taskCount": 20,
-      "completedCount": 5,
+      "completedCount": 8,
       "tags": [
         "master"
       ]
