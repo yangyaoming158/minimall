@@ -292,3 +292,13 @@ Append one entry per implementation task so future sessions can recover project 
 - Test result: Documentation-only rule change; no build required. Current code changes were already verified in the preceding completed tasks.
 - Issues: None.
 - Next: Create a checkpoint branch and commit the current working tree.
+
+## Task 9.1 - order-service persistence foundation
+- Date: 2026-05-07
+- Status: Done
+- Implemented: Added order-service JPA persistence dependencies, datasource/JPA configuration, orders table entity mapping, OrderStatus enum, OrderRepository query methods, and focused H2 repository tests for save/read behavior, enum string persistence, owner-scoped lookup, and user paging.
+- Changed files: order-service/pom.xml; order-service/src/main/resources/application.yml; order-service/src/main/java/com/minimall/order/domain/Order.java; order-service/src/main/java/com/minimall/order/domain/OrderStatus.java; order-service/src/main/java/com/minimall/order/repository/OrderRepository.java; order-service/src/test/java/com/minimall/order/repository/OrderRepositoryTest.java; .taskmaster/tasks/tasks.json; docs/dev-log.md
+- Commands run: task-master show 9.1; git status --short; task-master set-status --id=9 --status=in-progress; task-master set-status --id=9.1 --status=in-progress; mvn -pl order-service -am test; mvn clean package -DskipTests; task-master set-status --id=9.1 --status=done
+- Test result: mvn -pl order-service -am test succeeded with common-core 12 tests, common-auth 26 tests, and order-service 3 tests passing. mvn clean package -DskipTests succeeded for the full 10-module reactor.
+- Issues: TaskMaster was not available as a WSL global command, so the project-local TaskMaster CLI was run through D:\nodejs\node.exe from PowerShell. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
+- Next: Task 9.2 - implement OrderStateMachine and encapsulate all order status transitions.

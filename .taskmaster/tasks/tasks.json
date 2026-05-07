@@ -438,8 +438,46 @@
           "4",
           "5"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "in-progress",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "为 order-service 增加持久化能力并实现订单实体/仓储",
+            "description": "在 order-service 内建立与 orders 表一致的 JPA 模型与仓储访问层，为后续状态机与查询接口提供基础数据结构与读写能力。",
+            "dependencies": [],
+            "details": "1) 更新 `order-service/pom.xml` 引入 `spring-boot-starter-data-jpa`、`spring-boot-starter-validation`、`mysql-connector-j`(runtime)、`h2`(test)、`spring-boot-starter-test`；对齐 `product-service/pom.xml` 的依赖风格。\n2) 更新 `order-service/src/main/resources/application.yml` 增加 datasource/jpa 配置（url/username/password 通过环境变量注入，`ddl-auto: none`，`open-in-view: false`，dialect 使用 MySQLDialect），端口保持现有 `8104`。\n3) 新增领域模型：`com.minimall.order.domain.Order`（映射 `docs/sql/migrations/V1__initial_schema.sql` 的 `orders` 字段），时间字段使用 `LocalDateTime`，状态字段使用 `@Enumerated(EnumType.STRING)`。\n4) 新增枚举：`com.minimall.order.domain.OrderStatus`（至少覆盖 `PENDING_PAYMENT/PAID/CANCELLED/CLOSED/REFUNDED`，以满足当前任务与后续任务 11/14 的状态流转）。\n5) 新增仓储：`com.minimall.order.repository.OrderRepository extends JpaRepository<Order, Long>`，提供 `findByOrderNoAndUserId`、`findByUserId(Pageable)` 等查询方法。\n6) 增加最小化仓储测试（H2 + create-drop），验证：可持久化/读取订单、`status` 枚举可正确序列化为字符串。",
+            "status": "done",
+            "testStrategy": "新增 `OrderRepositoryTest`：使用 H2 运行，保存一条订单后按 `orderNo` 查询并断言字段一致（尤其是 `totalAmount`、`status`、`createdAt/updatedAt` 不为空或符合预期）。",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-07T11:50:07.559Z"
+          },
+          {
+            "id": 2,
+            "title": "实现 OrderStateMachine 并封装所有订单状态变更入口",
+            "description": "实现订单状态机，集中校验合法流转并统一更新时间字段，确保业务代码不能绕过状态机直接改状态。",
+            "dependencies": [
+              1
+            ],
+            "details": "1) 新增 `com.minimall.order.domain.OrderStateMachine`（或 `service` 包下，但建议与领域模型同层），定义允许的状态流转集合：例如 `PENDING_PAYMENT -> PAID/CANCELLED`，`PAID -> CLOSED/REFUNDED` 等；非法流转抛出 `BusinessException`。\n2) 设计状态变更 API：如 `transition(Order order, OrderStatus targetStatus, LocalDateTime now)`；内部先校验 `canTransition(from,to)`，再更新 `order.status`，并按目标状态设置时间字段：`PAID` 写 `paidAt`，`CANCELLED/CLOSED` 写 `closedAt`（若字段允许），`updatedAt` 由 JPA `@PreUpdate` 或显式更新保持一致。\n3) 限制直接改状态：`Order` 不对外暴露 public 的 `setStatus`；提供包内可见/受控方法供状态机调用，保证“所有状态变更必须通过状态机入口”。\n4) 统一错误码与消息：非法流转使用 `BusinessException(ErrorCode.BAD_REQUEST, ... )`，保证前端可稳定识别。",
+            "status": "pending",
+            "testStrategy": "新增 `OrderStateMachineTest`：覆盖合法流转（PENDING_PAYMENT->PAID/CANCELLED、PAID->CLOSED/REFUNDED）与非法流转（如 CANCELLED->PAID），断言非法时抛 `BusinessException` 且 `errorCode=BAD_REQUEST`。",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "实现订单详情与我的订单列表查询接口（稳定 DTO + 分页 + 错误形状测试）",
+            "description": "提供面向用户页面的订单查询能力：订单详情与我的订单列表，返回稳定 DTO（不泄漏内部字段），并用测试锁定关键错误码/响应形状。",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "1) 新增 DTO（record）而非暴露 Entity：\n- `OrderItemSummary`：`productId/productName/quantity/unitPrice`。\n- `OrderDetailResponse`：包含 `orderNo/status/totalAmount(或 amount)`、`items`（当前可仅 1 条）、以及 `createdAt/updatedAt/expireAt/paidAt/closedAt`（有值才返回）。\n- `OrderSummaryResponse`（列表用）：同样包含 `orderNo/status/totalAmount` + 商品摘要 + 时间字段（按需要选择）。\n- `PageResponse<T>`：字段结构与 `product-service/src/main/java/com/minimall/product/dto/PageResponse.java` 保持一致（`content/page/size/totalElements/totalPages`）。\n2) 新增查询服务：`OrderQueryService`，实现：\n- `detail(orderNo, userContext)`：按 `orderNo + userId` 查询，查不到则抛 `BusinessException(ErrorCode.NOT_FOUND, \"Order not found\")`（订单不存在与不属于本人统一 404）。\n- `myOrders(userContext, pageable)`：按 `userId` 分页查询并映射为 `PageResponse<OrderSummaryResponse>`；空列表必须返回 200 + success，且分页字段完整。\n3) 新增 Controller：\n- `GET /api/orders/{orderNo}` 返回 `ApiResponse.success(OrderDetailResponse)`。\n- `GET /api/orders/my`（或按现有风格命名）入参 `Pageable`，返回 `ApiResponse.success(PageResponse<OrderSummaryResponse>)`。\n4) 鉴权与错误码稳定：使用 `UserContextHolder.get().orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED, \"Unauthorized\"))`（对齐 `user-service/src/main/java/com/minimall/user/web/UserAuthController.java`）；确保未登录返回 HTTP 401，body 为 `ApiResponse.failure`（`code=40100`、`message=Unauthorized`）。\n5) MockMvc 集成测试覆盖验收标准：\n- 未登录 401（不传 `X-User-Id/X-Username`）。\n- 空列表 200，`data.content=[]` 且分页字段齐全。\n- 订单不存在 404（message 为 \"Order not found\" 或中文“订单不存在”，二选一但必须固定）。\n- 订单不属于当前用户：返回与不存在一致的 404（避免信息泄露）。\n6) DTO 字段审计：测试中断言响应不包含 `id/userId/username/idempotencyKey` 等内部字段，只暴露 `orderNo` 作为外部标识。",
+            "status": "pending",
+            "testStrategy": "新增 `OrderControllerTest`（MockMvc + H2）：分别断言 401/404/200 场景的 HTTP 状态与 `ApiResponse` 字段（success/code/message/data），并对列表分页结构与 DTO 字段不泄漏做 JSONPath 断言。",
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2026-05-07T11:50:07.559Z"
       },
       {
         "id": "10",
@@ -645,7 +683,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-06T12:59:08.559Z",
+      "lastModified": "2026-05-07T11:50:07.561Z",
       "taskCount": 20,
       "completedCount": 8,
       "tags": [
