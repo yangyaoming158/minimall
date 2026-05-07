@@ -459,9 +459,10 @@
               1
             ],
             "details": "1) 新增 `com.minimall.order.domain.OrderStateMachine`（或 `service` 包下，但建议与领域模型同层），定义允许的状态流转集合：例如 `PENDING_PAYMENT -> PAID/CANCELLED`，`PAID -> CLOSED/REFUNDED` 等；非法流转抛出 `BusinessException`。\n2) 设计状态变更 API：如 `transition(Order order, OrderStatus targetStatus, LocalDateTime now)`；内部先校验 `canTransition(from,to)`，再更新 `order.status`，并按目标状态设置时间字段：`PAID` 写 `paidAt`，`CANCELLED/CLOSED` 写 `closedAt`（若字段允许），`updatedAt` 由 JPA `@PreUpdate` 或显式更新保持一致。\n3) 限制直接改状态：`Order` 不对外暴露 public 的 `setStatus`；提供包内可见/受控方法供状态机调用，保证“所有状态变更必须通过状态机入口”。\n4) 统一错误码与消息：非法流转使用 `BusinessException(ErrorCode.BAD_REQUEST, ... )`，保证前端可稳定识别。",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "新增 `OrderStateMachineTest`：覆盖合法流转（PENDING_PAYMENT->PAID/CANCELLED、PAID->CLOSED/REFUNDED）与非法流转（如 CANCELLED->PAID），断言非法时抛 `BusinessException` 且 `errorCode=BAD_REQUEST`。",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-07T12:06:33.552Z"
           },
           {
             "id": 3,
@@ -477,7 +478,7 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-05-07T11:50:07.559Z"
+        "updatedAt": "2026-05-07T12:06:33.552Z"
       },
       {
         "id": "10",
@@ -683,7 +684,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-07T11:50:07.561Z",
+      "lastModified": "2026-05-07T12:06:33.557Z",
       "taskCount": 20,
       "completedCount": 8,
       "tags": [

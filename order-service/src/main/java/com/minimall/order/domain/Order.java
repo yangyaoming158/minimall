@@ -121,6 +121,17 @@ public class Order {
         updatedAt = LocalDateTime.now();
     }
 
+    void transitionTo(OrderStatus targetStatus, LocalDateTime changedAt) {
+        this.status = targetStatus;
+        this.updatedAt = changedAt;
+        if (targetStatus == OrderStatus.PAID) {
+            this.paidAt = changedAt;
+        }
+        if (targetStatus == OrderStatus.CANCELLED || targetStatus == OrderStatus.CLOSED) {
+            this.closedAt = changedAt;
+        }
+    }
+
     public Long getId() {
         return id;
     }

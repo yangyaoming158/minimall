@@ -302,3 +302,13 @@ Append one entry per implementation task so future sessions can recover project 
 - Test result: mvn -pl order-service -am test succeeded with common-core 12 tests, common-auth 26 tests, and order-service 3 tests passing. mvn clean package -DskipTests succeeded for the full 10-module reactor.
 - Issues: TaskMaster was not available as a WSL global command, so the project-local TaskMaster CLI was run through D:\nodejs\node.exe from PowerShell. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
 - Next: Task 9.2 - implement OrderStateMachine and encapsulate all order status transitions.
+
+## Task 9.2 - OrderStateMachine status transitions
+- Date: 2026-05-07
+- Status: Done
+- Implemented: Added OrderStateMachine with centralized legal transition checks for PENDING_PAYMENT->PAID/CANCELLED and PAID->CLOSED/REFUNDED. Added a package-private Order transition method so status changes can be applied through the state machine without exposing a public status setter. State transitions update status and timestamps consistently, and invalid transitions throw BusinessException(ErrorCode.BAD_REQUEST).
+- Changed files: order-service/src/main/java/com/minimall/order/domain/Order.java; order-service/src/main/java/com/minimall/order/domain/OrderStateMachine.java; order-service/src/test/java/com/minimall/order/domain/OrderStateMachineTest.java; .taskmaster/tasks/tasks.json; docs/dev-log.md
+- Commands run: task-master next; task-master show 9.2; task-master set-status --id=9.2 --status=in-progress; mvn -pl order-service -am test; mvn clean package -DskipTests; task-master set-status --id=9.2 --status=done
+- Test result: mvn -pl order-service -am test succeeded with common-core 12 tests, common-auth 26 tests, and order-service 9 tests passing. mvn clean package -DskipTests succeeded for the full 10-module reactor.
+- Issues: TaskMaster was run through D:\nodejs\node.exe from PowerShell because WSL does not have a global node/task-master command. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
+- Next: Task 9.3 - implement order detail and my orders query APIs with stable DTOs, pagination, and error shape tests.
