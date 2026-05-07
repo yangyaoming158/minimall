@@ -312,3 +312,13 @@ Append one entry per implementation task so future sessions can recover project 
 - Test result: mvn -pl order-service -am test succeeded with common-core 12 tests, common-auth 26 tests, and order-service 9 tests passing. mvn clean package -DskipTests succeeded for the full 10-module reactor.
 - Issues: TaskMaster was run through D:\nodejs\node.exe from PowerShell because WSL does not have a global node/task-master command. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
 - Next: Task 9.3 - implement order detail and my orders query APIs with stable DTOs, pagination, and error shape tests.
+
+## Task 9.3 - Order query APIs and stable DTOs
+- Date: 2026-05-07
+- Status: Done
+- Implemented: Added user-facing order detail and my orders paged query APIs under /api/orders. Introduced stable DTO records for order detail, order summary, item summary, and PageResponse without exposing JPA entities or internal id/userId/username/idempotencyKey fields. Added OrderQueryService for user-scoped detail/list queries, mapping not found and not-owned orders to BusinessException(ErrorCode.NOT_FOUND, "Order not found"). Added MockMvc + H2 tests for ApiResponse success shape, empty-page success, unauthorized 401, missing/not-owned 404, pagination fields, and DTO field leakage prevention.
+- Changed files: order-service/src/main/java/com/minimall/order/dto/OrderItemSummary.java; order-service/src/main/java/com/minimall/order/dto/OrderDetailResponse.java; order-service/src/main/java/com/minimall/order/dto/OrderSummaryResponse.java; order-service/src/main/java/com/minimall/order/dto/PageResponse.java; order-service/src/main/java/com/minimall/order/service/OrderQueryService.java; order-service/src/main/java/com/minimall/order/web/OrderController.java; order-service/src/test/java/com/minimall/order/web/OrderControllerTest.java; .taskmaster/tasks/tasks.json; docs/dev-log.md
+- Commands run: task-master next; task-master set-status --id=9.3 --status=in-progress; mvn -pl order-service -am test; mvn clean package -DskipTests; task-master set-status --id=9.3 --status=done; task-master show 9
+- Test result: mvn -pl order-service -am test succeeded with common-core 12 tests, common-auth 26 tests, and order-service 15 tests passing. mvn clean package -DskipTests succeeded for the full 10-module reactor. TaskMaster shows Task 9 and all subtasks 9.1-9.3 done.
+- Issues: TaskMaster was run through D:\nodejs\node.exe from PowerShell because WSL does not have a global node/task-master command. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
+- Next: Continue with the next TaskMaster task after running task-master next.
