@@ -23,10 +23,11 @@ During implementation:
 After implementation:
 1. Run the task's testStrategy.
 2. Run `mvn clean package -DskipTests` when relevant.
-3. Summarize changed files.
-4. For every completed task/subtask, list every modified, added, or deleted file name in the final response so the user can review the exact scope.
-5. Mark the task/subtask done only after verification.
-6. Append progress to `docs/dev-log.md`.
+3. Mark the task/subtask done only after verification passes.
+4. Append progress to `docs/dev-log.md`.
+5. Commit the completed task/subtask before the final response. This is mandatory unless the user explicitly says not to commit or a blocker prevents committing.
+6. Summarize changed files.
+7. For every completed task/subtask, list every modified, added, or deleted file name in the final response so the user can review the exact scope.
 
 ## Hard Rules
 - All REST APIs must return `ApiResponse`.
@@ -40,6 +41,9 @@ After implementation:
 
 ## Version Management
 - Keep `main` as the stable integration branch; do not commit accumulated task work directly to `main` unless the user explicitly requests it.
-- Create a `codex/` branch before committing a task group, checkpoint, or feature batch, for example `codex/task-8-inventory` or `codex/checkpoint-current-work`.
-- Prefer one commit per completed TaskMaster task or subtask after its testStrategy passes; if the working tree already contains multiple completed tasks, create a checkpoint commit on a `codex/` branch.
-- Commit `.taskmaster/tasks/tasks.json` and `docs/dev-log.md` together with the code changes for the task they describe.
+- Before committing, ensure the current branch starts with `codex/`. If currently on `main`, create or switch to a `codex/` branch first, for example `codex/task-8-inventory` or `codex/checkpoint-current-work`.
+- Every completed TaskMaster task or subtask MUST have a git commit after its testStrategy passes, TaskMaster status is updated, and `docs/dev-log.md` is appended.
+- Stage only files changed for the completed task/subtask, including `.taskmaster/tasks/tasks.json` and `docs/dev-log.md` when they changed.
+- Before committing, run `git status --short` and `git diff --cached --name-only` to verify the staged scope.
+- Create the commit with a concise task-specific message before sending the final response. Do not leave verified task/subtask work uncommitted unless the user explicitly says not to commit or a blocker prevents committing.
+- If the working tree already contains multiple completed tasks, create a checkpoint commit on a `codex/` branch and list the included tasks in the final response.

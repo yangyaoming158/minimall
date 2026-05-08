@@ -333,3 +333,14 @@ Append one entry per implementation task so future sessions can recover project 
 - Test result: mvn -pl order-service -am test succeeded with common-core 12 tests, common-auth 26 tests, and order-service 18 tests passing. mvn clean package -DskipTests succeeded for the full 10-module reactor.
 - Issues: TaskMaster next recommended Task 11 even though Task 10 was pending and dependency-ready, so Task 10 was selected manually based on business order and user correction. TaskMaster expand timed out but wrote coarse subtasks; oversized subtasks were removed and replaced with smaller TaskMaster subtasks via CLI. Local apply_patch could not write WSL /home paths, so Task 10.1 files were edited through an elevated WSL write script.
 - Next: Task 10.2 - Product validation client for order creation.
+
+
+## Development rule update - Mandatory post-task commit wording
+- Date: 2026-05-08
+- Status: Done
+- Implemented: Reworded AGENTS.md so verified TaskMaster task/subtask work must be committed before the final response unless the user explicitly says not to commit or a blocker prevents committing. Added an executable sequence for branch check, staging exact task files, verifying staged scope, and creating a task-specific commit.
+- Changed files: AGENTS.md; docs/dev-log.md
+- Commands run: git branch --show-current; git status --short; git add Task 10.1 files; git diff --cached --name-only; git commit -m "feat(order): add create order api skeleton"
+- Test result: Documentation-only rule update; no build required. The preceding Task 10.1 code was already verified by mvn -pl order-service -am test and mvn clean package -DskipTests before commit e269784.
+- Issues: Previous wording used "Prefer one commit", which allowed the requirement to be treated as optional. The updated wording uses MUST and a concrete post-verification commit workflow.
+- Next: Continue with Task 10.2 after committing this rule update.
