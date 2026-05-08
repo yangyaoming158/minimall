@@ -30,3 +30,6 @@ management:
 minimall:
   order:
     payment-expire-seconds: ${ORDER_PAYMENT_EXPIRE_SECONDS:900}
+  clients:
+    product-service:
+      base-url: ${PRODUCT_SERVICE_BASE_URL:http://127.0.0.1:8102}

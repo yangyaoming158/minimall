@@ -511,12 +511,13 @@
             "title": "Product validation client for order creation",
             "description": "Add order-service client contract for product-service internal product lookup and map product validation failures to stable BusinessException errors.",
             "details": "Implement only product lookup/validation plumbing needed by order creation. Cover product not found and off-shelf/not-sellable mapping. Do not deduct inventory or create orders in this subtask.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               1
             ],
             "parentTaskId": 10,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-08T13:53:20.439Z"
           },
           {
             "id": 3,
@@ -567,7 +568,7 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-05-08T13:23:05.710Z"
+        "updatedAt": "2026-05-08T13:53:20.439Z"
       },
       {
         "id": "11",
@@ -758,7 +759,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-08T13:23:05.713Z",
+      "lastModified": "2026-05-08T13:53:20.441Z",
       "taskCount": 20,
       "completedCount": 9,
       "tags": [
