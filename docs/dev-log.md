@@ -322,3 +322,14 @@ Append one entry per implementation task so future sessions can recover project 
 - Test result: mvn -pl order-service -am test succeeded with common-core 12 tests, common-auth 26 tests, and order-service 15 tests passing. mvn clean package -DskipTests succeeded for the full 10-module reactor. TaskMaster shows Task 9 and all subtasks 9.1-9.3 done.
 - Issues: TaskMaster was run through D:\nodejs\node.exe from PowerShell because WSL does not have a global node/task-master command. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
 - Next: Continue with the next TaskMaster task after running task-master next.
+
+
+## Task 10.1 - Create order API DTOs and entry skeleton
+- Date: 2026-05-08
+- Status: Done
+- Implemented: Split Task 10 into smaller subtasks after TaskMaster initially recommended Task 11 and the first expand command timed out. Implemented the first create-order subtask only: added stable CreateOrderRequest and CreateOrderResponse DTOs, added an OrderCommandService skeleton for later orchestration, exposed POST /api/orders through the existing OrderController using UserContextHolder and ApiResponse, reserved an order payment expiry configuration value, and added MockMvc coverage for success response shape, validation errors, and missing authentication.
+- Changed files: .taskmaster/tasks/tasks.json; order-service/src/main/java/com/minimall/order/dto/CreateOrderRequest.java; order-service/src/main/java/com/minimall/order/dto/CreateOrderResponse.java; order-service/src/main/java/com/minimall/order/service/OrderCommandService.java; order-service/src/main/java/com/minimall/order/web/OrderController.java; order-service/src/main/resources/application.yml; order-service/src/test/java/com/minimall/order/web/OrderControllerTest.java; docs/dev-log.md
+- Commands run: task-master show 10; task-master set-status --id=10 --status=in-progress; task-master expand --id=10 --num=3; task-master remove-subtask --id=10.2,10.3,10.4; task-master add-subtask for 10.2, 10.3, 10.4, 10.5, 10.6; task-master show 10.1; task-master set-status --id=10.1 --status=in-progress; mvn -pl order-service -am test; mvn clean package -DskipTests
+- Test result: mvn -pl order-service -am test succeeded with common-core 12 tests, common-auth 26 tests, and order-service 18 tests passing. mvn clean package -DskipTests succeeded for the full 10-module reactor.
+- Issues: TaskMaster next recommended Task 11 even though Task 10 was pending and dependency-ready, so Task 10 was selected manually based on business order and user correction. TaskMaster expand timed out but wrote coarse subtasks; oversized subtasks were removed and replaced with smaller TaskMaster subtasks via CLI. Local apply_patch could not write WSL /home paths, so Task 10.1 files were edited through an elevated WSL write script.
+- Next: Task 10.2 - Product validation client for order creation.

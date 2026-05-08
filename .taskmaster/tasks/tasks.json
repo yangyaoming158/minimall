@@ -493,8 +493,81 @@
           "8",
           "9"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "in-progress",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "定义 CreateOrderRequest/CreateOrderResponse 并新增 POST /api/orders 接口骨架",
+            "description": "在 order-service 中补齐面向前端的稳定下单 DTO，并提供统一 ApiResponse 的创建订单接口入口，严格遵循校验与用户上下文获取约束。",
+            "dependencies": [],
+            "details": "参考 `product-service/src/main/java/com/minimall/product/dto/CreateProductRequest.java` 的 record + 校验 message 风格，新增 `order-service/src/main/java/com/minimall/order/dto/CreateOrderRequest.java`（字段：productId、quantity、idempotencyKey；使用 @Valid/@NotBlank/@Size/@NotNull/@Min，并提供稳定可读 message）。新增 `order-service/src/main/java/com/minimall/order/dto/CreateOrderResponse.java`（字段：orderNo、status、expireAt、totalAmount、productId、quantity；status 使用 `com.minimall.order.domain.OrderStatus`）。在 `order-service/src/main/java/com/minimall/order/web/OrderController.java` 中新增 `@PostMapping` 创建订单方法（或新增独立 Command Controller 但保持 /api/orders 路径不变），从 `UserContextHolder.get()` 获取 userId/username，返回 `ApiResponse.success(CreateOrderResponse)`；暂时只完成入参校验、用户鉴权失败 UNAUTHORIZED、以及调用 CommandService 的占位。为后续过期时间计算预留配置项（例如 `minimall.order.payment-expire-seconds`，默认值可在实现时确定）。",
+            "status": "done",
+            "testStrategy": "新增/调整 `order-service` 的 MockMvc 测试：请求缺失字段触发 `GlobalExceptionHandler`，断言 HTTP 400、code=40001、message 形如 `field: xxx`；未携带认证头时断言 UNAUTHORIZED。执行 `mvn -pl order-service -am test`。",
+            "updatedAt": "2026-05-08T13:23:05.710Z",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Product validation client for order creation",
+            "description": "Add order-service client contract for product-service internal product lookup and map product validation failures to stable BusinessException errors.",
+            "details": "Implement only product lookup/validation plumbing needed by order creation. Cover product not found and off-shelf/not-sellable mapping. Do not deduct inventory or create orders in this subtask.",
+            "status": "pending",
+            "dependencies": [
+              1
+            ],
+            "parentTaskId": 10,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Inventory deduct client for order creation",
+            "description": "Add order-service client contract for inventory-service deduct API and map insufficient stock or downstream failures to stable order-service errors.",
+            "details": "Implement only the inventory deduct client/request/response contract and tests. Reuse the inventory-service internal deduct route from Task 8.3. Do not create the public order API orchestration in this subtask.",
+            "status": "pending",
+            "dependencies": [
+              2
+            ],
+            "parentTaskId": 10,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Create order orchestration and persistence",
+            "description": "Wire POST /api/orders to UserContext, product validation, inventory deduct, pending order persistence, and CreateOrderResponse.",
+            "details": "Implement the service/controller orchestration for one successful create-order path and stable business failures. Persist PENDING_PAYMENT orders with expireAt and totalAmount. Return ApiResponse.success(CreateOrderResponse). Keep Redis duplicate-submit handling for the next subtask.",
+            "status": "pending",
+            "dependencies": [
+              3
+            ],
+            "parentTaskId": 10,
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Duplicate submit idempotency for create order",
+            "description": "Add Redis SETNX duplicate-submit guard and database unique-key replay handling for create-order idempotency.",
+            "details": "Use idempotencyKey scoped to the current user. Replays after a successful insert must return the existing CreateOrderResponse without creating a new order or deducting stock again. In-flight duplicates should return BusinessException(ErrorCode.CONFLICT) with a stable retryable message. Cover DB unique-key fallback behavior.",
+            "status": "pending",
+            "dependencies": [
+              4
+            ],
+            "parentTaskId": 10,
+            "parentId": "undefined"
+          },
+          {
+            "id": 6,
+            "title": "Create order regression verification",
+            "description": "Run and document Task 10 create-order regression coverage across DTO validation, product failures, inventory failures, success, and duplicate submission.",
+            "details": "Add or tighten tests only if previous subtasks left coverage gaps. Run mvn -pl order-service -am test and mvn clean package -DskipTests. Mark Task 10 done only after all subtasks pass and dev-log is updated.",
+            "status": "pending",
+            "dependencies": [
+              5
+            ],
+            "parentTaskId": 10,
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2026-05-08T13:23:05.710Z"
       },
       {
         "id": "11",
@@ -685,7 +758,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-07T12:18:06.190Z",
+      "lastModified": "2026-05-08T13:23:05.713Z",
       "taskCount": 20,
       "completedCount": 9,
       "tags": [
