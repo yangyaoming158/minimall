@@ -524,12 +524,13 @@
             "title": "Inventory deduct client for order creation",
             "description": "Add order-service client contract for inventory-service deduct API and map insufficient stock or downstream failures to stable order-service errors.",
             "details": "Implement only the inventory deduct client/request/response contract and tests. Reuse the inventory-service internal deduct route from Task 8.3. Do not create the public order API orchestration in this subtask.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               2
             ],
             "parentTaskId": 10,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-09T10:55:23.199Z"
           },
           {
             "id": 4,
@@ -568,7 +569,7 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-05-08T13:53:20.439Z"
+        "updatedAt": "2026-05-09T10:55:23.199Z"
       },
       {
         "id": "11",
@@ -759,7 +760,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-08T13:53:20.441Z",
+      "lastModified": "2026-05-09T10:55:23.202Z",
       "taskCount": 20,
       "completedCount": 9,
       "tags": [
