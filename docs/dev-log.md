@@ -374,3 +374,13 @@ Append one entry per implementation task so future sessions can recover project 
 - Test result: mvn -pl order-service -am test succeeded with common-core 12 tests, common-auth 26 tests, and order-service 31 tests passing. mvn clean package -DskipTests succeeded for the full 10-module reactor.
 - Issues: TaskMaster CLI is slow in WSL through the Windows node executable but completed successfully. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
 - Next: Task 10.5 - Duplicate submit idempotency for create order.
+
+## Task 10.5 - Duplicate submit idempotency for create order
+- Date: 2026-05-09
+- Status: Done
+- Implemented: Added create-order idempotency scoped by userId plus idempotencyKey. The command service now replays existing orders before external calls, uses Redis SETNX with a TTL to reject in-flight duplicate submissions with BusinessException(ErrorCode.CONFLICT, "Order creation is in progress, please retry"), leaves successful locks to expire, releases locks on failed attempts, and falls back to database unique-key replay when a concurrent insert wins the race. Changed the order idempotency unique constraint to user_id + idempotency_key and added Redis configuration for order-service.
+- Changed files: order-service/pom.xml; order-service/src/main/resources/application.yml; order-service/src/main/java/com/minimall/order/domain/Order.java; order-service/src/main/java/com/minimall/order/repository/OrderRepository.java; order-service/src/main/java/com/minimall/order/service/OrderCommandService.java; order-service/src/test/java/com/minimall/order/web/OrderControllerTest.java; order-service/src/test/java/com/minimall/order/service/OrderCommandServiceTest.java; .taskmaster/tasks/tasks.json; docs/dev-log.md
+- Commands run: task-master next; task-master show 10.5; git status --short; task-master set-status --id=10.5 --status=in-progress; mvn -pl order-service -am test; mvn clean package -DskipTests; task-master set-status --id=10.5 --status=done
+- Test result: mvn -pl order-service -am test passed after a rerun, with common-core 12 tests, common-auth 26 tests, and order-service 34 tests passing. The first run failed once in existing common-auth JwtUtilsTest.rejectsTamperedToken before order-service ran; rerunning the same command passed, so the failure did not repeat. mvn clean package -DskipTests succeeded for the full 10-module reactor.
+- Issues: TaskMaster CLI is slow in WSL through the Windows node executable but completed successfully. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
+- Next: Task 10.6 - Create order regression verification.

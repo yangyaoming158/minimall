@@ -13,6 +13,13 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:127.0.0.1}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      password: ${SPRING_DATA_REDIS_PASSWORD:}
+      repositories:
+        enabled: false
 
 server:
   port: 8104
@@ -30,6 +37,8 @@ management:
 minimall:
   order:
     payment-expire-seconds: ${ORDER_PAYMENT_EXPIRE_SECONDS:900}
+    idempotency:
+      lock-ttl-seconds: ${ORDER_IDEMPOTENCY_LOCK_TTL_SECONDS:30}
   clients:
     product-service:
       base-url: ${PRODUCT_SERVICE_BASE_URL:http://127.0.0.1:8102}

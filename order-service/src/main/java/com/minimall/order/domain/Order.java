@@ -20,7 +20,7 @@ import java.time.LocalDateTime;
         name = "orders",
         uniqueConstraints = {
                 @UniqueConstraint(name = "uk_orders_order_no", columnNames = "order_no"),
-                @UniqueConstraint(name = "uk_orders_idempotency_key", columnNames = "idempotency_key")
+                @UniqueConstraint(name = "uk_orders_user_id_idempotency_key", columnNames = {"user_id", "idempotency_key"})
         },
         indexes = {
                 @Index(name = "idx_orders_user_id", columnList = "user_id"),

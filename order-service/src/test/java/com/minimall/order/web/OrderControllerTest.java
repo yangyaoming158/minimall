@@ -6,6 +6,7 @@ import static org.hamcrest.Matchers.startsWith;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -27,6 +28,7 @@ import com.minimall.order.domain.Order;
 import com.minimall.order.domain.OrderStatus;
 import com.minimall.order.repository.OrderRepository;
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,6 +37,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
@@ -64,10 +68,18 @@ class OrderControllerTest {
     @MockBean
     private InventoryClient inventoryClient;
 
+    @MockBean
+    private StringRedisTemplate redisTemplate;
+
+    private final ValueOperations<String, String> redisValueOperations = org.mockito.Mockito.mock(ValueOperations.class);
+
     @BeforeEach
     void setUp() {
         orderRepository.deleteAll();
-        reset(productValidationService, inventoryClient);
+        reset(productValidationService, inventoryClient, redisTemplate, redisValueOperations);
+        given(redisTemplate.opsForValue()).willReturn(redisValueOperations);
+        given(redisValueOperations.setIfAbsent(any(String.class), any(String.class), any(Duration.class)))
+                .willReturn(true);
     }
 
     @Test
@@ -127,6 +139,66 @@ class OrderControllerTest {
         assertThat(inventoryRequestCaptor.getValue().orderNo()).isEqualTo(saved.getOrderNo());
         assertThat(inventoryRequestCaptor.getValue().productId()).isEqualTo("SKU-CREATE-1001");
         assertThat(inventoryRequestCaptor.getValue().quantity()).isEqualTo(2);
+    }
+
+    @Test
+    void createOrderReplayReturnsExistingOrderWithoutDeductingAgain() throws Exception {
+        given(productValidationService.validateSellable("SKU-REPLAY-1001"))
+                .willReturn(new ProductSnapshot(
+                        "SKU-REPLAY-1001",
+                        "Replay Product",
+                        new BigDecimal("11.50"),
+                        ProductStatus.ON_SHELF));
+        given(inventoryClient.deduct(any(InventoryDeductRequest.class)))
+                .willReturn(new InventorySnapshot("SKU-REPLAY-1001", 4, 1, InventoryStockState.IN_STOCK));
+
+        mockMvc.perform(post("/api/orders")
+                        .header(AuthHeaders.USER_ID, "205")
+                        .header(AuthHeaders.USERNAME, "ivy")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"productId":"SKU-REPLAY-1001","quantity":1,"idempotencyKey":"idem-replay-1001"}
+                                """))
+                .andExpect(status().isOk());
+        Order saved = orderRepository.findAll().get(0);
+
+        mockMvc.perform(post("/api/orders")
+                        .header(AuthHeaders.USER_ID, "205")
+                        .header(AuthHeaders.USERNAME, "ivy")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"productId":"SKU-REPLAY-1001","quantity":1,"idempotencyKey":"idem-replay-1001"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.orderNo").value(saved.getOrderNo()))
+                .andExpect(jsonPath("$.data.totalAmount").value(11.50))
+                .andExpect(jsonPath("$.data.productId").value("SKU-REPLAY-1001"));
+
+        assertThat(orderRepository.findAll()).hasSize(1);
+        verify(productValidationService, times(1)).validateSellable("SKU-REPLAY-1001");
+        verify(inventoryClient, times(1)).deduct(any(InventoryDeductRequest.class));
+    }
+
+    @Test
+    void createOrderInFlightDuplicateReturnsRetryableConflict() throws Exception {
+        given(redisValueOperations.setIfAbsent(any(String.class), any(String.class), any(Duration.class)))
+                .willReturn(false);
+
+        mockMvc.perform(post("/api/orders")
+                        .header(AuthHeaders.USER_ID, "206")
+                        .header(AuthHeaders.USERNAME, "jane")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"productId":"SKU-IN-FLIGHT","quantity":1,"idempotencyKey":"idem-in-flight"}
+                                """))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(ErrorCode.CONFLICT.getCode()))
+                .andExpect(jsonPath("$.message").value("Order creation is in progress, please retry"));
+
+        verifyNoInteractions(productValidationService, inventoryClient);
+        assertThat(orderRepository.findAll()).isEmpty();
     }
 
     @Test

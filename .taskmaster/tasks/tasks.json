@@ -550,12 +550,13 @@
             "title": "Duplicate submit idempotency for create order",
             "description": "Add Redis SETNX duplicate-submit guard and database unique-key replay handling for create-order idempotency.",
             "details": "Use idempotencyKey scoped to the current user. Replays after a successful insert must return the existing CreateOrderResponse without creating a new order or deducting stock again. In-flight duplicates should return BusinessException(ErrorCode.CONFLICT) with a stable retryable message. Cover DB unique-key fallback behavior.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               4
             ],
             "parentTaskId": 10,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-09T11:36:43.464Z"
           },
           {
             "id": 6,
@@ -570,7 +571,7 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-05-09T11:14:01.590Z"
+        "updatedAt": "2026-05-09T11:36:43.464Z"
       },
       {
         "id": "11",
@@ -761,7 +762,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-09T11:14:01.592Z",
+      "lastModified": "2026-05-09T11:36:43.467Z",
       "taskCount": 20,
       "completedCount": 9,
       "tags": [
