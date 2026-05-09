@@ -1,25 +1,31 @@
 package com.minimall.order.web;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.startsWith;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.minimall.common.auth.constants.AuthHeaders;
-import com.minimall.common.auth.context.UserContext;
-import com.minimall.common.auth.context.UserContextHolder;
+import com.minimall.common.core.exception.BusinessException;
 import com.minimall.common.core.exception.ErrorCode;
+import com.minimall.order.client.inventory.InventoryClient;
+import com.minimall.order.client.inventory.InventoryDeductRequest;
+import com.minimall.order.client.inventory.InventorySnapshot;
+import com.minimall.order.client.inventory.InventoryStockState;
+import com.minimall.order.client.product.ProductSnapshot;
+import com.minimall.order.client.product.ProductStatus;
+import com.minimall.order.client.product.ProductValidationService;
 import com.minimall.order.domain.Order;
 import com.minimall.order.domain.OrderStatus;
-import com.minimall.order.dto.CreateOrderRequest;
-import com.minimall.order.dto.CreateOrderResponse;
 import com.minimall.order.repository.OrderRepository;
-import com.minimall.order.service.OrderCommandService;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,7 +47,8 @@ import org.springframework.test.web.servlet.MockMvc;
         "spring.datasource.username=sa",
         "spring.datasource.password=",
         "spring.jpa.hibernate.ddl-auto=create-drop",
-        "spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect"
+        "spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect",
+        "minimall.order.payment-expire-seconds=900"
 })
 class OrderControllerTest {
 
@@ -52,27 +59,29 @@ class OrderControllerTest {
     private OrderRepository orderRepository;
 
     @MockBean
-    private OrderCommandService orderCommandService;
+    private ProductValidationService productValidationService;
+
+    @MockBean
+    private InventoryClient inventoryClient;
 
     @BeforeEach
     void setUp() {
         orderRepository.deleteAll();
-        UserContextHolder.clear();
-        reset(orderCommandService);
+        reset(productValidationService, inventoryClient);
     }
 
-
     @Test
-    void createOrderReturnsStableResponseFromCommandService() throws Exception {
-        CreateOrderResponse response = new CreateOrderResponse(
-                "ORD-CREATE-1001",
-                OrderStatus.PENDING_PAYMENT,
-                LocalDateTime.of(2026, 5, 8, 21, 30),
-                new BigDecimal("39.80"),
-                "SKU-CREATE-1001",
-                2);
-        given(orderCommandService.create(any(CreateOrderRequest.class), any(UserContext.class))).willReturn(response);
+    void createOrderValidatesProductDeductsInventoryAndPersistsPendingOrder() throws Exception {
+        given(productValidationService.validateSellable("SKU-CREATE-1001"))
+                .willReturn(new ProductSnapshot(
+                        "SKU-CREATE-1001",
+                        "Create Product",
+                        new BigDecimal("19.90"),
+                        ProductStatus.ON_SHELF));
+        given(inventoryClient.deduct(any(InventoryDeductRequest.class)))
+                .willReturn(new InventorySnapshot("SKU-CREATE-1001", 8, 2, InventoryStockState.IN_STOCK));
 
+        LocalDateTime before = LocalDateTime.now();
         mockMvc.perform(post("/api/orders")
                         .header(AuthHeaders.USER_ID, "201")
                         .header(AuthHeaders.USERNAME, "erin")
@@ -87,28 +96,94 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.data.userId").doesNotExist())
                 .andExpect(jsonPath("$.data.username").doesNotExist())
                 .andExpect(jsonPath("$.data.idempotencyKey").doesNotExist())
-                .andExpect(jsonPath("$.data.orderNo").value("ORD-CREATE-1001"))
+                .andExpect(jsonPath("$.data.orderNo", startsWith("ORD")))
                 .andExpect(jsonPath("$.data.status").value("PENDING_PAYMENT"))
                 .andExpect(jsonPath("$.data.expireAt").exists())
                 .andExpect(jsonPath("$.data.totalAmount").value(39.80))
                 .andExpect(jsonPath("$.data.productId").value("SKU-CREATE-1001"))
                 .andExpect(jsonPath("$.data.quantity").value(2));
+        LocalDateTime after = LocalDateTime.now();
 
-        ArgumentCaptor<CreateOrderRequest> requestCaptor = ArgumentCaptor.forClass(CreateOrderRequest.class);
-        ArgumentCaptor<UserContext> userCaptor = ArgumentCaptor.forClass(UserContext.class);
-        verify(orderCommandService).create(requestCaptor.capture(), userCaptor.capture());
-        org.assertj.core.api.Assertions.assertThat(requestCaptor.getValue().productId()).isEqualTo("SKU-CREATE-1001");
-        org.assertj.core.api.Assertions.assertThat(requestCaptor.getValue().quantity()).isEqualTo(2);
-        org.assertj.core.api.Assertions.assertThat(requestCaptor.getValue().idempotencyKey()).isEqualTo("idem-create-1001");
-        org.assertj.core.api.Assertions.assertThat(userCaptor.getValue().getUserId()).isEqualTo(201L);
-        org.assertj.core.api.Assertions.assertThat(userCaptor.getValue().getUsername()).isEqualTo("erin");
+        assertThat(orderRepository.findAll())
+                .singleElement()
+                .satisfies(order -> {
+                    assertThat(order.getOrderNo()).startsWith("ORD");
+                    assertThat(order.getUserId()).isEqualTo(201L);
+                    assertThat(order.getUsername()).isEqualTo("erin");
+                    assertThat(order.getProductId()).isEqualTo("SKU-CREATE-1001");
+                    assertThat(order.getProductName()).isEqualTo("Create Product");
+                    assertThat(order.getQuantity()).isEqualTo(2);
+                    assertThat(order.getUnitPrice()).isEqualByComparingTo("19.90");
+                    assertThat(order.getTotalAmount()).isEqualByComparingTo("39.80");
+                    assertThat(order.getStatus()).isEqualTo(OrderStatus.PENDING_PAYMENT);
+                    assertThat(order.getIdempotencyKey()).isEqualTo("idem-create-1001");
+                    assertThat(order.getExpireAt()).isBetween(before.plusSeconds(900), after.plusSeconds(900));
+                });
+
+        Order saved = orderRepository.findAll().get(0);
+        ArgumentCaptor<InventoryDeductRequest> inventoryRequestCaptor = ArgumentCaptor.forClass(InventoryDeductRequest.class);
+        verify(productValidationService).validateSellable("SKU-CREATE-1001");
+        verify(inventoryClient).deduct(inventoryRequestCaptor.capture());
+        assertThat(inventoryRequestCaptor.getValue().orderNo()).isEqualTo(saved.getOrderNo());
+        assertThat(inventoryRequestCaptor.getValue().productId()).isEqualTo("SKU-CREATE-1001");
+        assertThat(inventoryRequestCaptor.getValue().quantity()).isEqualTo(2);
+    }
+
+    @Test
+    void createOrderProductBusinessFailureDoesNotDeductInventoryOrPersistOrder() throws Exception {
+        given(productValidationService.validateSellable("SKU-OFF-SHELF"))
+                .willThrow(new BusinessException(ErrorCode.BAD_REQUEST, "Product is off shelf"));
+
+        mockMvc.perform(post("/api/orders")
+                        .header(AuthHeaders.USER_ID, "202")
+                        .header(AuthHeaders.USERNAME, "frank")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"productId":"SKU-OFF-SHELF","quantity":1,"idempotencyKey":"idem-off-shelf"}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(ErrorCode.BAD_REQUEST.getCode()))
+                .andExpect(jsonPath("$.message").value("Product is off shelf"));
+
+        verify(productValidationService).validateSellable("SKU-OFF-SHELF");
+        verifyNoInteractions(inventoryClient);
+        assertThat(orderRepository.findAll()).isEmpty();
+    }
+
+    @Test
+    void createOrderInventoryBusinessFailureDoesNotPersistOrder() throws Exception {
+        given(productValidationService.validateSellable("SKU-LOW-STOCK"))
+                .willReturn(new ProductSnapshot(
+                        "SKU-LOW-STOCK",
+                        "Low Stock Product",
+                        new BigDecimal("29.90"),
+                        ProductStatus.ON_SHELF));
+        given(inventoryClient.deduct(any(InventoryDeductRequest.class)))
+                .willThrow(new BusinessException(ErrorCode.CONFLICT, "Insufficient inventory"));
+
+        mockMvc.perform(post("/api/orders")
+                        .header(AuthHeaders.USER_ID, "203")
+                        .header(AuthHeaders.USERNAME, "gina")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"productId":"SKU-LOW-STOCK","quantity":5,"idempotencyKey":"idem-low-stock"}
+                                """))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(ErrorCode.CONFLICT.getCode()))
+                .andExpect(jsonPath("$.message").value("Insufficient inventory"));
+
+        verify(productValidationService).validateSellable("SKU-LOW-STOCK");
+        verify(inventoryClient).deduct(any(InventoryDeductRequest.class));
+        assertThat(orderRepository.findAll()).isEmpty();
     }
 
     @Test
     void createOrderMissingFieldsReturnsValidationError() throws Exception {
         mockMvc.perform(post("/api/orders")
-                        .header(AuthHeaders.USER_ID, "202")
-                        .header(AuthHeaders.USERNAME, "frank")
+                        .header(AuthHeaders.USER_ID, "204")
+                        .header(AuthHeaders.USERNAME, "henry")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest())

@@ -537,12 +537,13 @@
             "title": "Create order orchestration and persistence",
             "description": "Wire POST /api/orders to UserContext, product validation, inventory deduct, pending order persistence, and CreateOrderResponse.",
             "details": "Implement the service/controller orchestration for one successful create-order path and stable business failures. Persist PENDING_PAYMENT orders with expireAt and totalAmount. Return ApiResponse.success(CreateOrderResponse). Keep Redis duplicate-submit handling for the next subtask.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               3
             ],
             "parentTaskId": 10,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-09T11:14:01.590Z"
           },
           {
             "id": 5,
@@ -569,7 +570,7 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-05-09T10:55:23.199Z"
+        "updatedAt": "2026-05-09T11:14:01.590Z"
       },
       {
         "id": "11",
@@ -760,7 +761,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-09T10:55:23.202Z",
+      "lastModified": "2026-05-09T11:14:01.592Z",
       "taskCount": 20,
       "completedCount": 9,
       "tags": [

@@ -364,3 +364,13 @@ Append one entry per implementation task so future sessions can recover project 
 - Test result: mvn -pl order-service -am test succeeded with common-core 12 tests, common-auth 26 tests, and order-service 29 tests passing. mvn clean package -DskipTests succeeded for the full 10-module reactor.
 - Issues: TaskMaster CLI is slow in WSL through the Windows node executable but completed successfully. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
 - Next: Task 10.4 - Create order orchestration and persistence.
+
+## Task 10.4 - Create order orchestration and persistence
+- Date: 2026-05-09
+- Status: Done
+- Implemented: Wired POST /api/orders through the real OrderCommandService orchestration. The service validates sellable product data, generates an order number, deducts inventory with that order number, calculates totalAmount from unit price and quantity, persists a PENDING_PAYMENT order with user context, idempotencyKey, and expireAt, and returns CreateOrderResponse through ApiResponse.success. Redis duplicate-submit handling remains deferred to Task 10.5 as required.
+- Changed files: order-service/src/main/java/com/minimall/order/service/OrderCommandService.java; order-service/src/test/java/com/minimall/order/web/OrderControllerTest.java; .taskmaster/tasks/tasks.json; docs/dev-log.md
+- Commands run: task-master next; task-master show 10.4; git status --short; task-master set-status --id=10.4 --status=in-progress; mvn -pl order-service -am test; mvn clean package -DskipTests; task-master set-status --id=10.4 --status=done
+- Test result: mvn -pl order-service -am test succeeded with common-core 12 tests, common-auth 26 tests, and order-service 31 tests passing. mvn clean package -DskipTests succeeded for the full 10-module reactor.
+- Issues: TaskMaster CLI is slow in WSL through the Windows node executable but completed successfully. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
+- Next: Task 10.5 - Duplicate submit idempotency for create order.
