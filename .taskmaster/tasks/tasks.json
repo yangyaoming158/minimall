@@ -585,8 +585,57 @@
           "8",
           "9"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "in-progress",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "扩展 order-service 的 InventoryClient：新增 release 调用与安全错误封装",
+            "description": "在 order-service 侧为库存释放补齐客户端能力，提供可复用的 release 方法，并确保下游异常不会以 message 形式对外泄露。",
+            "dependencies": [],
+            "details": "基于现有 `order-service/src/main/java/com/minimall/order/client/inventory/InventoryClient.java` 的 RestTemplate 调用模式，新增 `INVENTORY_RELEASE_PATH = \"/internal/inventories/release\"` 与 `public InventorySnapshot release(...)` 方法；请求体可复用 `InventoryDeductRequest` 或新增 `InventoryReleaseRequest`（同字段：orderNo/productId/quantity）。对 `RestClientResponseException`、`ResourceAccessException` 等统一转换为 `BusinessException(ErrorCode.INTERNAL_ERROR, \"取消失败，请稍后重试\", cause)`，避免 message 包含 inventory-service 服务名/URL/堆栈等细节。",
+            "status": "done",
+            "testStrategy": "为 InventoryClient 新增单测（可用 MockRestServiceServer）或在后续 controller 测试中通过 @MockBean 验证 release 被调用与异常封装的 message。",
+            "updatedAt": "2026-05-10T12:27:20.914Z",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "在 OrderCommandService 实现取消命令：状态校验、幂等返回、库存释放",
+            "description": "实现核心取消逻辑：仅允许 PENDING_PAYMENT 取消；已取消重复调用幂等成功返回；取消成功触发库存释放；不可取消状态抛 BusinessException。",
+            "dependencies": [
+              1
+            ],
+            "details": "在 `order-service/src/main/java/com/minimall/order/service/OrderCommandService.java` 新增 `cancel(String orderNo, UserContext userContext)`：\n- 通过 `OrderRepository#findByOrderNoAndUserId` 获取订单，不存在则 `BusinessException(ErrorCode.NOT_FOUND, \"Order not found\")`；\n- 若 `order.getStatus()==OrderStatus.CANCELLED`：直接返回幂等成功 DTO（不调用 release）；\n- 若非 `PENDING_PAYMENT`：抛 `BusinessException(ErrorCode.CONFLICT 或 ErrorCode.BAD_REQUEST, \"订单当前状态不可取消: \" + status)`；\n- 若为 `PENDING_PAYMENT`：先调用 `InventoryClient.release(...)` 释放锁定库存（失败则抛安全 BusinessException，事务回滚），再通过 `new OrderStateMachine().transition(order, OrderStatus.CANCELLED, now)` 更新状态并 `orderRepository.saveAndFlush(order)`；\n- 新增返回 DTO：`order-service/src/main/java/com/minimall/order/dto/CancelOrderResponse.java`，至少包含 `orderNo`、`status`，确保前端幂等渲染可直接使用 `data.status`。",
+            "status": "pending",
+            "testStrategy": "新增/更新单元测试或集成测试：PENDING_PAYMENT 取消后订单状态变为 CANCELLED；CANCELLED 重复取消不触发 release；PAID/其他状态取消返回 400/409 的 BusinessException 映射。",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "新增取消接口 POST /api/orders/{orderNo}/cancel：统一 ApiResponse 返回",
+            "description": "对外暴露稳定的取消接口，成功取消与重复取消均返回 ApiResponse.success(data)，并确保错误走全局异常处理。",
+            "dependencies": [
+              2
+            ],
+            "details": "修改 `order-service/src/main/java/com/minimall/order/web/OrderController.java`：新增 `@PostMapping(\"/{orderNo}/cancel\")` 方法，调用 `orderCommandService.cancel(orderNo, currentUser())` 并返回 `ApiResponse.success(...)`；保持与现有 create/detail/myOrders 一致的 UserContext 获取方式（`UserContextHolder`），确保所有响应外层结构稳定为 `ApiResponse`。不可取消/不存在等错误使用 `BusinessException + ErrorCode`，由 `common-core` 的 `GlobalExceptionHandler` 映射 HTTP 400/404/409。",
+            "status": "pending",
+            "testStrategy": "通过 MockMvc 校验：成功与重复取消均 HTTP 200 且 `$.success=true`、`$.data.status=CANCELLED`；不可取消状态返回 400/409 且 `$.success=false`、`$.code` 稳定。",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "补齐 order-service 取消链路测试：幂等、库存释放一次、错误不泄露",
+            "description": "为取消接口增加可回归测试，覆盖幂等与库存释放一致性，并验证对外错误信息安全。",
+            "dependencies": [
+              3
+            ],
+            "details": "在 `order-service/src/test/java` 新增 SpringBootTest + MockMvc 测试（参考 `inventory-service/src/test/java/.../InternalInventoryControllerTest.java` 的风格）：\n- 使用 H2（TestPropertySource）初始化 orders 表（`spring.jpa.hibernate.ddl-auto=create-drop`）；\n- 通过 `OrderRepository` 写入 PENDING_PAYMENT/PAID/CANCELLED 订单（PAID/CANCELLED 可用 `OrderStateMachine#transition`）；\n- `@MockBean InventoryClient`：成功路径 verify `release(...)` 仅调用一次；幂等路径 verify 不调用；\n- 模拟 `InventoryClient.release` 抛异常时，断言对外 `$.message` 为安全文案（如“取消失败，请稍后重试”或 INTERNAL_ERROR 默认文案），且不包含 URL/服务名等敏感信息（对齐 `common-core` 的泄露防线思路）。",
+            "status": "pending",
+            "testStrategy": "运行 order-service 测试模块（例如 `mvn -pl order-service test`），覆盖：待支付可取消+释放库存、已支付不可取消、重复取消不重复释放、下游异常不泄露。",
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2026-05-10T12:27:20.914Z"
       },
       {
         "id": "12",
@@ -763,7 +812,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-10T11:27:13.434Z",
+      "lastModified": "2026-05-10T12:27:20.917Z",
       "taskCount": 20,
       "completedCount": 10,
       "tags": [

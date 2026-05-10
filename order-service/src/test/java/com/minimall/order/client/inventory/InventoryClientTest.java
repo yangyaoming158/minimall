@@ -101,6 +101,70 @@ class InventoryClientTest {
                 .isInstanceOfSatisfying(BusinessException.class, exception -> {
                     assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.INTERNAL_ERROR);
                     assertThat(exception.getMessage()).isEqualTo("Inventory deduct failed");
+        });
+        server.verify();
+    }
+
+    @Test
+    void releasePostsInternalRequestAndReturnsInventorySnapshot() {
+        server.expect(once(), requestTo("http://inventory-service/internal/inventories/release"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(content().json("""
+                        {"orderNo":"ORD-2001","productId":"SKU-3001","quantity":2}
+                        """))
+                .andRespond(withSuccess("""
+                        {"success":true,"code":"00000","message":"Success","data":{"productId":"SKU-3001","availableStock":10,"lockedStock":0,"stockState":"IN_STOCK"}}
+                        """, MediaType.APPLICATION_JSON));
+
+        InventorySnapshot snapshot = inventoryClient.release(new InventoryDeductRequest("ORD-2001", "SKU-3001", 2));
+
+        assertThat(snapshot.productId()).isEqualTo("SKU-3001");
+        assertThat(snapshot.availableStock()).isEqualTo(10);
+        assertThat(snapshot.lockedStock()).isZero();
+        assertThat(snapshot.stockState()).isEqualTo(InventoryStockState.IN_STOCK);
+        server.verify();
+    }
+
+    @Test
+    void releaseMapsUnsuccessfulBadRequestBodyToStableBusinessException() {
+        server.expect(once(), requestTo("http://inventory-service/internal/inventories/release"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withSuccess("""
+                        {"success":false,"code":"40000","message":"downstream detail","data":null}
+                        """, MediaType.APPLICATION_JSON));
+
+        assertThatThrownBy(() -> inventoryClient.release(new InventoryDeductRequest("ORD-2002", "SKU-LOW-LOCKED", 3)))
+                .isInstanceOfSatisfying(BusinessException.class, exception -> {
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.BAD_REQUEST);
+                    assertThat(exception.getMessage()).isEqualTo("Insufficient locked inventory");
+                });
+        server.verify();
+    }
+
+    @Test
+    void releaseMapsHttpNotFoundToStableBusinessException() {
+        server.expect(once(), requestTo("http://inventory-service/internal/inventories/release"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withResourceNotFound());
+
+        assertThatThrownBy(() -> inventoryClient.release(new InventoryDeductRequest("ORD-2003", "SKU-MISSING", 1)))
+                .isInstanceOfSatisfying(BusinessException.class, exception -> {
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.NOT_FOUND);
+                    assertThat(exception.getMessage()).isEqualTo("Inventory not found");
+                });
+        server.verify();
+    }
+
+    @Test
+    void releaseMapsDownstreamFailureWithoutLeakingDetails() {
+        server.expect(once(), requestTo("http://inventory-service/internal/inventories/release"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withServerError().body("http://inventory-service/internal stack trace"));
+
+        assertThatThrownBy(() -> inventoryClient.release(new InventoryDeductRequest("ORD-2004", "SKU-ERR", 1)))
+                .isInstanceOfSatisfying(BusinessException.class, exception -> {
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.INTERNAL_ERROR);
+                    assertThat(exception.getMessage()).isEqualTo("取消失败，请稍后重试");
                 });
         server.verify();
     }

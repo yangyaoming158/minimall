@@ -394,3 +394,13 @@ Append one entry per implementation task so future sessions can recover project 
 - Test result: mvn -pl order-service -am test succeeded with common-core 12 tests, common-auth 26 tests, and order-service 35 tests passing. mvn clean package -DskipTests succeeded for the full 10-module reactor.
 - Issues: Global task-master was not on the WSL PATH, so the project-local TaskMaster CLI was run through /mnt/d/nodejs/node.exe. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
 - Next: Continue with the next TaskMaster task after running task-master next.
+
+## Task 11.1 - Inventory release client for order cancellation
+- Date: 2026-05-10
+- Status: Done
+- Implemented: Started Task 11 and split it into four focused subtasks after TaskMaster expand timed out but still wrote subtasks. Implemented only Task 11.1 by extending order-service InventoryClient with a reusable release operation for POST /internal/inventories/release. The release call reuses the orderNo/productId/quantity request shape, maps successful ApiResponse bodies to InventorySnapshot, maps missing inventory to NOT_FOUND, maps insufficient locked inventory to stable BAD_REQUEST/CONFLICT business errors, and normalizes downstream failures to BusinessException(ErrorCode.INTERNAL_ERROR, "取消失败，请稍后重试") without leaking downstream details. Added MockRestServiceServer coverage for release success, insufficient locked inventory, missing inventory, and downstream failure sanitization.
+- Changed files: order-service/src/main/java/com/minimall/order/client/inventory/InventoryClient.java; order-service/src/test/java/com/minimall/order/client/inventory/InventoryClientTest.java; .taskmaster/tasks/tasks.json; docs/dev-log.md
+- Commands run: task-master next; task-master show 11; task-master set-status --id=11 --status=in-progress; task-master expand --id=11 --num=4; task-master show 11; task-master show 11.1; task-master set-status --id=11.1 --status=in-progress; mvn -pl order-service -am test; mvn clean package -DskipTests; task-master set-status --id=11.1 --status=done
+- Test result: mvn -pl order-service -am test succeeded with common-core 12 tests, common-auth 26 tests, and order-service 39 tests passing. mvn clean package -DskipTests succeeded for the full 10-module reactor.
+- Issues: task-master expand timed out at the command level, but it successfully created subtasks 11.1 through 11.4. TaskMaster CLI is slow in WSL through the Windows node executable. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
+- Next: Task 11.2 - implement cancellation command in OrderCommandService.
