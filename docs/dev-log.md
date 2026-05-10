@@ -425,3 +425,13 @@ Append one entry per implementation task so future sessions can recover project 
 - Issues: TaskMaster next timed out through the Windows node executable, so Task 11.3 details were read from tasks.json. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
 - Next: Task 11.4 - cancellation chain regression tests for idempotency, one inventory release, and safe downstream error messages.
 
+## Task 11.4 - Cancellation chain regression tests
+- Date: 2026-05-10
+- Status: Done
+- Implemented: Added order-service cancellation chain regression coverage in OrderControllerTest. The tests now verify that cancelling the same pending order twice returns idempotent success while calling InventoryClient.release only once, and that an inventory release failure returns a safe ApiResponse error message without leaking downstream URL/service/stack details while leaving the order in PENDING_PAYMENT. TaskMaster also marks parent Task 11 done because all cancellation subtasks are complete.
+- Changed files: order-service/src/test/java/com/minimall/order/web/OrderControllerTest.java; .taskmaster/tasks/tasks.json; docs/dev-log.md
+- Commands run: task-master next; read .taskmaster/tasks/tasks.json after TaskMaster next timed out; mvn -pl order-service -am test; fixed an accidentally changed create-order assertion; mvn -pl order-service -am test; mvn clean package -DskipTests; task-master set-status --id=11.4 --status=done
+- Test result: mvn -pl order-service -am test succeeded with common-core 12 tests, common-auth 26 tests, and order-service 50 tests passing. mvn clean package -DskipTests succeeded for the full 10-module reactor.
+- Issues: The first order-service test run exposed a test-edit mistake where the existing create-order duplicate-submit expected message had been changed; it was restored and the same Maven command passed. TaskMaster set-status timed out without success text, but tasks.json confirms Task 11.4 and parent Task 11 are done. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
+- Next: Continue with the next TaskMaster task after running task-master next.
+

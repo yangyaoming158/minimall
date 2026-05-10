@@ -2,6 +2,7 @@ package com.minimall.order.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.startsWith;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
@@ -346,6 +347,56 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.data.status").value("CANCELLED"));
 
         verify(inventoryClient, never()).release(any(InventoryDeductRequest.class));
+    }
+
+    @Test
+    void cancelSameOrderTwiceReleasesInventoryOnlyOnce() throws Exception {
+        orderRepository.saveAndFlush(order("ORD-CANCEL-API-1005", 305L, "idem-cancel-api-1005"));
+        given(inventoryClient.release(any(InventoryDeductRequest.class)))
+                .willReturn(new InventorySnapshot("SKU-API-1001", 10, 0, InventoryStockState.IN_STOCK));
+
+        mockMvc.perform(post("/api/orders/ORD-CANCEL-API-1005/cancel")
+                        .header(AuthHeaders.USER_ID, "305")
+                        .header(AuthHeaders.USERNAME, "alice"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.status").value("CANCELLED"));
+
+        mockMvc.perform(post("/api/orders/ORD-CANCEL-API-1005/cancel")
+                        .header(AuthHeaders.USER_ID, "305")
+                        .header(AuthHeaders.USERNAME, "alice"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.status").value("CANCELLED"));
+
+        verify(inventoryClient, times(1)).release(any(InventoryDeductRequest.class));
+        assertThat(orderRepository.findByOrderNo("ORD-CANCEL-API-1005").orElseThrow().getStatus())
+                .isEqualTo(OrderStatus.CANCELLED);
+    }
+
+    @Test
+    void cancelInventoryReleaseFailureReturnsSafeMessageAndKeepsOrderPending() throws Exception {
+        orderRepository.saveAndFlush(order("ORD-CANCEL-API-1006", 306L, "idem-cancel-api-1006"));
+        given(inventoryClient.release(any(InventoryDeductRequest.class)))
+                .willThrow(new BusinessException(
+                        ErrorCode.INTERNAL_ERROR,
+                        "Cancellation failed, please retry",
+                        new IllegalStateException("http://inventory-service/internal/inventories/release stack trace")));
+
+        mockMvc.perform(post("/api/orders/ORD-CANCEL-API-1006/cancel")
+                        .header(AuthHeaders.USER_ID, "306")
+                        .header(AuthHeaders.USERNAME, "alice"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(ErrorCode.INTERNAL_ERROR.getCode()))
+                .andExpect(jsonPath("$.message").value("Cancellation failed, please retry"))
+                .andExpect(jsonPath("$.message", not(containsString("inventory-service"))))
+                .andExpect(jsonPath("$.message", not(containsString("http://"))))
+                .andExpect(jsonPath("$.message", not(containsString("stack trace"))));
+
+        verify(inventoryClient, times(1)).release(any(InventoryDeductRequest.class));
+        assertThat(orderRepository.findByOrderNo("ORD-CANCEL-API-1006").orElseThrow().getStatus())
+                .isEqualTo(OrderStatus.PENDING_PAYMENT);
     }
 
     @Test

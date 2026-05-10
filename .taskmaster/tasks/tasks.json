@@ -585,7 +585,7 @@
           "8",
           "9"
         ],
-        "status": "in-progress",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -632,12 +632,13 @@
               3
             ],
             "details": "在 `order-service/src/test/java` 新增 SpringBootTest + MockMvc 测试（参考 `inventory-service/src/test/java/.../InternalInventoryControllerTest.java` 的风格）：\n- 使用 H2（TestPropertySource）初始化 orders 表（`spring.jpa.hibernate.ddl-auto=create-drop`）；\n- 通过 `OrderRepository` 写入 PENDING_PAYMENT/PAID/CANCELLED 订单（PAID/CANCELLED 可用 `OrderStateMachine#transition`）；\n- `@MockBean InventoryClient`：成功路径 verify `release(...)` 仅调用一次；幂等路径 verify 不调用；\n- 模拟 `InventoryClient.release` 抛异常时，断言对外 `$.message` 为安全文案（如“取消失败，请稍后重试”或 INTERNAL_ERROR 默认文案），且不包含 URL/服务名等敏感信息（对齐 `common-core` 的泄露防线思路）。",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "运行 order-service 测试模块（例如 `mvn -pl order-service test`），覆盖：待支付可取消+释放库存、已支付不可取消、重复取消不重复释放、下游异常不泄露。",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-10T13:31:21.206Z"
           }
         ],
-        "updatedAt": "2026-05-10T13:13:07.404Z"
+        "updatedAt": "2026-05-10T13:31:21.206Z"
       },
       {
         "id": "12",
@@ -814,9 +815,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-10T13:13:07.407Z",
+      "lastModified": "2026-05-10T13:31:21.210Z",
       "taskCount": 20,
-      "completedCount": 10,
+      "completedCount": 11,
       "tags": [
         "master"
       ]
