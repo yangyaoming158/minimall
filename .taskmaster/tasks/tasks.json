@@ -606,9 +606,10 @@
               1
             ],
             "details": "在 `order-service/src/main/java/com/minimall/order/service/OrderCommandService.java` 新增 `cancel(String orderNo, UserContext userContext)`：\n- 通过 `OrderRepository#findByOrderNoAndUserId` 获取订单，不存在则 `BusinessException(ErrorCode.NOT_FOUND, \"Order not found\")`；\n- 若 `order.getStatus()==OrderStatus.CANCELLED`：直接返回幂等成功 DTO（不调用 release）；\n- 若非 `PENDING_PAYMENT`：抛 `BusinessException(ErrorCode.CONFLICT 或 ErrorCode.BAD_REQUEST, \"订单当前状态不可取消: \" + status)`；\n- 若为 `PENDING_PAYMENT`：先调用 `InventoryClient.release(...)` 释放锁定库存（失败则抛安全 BusinessException，事务回滚），再通过 `new OrderStateMachine().transition(order, OrderStatus.CANCELLED, now)` 更新状态并 `orderRepository.saveAndFlush(order)`；\n- 新增返回 DTO：`order-service/src/main/java/com/minimall/order/dto/CancelOrderResponse.java`，至少包含 `orderNo`、`status`，确保前端幂等渲染可直接使用 `data.status`。",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "新增/更新单元测试或集成测试：PENDING_PAYMENT 取消后订单状态变为 CANCELLED；CANCELLED 重复取消不触发 release；PAID/其他状态取消返回 400/409 的 BusinessException 映射。",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-10T12:56:46.392Z"
           },
           {
             "id": 3,
@@ -635,7 +636,7 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-05-10T12:27:20.914Z"
+        "updatedAt": "2026-05-10T12:56:46.392Z"
       },
       {
         "id": "12",
@@ -812,7 +813,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-10T12:27:20.917Z",
+      "lastModified": "2026-05-10T12:56:46.397Z",
       "taskCount": 20,
       "completedCount": 10,
       "tags": [

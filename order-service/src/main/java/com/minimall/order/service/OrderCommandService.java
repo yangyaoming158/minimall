@@ -8,6 +8,9 @@ import com.minimall.order.client.inventory.InventoryDeductRequest;
 import com.minimall.order.client.product.ProductSnapshot;
 import com.minimall.order.client.product.ProductValidationService;
 import com.minimall.order.domain.Order;
+import com.minimall.order.domain.OrderStateMachine;
+import com.minimall.order.domain.OrderStatus;
+import com.minimall.order.dto.CancelOrderResponse;
 import com.minimall.order.dto.CreateOrderRequest;
 import com.minimall.order.dto.CreateOrderResponse;
 import com.minimall.order.repository.OrderRepository;
@@ -31,6 +34,8 @@ public class OrderCommandService {
     private static final String IDEMPOTENCY_LOCK_VALUE = "PROCESSING";
     private static final String ORDER_CREATION_IN_PROGRESS_MESSAGE = "Order creation is in progress, please retry";
     private static final String ORDER_IDEMPOTENCY_CHECK_FAILED_MESSAGE = "Order idempotency check failed";
+    private static final String ORDER_NOT_FOUND_MESSAGE = "Order not found";
+    private static final String ORDER_NOT_CANCELLABLE_MESSAGE_PREFIX = "Order current status cannot be cancelled: ";
 
     private final ProductValidationService productValidationService;
     private final InventoryClient inventoryClient;
@@ -38,6 +43,7 @@ public class OrderCommandService {
     private final StringRedisTemplate redisTemplate;
     private final long paymentExpireSeconds;
     private final Duration idempotencyLockTtl;
+    private final OrderStateMachine orderStateMachine = new OrderStateMachine();
 
     public OrderCommandService(
             ProductValidationService productValidationService,
@@ -52,6 +58,26 @@ public class OrderCommandService {
         this.redisTemplate = redisTemplate;
         this.paymentExpireSeconds = paymentExpireSeconds;
         this.idempotencyLockTtl = Duration.ofSeconds(Math.max(1, idempotencyLockTtlSeconds));
+    }
+
+    @Transactional
+    public CancelOrderResponse cancel(String orderNo, UserContext userContext) {
+        Order order = orderRepository.findByOrderNoAndUserId(orderNo, userContext.getUserId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, ORDER_NOT_FOUND_MESSAGE));
+
+        if (order.getStatus() == OrderStatus.CANCELLED) {
+            return toCancelOrderResponse(order);
+        }
+        if (order.getStatus() != OrderStatus.PENDING_PAYMENT) {
+            throw new BusinessException(
+                    ErrorCode.CONFLICT,
+                    ORDER_NOT_CANCELLABLE_MESSAGE_PREFIX + order.getStatus());
+        }
+
+        inventoryClient.release(new InventoryDeductRequest(
+                order.getOrderNo(), order.getProductId(), order.getQuantity()));
+        orderStateMachine.transition(order, OrderStatus.CANCELLED, LocalDateTime.now());
+        return toCancelOrderResponse(orderRepository.saveAndFlush(order));
     }
 
     @Transactional
@@ -140,6 +166,10 @@ public class OrderCommandService {
                 order.getTotalAmount(),
                 order.getProductId(),
                 order.getQuantity());
+    }
+
+    private CancelOrderResponse toCancelOrderResponse(Order order) {
+        return new CancelOrderResponse(order.getOrderNo(), order.getStatus());
     }
 
     private String idempotencyLockKey(Long userId, String idempotencyKey) {

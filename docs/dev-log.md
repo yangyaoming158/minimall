@@ -404,3 +404,14 @@ Append one entry per implementation task so future sessions can recover project 
 - Test result: mvn -pl order-service -am test succeeded with common-core 12 tests, common-auth 26 tests, and order-service 39 tests passing. mvn clean package -DskipTests succeeded for the full 10-module reactor.
 - Issues: task-master expand timed out at the command level, but it successfully created subtasks 11.1 through 11.4. TaskMaster CLI is slow in WSL through the Windows node executable. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
 - Next: Task 11.2 - implement cancellation command in OrderCommandService.
+
+## Task 11.2 - Order cancellation command
+- Date: 2026-05-10
+- Status: Done
+- Implemented: Added the order-service cancellation command in OrderCommandService. The command performs user-scoped order lookup, returns NOT_FOUND for missing or not-owned orders, treats already CANCELLED orders as idempotent success without releasing inventory again, rejects non-PENDING_PAYMENT orders with a stable CONFLICT business error, releases locked inventory for PENDING_PAYMENT orders, transitions the order to CANCELLED through OrderStateMachine, and returns a stable CancelOrderResponse DTO with orderNo and status. Added focused service tests for success, idempotent replay, paid-order rejection, and missing-order handling.
+- Changed files: order-service/src/main/java/com/minimall/order/dto/CancelOrderResponse.java; order-service/src/main/java/com/minimall/order/service/OrderCommandService.java; order-service/src/test/java/com/minimall/order/service/OrderCommandServiceTest.java; .taskmaster/tasks/tasks.json; docs/dev-log.md
+- Commands run: task-master next; task-master show 11.2; read .taskmaster/tasks/tasks.json after TaskMaster show timed out; mvn -pl order-service -am test; mvn clean package -DskipTests; task-master set-status --id=11.2 --status=done
+- Test result: mvn -pl order-service -am test succeeded with common-core 12 tests, common-auth 26 tests, and order-service 43 tests passing. mvn clean package -DskipTests succeeded for the full 10-module reactor.
+- Issues: TaskMaster next/show calls timed out through the Windows node executable, so task details were read from tasks.json. The set-status command printed a successful update from pending to done before the wrapper timed out; tasks.json confirms Task 11.2 is done. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
+- Next: Task 11.3 - expose POST /api/orders/{orderNo}/cancel through OrderController with ApiResponse.
+
