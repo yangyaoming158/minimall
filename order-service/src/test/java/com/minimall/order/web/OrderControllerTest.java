@@ -224,6 +224,28 @@ class OrderControllerTest {
     }
 
     @Test
+    void createOrderMissingProductDoesNotDeductInventoryOrPersistOrder() throws Exception {
+        given(productValidationService.validateSellable("SKU-MISSING"))
+                .willThrow(new BusinessException(ErrorCode.NOT_FOUND, "Product not found"));
+
+        mockMvc.perform(post("/api/orders")
+                        .header(AuthHeaders.USER_ID, "207")
+                        .header(AuthHeaders.USERNAME, "louis")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"productId":"SKU-MISSING","quantity":1,"idempotencyKey":"idem-missing-product"}
+                                """))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(ErrorCode.NOT_FOUND.getCode()))
+                .andExpect(jsonPath("$.message").value("Product not found"));
+
+        verify(productValidationService).validateSellable("SKU-MISSING");
+        verifyNoInteractions(inventoryClient);
+        assertThat(orderRepository.findAll()).isEmpty();
+    }
+
+    @Test
     void createOrderInventoryBusinessFailureDoesNotPersistOrder() throws Exception {
         given(productValidationService.validateSellable("SKU-LOW-STOCK"))
                 .willReturn(new ProductSnapshot(

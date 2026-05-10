@@ -384,3 +384,13 @@ Append one entry per implementation task so future sessions can recover project 
 - Test result: mvn -pl order-service -am test passed after a rerun, with common-core 12 tests, common-auth 26 tests, and order-service 34 tests passing. The first run failed once in existing common-auth JwtUtilsTest.rejectsTamperedToken before order-service ran; rerunning the same command passed, so the failure did not repeat. mvn clean package -DskipTests succeeded for the full 10-module reactor.
 - Issues: TaskMaster CLI is slow in WSL through the Windows node executable but completed successfully. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
 - Next: Task 10.6 - Create order regression verification.
+
+## Task 10.6 - Create order regression verification
+- Date: 2026-05-10
+- Status: Done
+- Implemented: Reviewed existing create-order regression coverage across DTO validation, authentication, success persistence, product business failures, inventory failures, duplicate replay, in-flight duplicate conflict, and database unique-key race replay. Added a focused POST /api/orders regression test for missing product handling so the create-order entrypoint now verifies NOT_FOUND, skips inventory deduction, and leaves no persisted order.
+- Changed files: order-service/src/test/java/com/minimall/order/web/OrderControllerTest.java; .taskmaster/tasks/tasks.json; docs/dev-log.md
+- Commands run: task-master next; task-master show 10.6; git status --short; task-master show 10; task-master set-status --id=10.6 --status=in-progress; mvn -pl order-service -am test; mvn clean package -DskipTests; task-master set-status --id=10.6 --status=done; task-master set-status --id=10 --status=done
+- Test result: mvn -pl order-service -am test succeeded with common-core 12 tests, common-auth 26 tests, and order-service 35 tests passing. mvn clean package -DskipTests succeeded for the full 10-module reactor.
+- Issues: Global task-master was not on the WSL PATH, so the project-local TaskMaster CLI was run through /mnt/d/nodejs/node.exe. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
+- Next: Continue with the next TaskMaster task after running task-master next.

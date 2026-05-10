@@ -493,7 +493,7 @@
           "8",
           "9"
         ],
-        "status": "in-progress",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -563,15 +563,16 @@
             "title": "Create order regression verification",
             "description": "Run and document Task 10 create-order regression coverage across DTO validation, product failures, inventory failures, success, and duplicate submission.",
             "details": "Add or tighten tests only if previous subtasks left coverage gaps. Run mvn -pl order-service -am test and mvn clean package -DskipTests. Mark Task 10 done only after all subtasks pass and dev-log is updated.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               5
             ],
             "parentTaskId": 10,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-10T11:27:13.429Z"
           }
         ],
-        "updatedAt": "2026-05-09T11:36:43.464Z"
+        "updatedAt": "2026-05-10T11:27:13.429Z"
       },
       {
         "id": "11",
@@ -762,9 +763,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-09T11:36:43.467Z",
+      "lastModified": "2026-05-10T11:27:13.434Z",
       "taskCount": 20,
-      "completedCount": 9,
+      "completedCount": 10,
       "tags": [
         "master"
       ]
