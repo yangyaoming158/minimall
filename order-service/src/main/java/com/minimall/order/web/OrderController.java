@@ -5,6 +5,7 @@ import com.minimall.common.auth.context.UserContextHolder;
 import com.minimall.common.core.exception.BusinessException;
 import com.minimall.common.core.exception.ErrorCode;
 import com.minimall.common.core.response.ApiResponse;
+import com.minimall.order.dto.CancelOrderResponse;
 import com.minimall.order.dto.CreateOrderRequest;
 import com.minimall.order.dto.CreateOrderResponse;
 import com.minimall.order.dto.OrderDetailResponse;
@@ -36,6 +37,11 @@ public class OrderController {
     @PostMapping
     public ApiResponse<CreateOrderResponse> create(@Valid @RequestBody CreateOrderRequest request) {
         return ApiResponse.success(orderCommandService.create(request, currentUser()));
+    }
+
+    @PostMapping("/{orderNo}/cancel")
+    public ApiResponse<CancelOrderResponse> cancel(@PathVariable("orderNo") String orderNo) {
+        return ApiResponse.success(orderCommandService.cancel(orderNo, currentUser()));
     }
 
     @GetMapping("/my")

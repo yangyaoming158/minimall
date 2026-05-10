@@ -619,9 +619,10 @@
               2
             ],
             "details": "修改 `order-service/src/main/java/com/minimall/order/web/OrderController.java`：新增 `@PostMapping(\"/{orderNo}/cancel\")` 方法，调用 `orderCommandService.cancel(orderNo, currentUser())` 并返回 `ApiResponse.success(...)`；保持与现有 create/detail/myOrders 一致的 UserContext 获取方式（`UserContextHolder`），确保所有响应外层结构稳定为 `ApiResponse`。不可取消/不存在等错误使用 `BusinessException + ErrorCode`，由 `common-core` 的 `GlobalExceptionHandler` 映射 HTTP 400/404/409。",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "通过 MockMvc 校验：成功与重复取消均 HTTP 200 且 `$.success=true`、`$.data.status=CANCELLED`；不可取消状态返回 400/409 且 `$.success=false`、`$.code` 稳定。",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-10T13:13:07.404Z"
           },
           {
             "id": 4,
@@ -636,7 +637,7 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-05-10T12:56:46.392Z"
+        "updatedAt": "2026-05-10T13:13:07.404Z"
       },
       {
         "id": "12",
@@ -813,7 +814,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-10T12:56:46.397Z",
+      "lastModified": "2026-05-10T13:13:07.407Z",
       "taskCount": 20,
       "completedCount": 10,
       "tags": [

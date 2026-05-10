@@ -415,3 +415,13 @@ Append one entry per implementation task so future sessions can recover project 
 - Issues: TaskMaster next/show calls timed out through the Windows node executable, so task details were read from tasks.json. The set-status command printed a successful update from pending to done before the wrapper timed out; tasks.json confirms Task 11.2 is done. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
 - Next: Task 11.3 - expose POST /api/orders/{orderNo}/cancel through OrderController with ApiResponse.
 
+## Task 11.3 - Expose order cancellation API
+- Date: 2026-05-10
+- Status: Done
+- Implemented: Exposed POST /api/orders/{orderNo}/cancel in OrderController. The endpoint uses the same UserContextHolder-backed authentication pattern as existing order APIs, delegates to OrderCommandService.cancel, and wraps successful cancellation/idempotent replay in ApiResponse.success(CancelOrderResponse). Added MockMvc coverage for pending-order cancellation with inventory release, already-cancelled idempotent success without release, paid-order conflict response, missing authentication, and missing-order NOT_FOUND response.
+- Changed files: order-service/src/main/java/com/minimall/order/web/OrderController.java; order-service/src/test/java/com/minimall/order/web/OrderControllerTest.java; .taskmaster/tasks/tasks.json; docs/dev-log.md
+- Commands run: task-master next; read .taskmaster/tasks/tasks.json after TaskMaster next timed out; mvn -pl order-service -am test; reran mvn -pl order-service -am test after a one-off common-auth JwtUtilsTest failure; mvn clean package -DskipTests; task-master set-status --id=11.3 --status=done
+- Test result: The first mvn -pl order-service -am test run failed once in common-auth JwtUtilsTest.rejectsTamperedToken before order-service tests ran; rerunning the same command passed with common-core 12 tests, common-auth 26 tests, and order-service 48 tests passing. mvn clean package -DskipTests succeeded for the full 10-module reactor.
+- Issues: TaskMaster next timed out through the Windows node executable, so Task 11.3 details were read from tasks.json. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
+- Next: Task 11.4 - cancellation chain regression tests for idempotency, one inventory release, and safe downstream error messages.
+

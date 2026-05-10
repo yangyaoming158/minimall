@@ -6,6 +6,7 @@ import static org.hamcrest.Matchers.startsWith;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -25,6 +26,7 @@ import com.minimall.order.client.product.ProductSnapshot;
 import com.minimall.order.client.product.ProductStatus;
 import com.minimall.order.client.product.ProductValidationService;
 import com.minimall.order.domain.Order;
+import com.minimall.order.domain.OrderStateMachine;
 import com.minimall.order.domain.OrderStatus;
 import com.minimall.order.repository.OrderRepository;
 import java.math.BigDecimal;
@@ -299,6 +301,90 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.code").value(ErrorCode.UNAUTHORIZED.getCode()))
                 .andExpect(jsonPath("$.message").value("Unauthorized"));
+    }
+
+    @Test
+    void cancelPendingOrderReturnsApiResponseAndReleasesInventory() throws Exception {
+        orderRepository.saveAndFlush(order("ORD-CANCEL-API-1001", 301L, "idem-cancel-api-1001"));
+        given(inventoryClient.release(any(InventoryDeductRequest.class)))
+                .willReturn(new InventorySnapshot("SKU-API-1001", 10, 0, InventoryStockState.IN_STOCK));
+
+        mockMvc.perform(post("/api/orders/ORD-CANCEL-API-1001/cancel")
+                        .header(AuthHeaders.USER_ID, "301")
+                        .header(AuthHeaders.USERNAME, "alice"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.code").value(ErrorCode.SUCCESS.getCode()))
+                .andExpect(jsonPath("$.data.orderNo").value("ORD-CANCEL-API-1001"))
+                .andExpect(jsonPath("$.data.status").value("CANCELLED"))
+                .andExpect(jsonPath("$.data.id").doesNotExist())
+                .andExpect(jsonPath("$.data.userId").doesNotExist());
+
+        Order saved = orderRepository.findByOrderNo("ORD-CANCEL-API-1001").orElseThrow();
+        assertThat(saved.getStatus()).isEqualTo(OrderStatus.CANCELLED);
+
+        ArgumentCaptor<InventoryDeductRequest> releaseRequest = ArgumentCaptor.forClass(InventoryDeductRequest.class);
+        verify(inventoryClient).release(releaseRequest.capture());
+        assertThat(releaseRequest.getValue().orderNo()).isEqualTo("ORD-CANCEL-API-1001");
+        assertThat(releaseRequest.getValue().productId()).isEqualTo("SKU-API-1001");
+        assertThat(releaseRequest.getValue().quantity()).isEqualTo(2);
+    }
+
+    @Test
+    void cancelAlreadyCancelledOrderReturnsSuccessWithoutReleasingInventoryAgain() throws Exception {
+        Order order = order("ORD-CANCEL-API-1002", 302L, "idem-cancel-api-1002");
+        new OrderStateMachine().transition(order, OrderStatus.CANCELLED, LocalDateTime.of(2026, 5, 10, 22, 0));
+        orderRepository.saveAndFlush(order);
+
+        mockMvc.perform(post("/api/orders/ORD-CANCEL-API-1002/cancel")
+                        .header(AuthHeaders.USER_ID, "302")
+                        .header(AuthHeaders.USERNAME, "alice"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.code").value(ErrorCode.SUCCESS.getCode()))
+                .andExpect(jsonPath("$.data.orderNo").value("ORD-CANCEL-API-1002"))
+                .andExpect(jsonPath("$.data.status").value("CANCELLED"));
+
+        verify(inventoryClient, never()).release(any(InventoryDeductRequest.class));
+    }
+
+    @Test
+    void cancelPaidOrderReturnsConflictApiResponse() throws Exception {
+        Order order = order("ORD-CANCEL-API-1003", 303L, "idem-cancel-api-1003");
+        new OrderStateMachine().transition(order, OrderStatus.PAID, LocalDateTime.of(2026, 5, 10, 22, 5));
+        orderRepository.saveAndFlush(order);
+
+        mockMvc.perform(post("/api/orders/ORD-CANCEL-API-1003/cancel")
+                        .header(AuthHeaders.USER_ID, "303")
+                        .header(AuthHeaders.USERNAME, "alice"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(ErrorCode.CONFLICT.getCode()))
+                .andExpect(jsonPath("$.message").value("Order current status cannot be cancelled: PAID"));
+
+        verify(inventoryClient, never()).release(any(InventoryDeductRequest.class));
+    }
+
+    @Test
+    void cancelMissingAuthenticationReturnsUnauthorized() throws Exception {
+        mockMvc.perform(post("/api/orders/ORD-CANCEL-API-1004/cancel"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(ErrorCode.UNAUTHORIZED.getCode()))
+                .andExpect(jsonPath("$.message").value("Unauthorized"));
+    }
+
+    @Test
+    void cancelMissingOrderReturnsNotFoundApiResponse() throws Exception {
+        mockMvc.perform(post("/api/orders/ORD-MISSING-CANCEL/cancel")
+                        .header(AuthHeaders.USER_ID, "304")
+                        .header(AuthHeaders.USERNAME, "alice"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(ErrorCode.NOT_FOUND.getCode()))
+                .andExpect(jsonPath("$.message").value("Order not found"));
+
+        verify(inventoryClient, never()).release(any(InventoryDeductRequest.class));
     }
 
     @Test
