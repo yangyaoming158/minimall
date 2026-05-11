@@ -454,3 +454,13 @@ Append one entry per implementation task so future sessions can recover project 
 - Test result: mvn -pl common-core test succeeded with 20 tests passing. mvn clean package -DskipTests succeeded for the full 10-module reactor.
 - Issues: TaskMaster CLI remains slow through the Windows node executable. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
 - Next: Task 12.3 - Document payment event contract and topology.
+
+## Task 12.3 - Document payment event contract and topology
+- Date: 2026-05-11
+- Status: Done
+- Implemented: Added docs/messaging/payment-success-event.md to document the payment success RabbitMQ contract. The document covers the durable direct exchange, payment.success routing key, order and notification consumer queues, bindings, PaymentSuccessEvent JSON fields, example payload, version compatibility, publisher rules, consumer idempotency expectations, and verification commands. TaskMaster now marks Task 12 and all three subtasks done.
+- Changed files: docs/messaging/payment-success-event.md; .taskmaster/tasks/tasks.json; docs/dev-log.md
+- Commands run: task-master next; task-master show 12.3; task-master set-status --id=12.3 --status=in-progress; grep key contract terms in docs/messaging/payment-success-event.md; mvn -pl common-core test; mvn clean package -DskipTests; task-master set-status --id=12.3 --status=done; task-master set-status --id=12 --status=done
+- Test result: Contract keyword check succeeded. mvn -pl common-core test succeeded with 20 tests passing. mvn clean package -DskipTests succeeded for the full 10-module reactor.
+- Issues: One initial grep command failed because PowerShell interpreted the pattern pipe characters before WSL execution; rerunning through bash succeeded. TaskMaster CLI remains slow through the Windows node executable. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
+- Next: Continue with the next TaskMaster task after running task-master next.

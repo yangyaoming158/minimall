@@ -652,7 +652,7 @@
           "4",
           "9"
         ],
-        "status": "in-progress",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -681,13 +681,14 @@
             "title": "Document payment event contract and topology",
             "description": "Document exchange, queues, routing keys, PaymentSuccessEvent JSON fields, versioning, and idempotency expectations.",
             "details": "Add contract docs for payment-service publishers and order/notification consumers, then verify the full RabbitMQ contract task.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 12,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-11T13:56:54.533Z"
           }
         ],
-        "updatedAt": "2026-05-11T13:44:47.661Z"
+        "updatedAt": "2026-05-11T13:56:54.533Z"
       },
       {
         "id": "13",
@@ -849,9 +850,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-11T13:44:47.664Z",
+      "lastModified": "2026-05-11T13:56:54.535Z",
       "taskCount": 20,
-      "completedCount": 11,
+      "completedCount": 12,
       "tags": [
         "master"
       ]
