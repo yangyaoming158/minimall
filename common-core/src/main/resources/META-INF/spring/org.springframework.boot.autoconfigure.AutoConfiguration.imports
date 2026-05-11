@@ -1,1 +1,2 @@
 com.minimall.common.core.config.CommonCoreAutoConfiguration
+com.minimall.common.core.config.PaymentRabbitTopologyAutoConfiguration

@@ -444,3 +444,13 @@ Append one entry per implementation task so future sessions can recover project 
 - Test result: mvn -pl common-core test succeeded with 18 tests passing. mvn clean package -DskipTests succeeded for the full 10-module reactor.
 - Issues: Global task-master was not on the WSL PATH, so the project-local TaskMaster CLI was run through /mnt/d/nodejs/node.exe. TaskMaster CLI remains slow through the Windows node executable. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
 - Next: Task 12.2 - Declare RabbitMQ topology auto-configuration.
+
+## Task 12.2 - Declare RabbitMQ topology auto-configuration
+- Date: 2026-05-11
+- Status: Done
+- Implemented: Added common-core Spring AMQP topology auto-configuration for the payment success event flow. The configuration exposes one Declarables bean containing a durable direct payment exchange, durable order and notification payment-success queues, and two bindings from the payment.success routing key to both queues. Registered the auto-configuration through Spring Boot AutoConfiguration imports and added tests proving declaration names, durability, routing keys, and custom-bean backoff.
+- Changed files: common-core/pom.xml; common-core/src/main/java/com/minimall/common/core/config/PaymentRabbitTopologyAutoConfiguration.java; common-core/src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports; common-core/src/test/java/com/minimall/common/core/config/PaymentRabbitTopologyAutoConfigurationTest.java; .taskmaster/tasks/tasks.json; docs/dev-log.md
+- Commands run: task-master next; task-master show 12.2; task-master set-status --id=12.2 --status=in-progress; mvn -pl common-core test; mvn clean package -DskipTests; task-master set-status --id=12.2 --status=done
+- Test result: mvn -pl common-core test succeeded with 20 tests passing. mvn clean package -DskipTests succeeded for the full 10-module reactor.
+- Issues: TaskMaster CLI remains slow through the Windows node executable. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
+- Next: Task 12.3 - Document payment event contract and topology.

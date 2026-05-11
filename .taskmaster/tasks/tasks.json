@@ -670,10 +670,11 @@
             "title": "Declare RabbitMQ topology auto-configuration",
             "description": "Declare payment exchange, routing keys, queues, and bindings for order and notification consumers.",
             "details": "Add Spring AMQP topology beans and tests proving exchange, queue, and binding declarations are present and durable.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 12,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-11T13:44:47.661Z"
           },
           {
             "id": 3,
@@ -686,7 +687,7 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-05-11T13:32:56.359Z"
+        "updatedAt": "2026-05-11T13:44:47.661Z"
       },
       {
         "id": "13",
@@ -848,7 +849,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-11T13:32:56.362Z",
+      "lastModified": "2026-05-11T13:44:47.664Z",
       "taskCount": 20,
       "completedCount": 11,
       "tags": [
