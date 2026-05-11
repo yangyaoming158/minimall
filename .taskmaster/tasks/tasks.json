@@ -652,8 +652,41 @@
           "4",
           "9"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "in-progress",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Define shared payment success event contract",
+            "description": "Add shared RabbitMQ naming constants and PaymentSuccessEvent JSON DTO with version and required eventId fields.",
+            "details": "Implement in a shared backend module so payment publisher, order consumer, and notification consumer can depend on one stable contract. Include serialization/deserialization tests.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 12,
+            "updatedAt": "2026-05-11T13:32:56.359Z",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Declare RabbitMQ topology auto-configuration",
+            "description": "Declare payment exchange, routing keys, queues, and bindings for order and notification consumers.",
+            "details": "Add Spring AMQP topology beans and tests proving exchange, queue, and binding declarations are present and durable.",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 12,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Document payment event contract and topology",
+            "description": "Document exchange, queues, routing keys, PaymentSuccessEvent JSON fields, versioning, and idempotency expectations.",
+            "details": "Add contract docs for payment-service publishers and order/notification consumers, then verify the full RabbitMQ contract task.",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 12,
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2026-05-11T13:32:56.359Z"
       },
       {
         "id": "13",
@@ -815,7 +848,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-10T13:31:21.210Z",
+      "lastModified": "2026-05-11T13:32:56.362Z",
       "taskCount": 20,
       "completedCount": 11,
       "tags": [
