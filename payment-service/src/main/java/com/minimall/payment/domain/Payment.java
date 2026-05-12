@@ -97,6 +97,10 @@ public class Payment {
         this.paidAt = paidAt;
     }
 
+    public boolean isSuccess() {
+        return status == PaymentStatus.SUCCESS;
+    }
+
     public Long getId() {
         return id;
     }

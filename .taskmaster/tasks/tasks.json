@@ -748,9 +748,10 @@
               3
             ],
             "details": "在 `payment-service/src/main/java/com/minimall/payment/dto` 新增 record DTO：`PayPaymentRequest`（可包含 `channel`、可选 `idempotencyKey` 或从 Header 读取）、`PaymentResponse`（必须包含 `paymentNo`、`orderNo`、`status`、`amount`，status 为枚举）。在 `payment-service/src/main/java/com/minimall/payment/web` 新增 `PaymentController`：实现 `POST /api/payments/{orderNo}/pay` 与 `GET /api/payments/{orderNo}`（或按既有风格增加 `GET /api/payments/payment-no/{paymentNo}` 但需保持浏览器接口稳定、路径复数）。Controller 必须返回 `ApiResponse.success(data)`。新增 `PaymentQueryService/PaymentCommandService`：查询直接按 orderNo 返回 PaymentResponse；支付发起时先读取订单（userId 可用 `UserContextHolder.require()` 获取，沿用 `order-service` 的鉴权模式），若订单不存在抛 `BusinessException(ErrorCode.NOT_FOUND, ...)`，若订单状态为取消/非法状态先不支付（具体错误码在下一子任务落地）。初版可先完成“创建或返回支付单 + 写入 SUCCESS/paidAt”的基础流程，幂等与事件发布在下一子任务补齐。",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "用 MockMvc 新增基础接口测试：成功返回 `ApiResponse.success` 且 data 字段包含 `paymentNo/orderNo/status/amount`，并验证不返回 Entity 字段（如 `id`）。",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-12T13:25:27.528Z"
           },
           {
             "id": 5,
@@ -765,7 +766,7 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-05-12T13:07:17.199Z"
+        "updatedAt": "2026-05-12T13:25:27.528Z"
       },
       {
         "id": "14",
@@ -913,7 +914,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-12T13:07:17.205Z",
+      "lastModified": "2026-05-12T13:25:27.531Z",
       "taskCount": 20,
       "completedCount": 12,
       "tags": [
