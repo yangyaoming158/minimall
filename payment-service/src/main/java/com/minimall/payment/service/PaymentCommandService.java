@@ -10,6 +10,7 @@ import com.minimall.payment.dto.PayPaymentRequest;
 import com.minimall.payment.dto.PaymentResponse;
 import com.minimall.payment.repository.OrderRepository;
 import com.minimall.payment.repository.PaymentRepository;
+import com.minimall.payment.service.event.PaymentEventPublisher;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Optional;
@@ -23,14 +24,21 @@ public class PaymentCommandService {
 
     private static final DateTimeFormatter PAYMENT_NO_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
     private static final String ORDER_NOT_FOUND_MESSAGE = "Order not found";
-    private static final String ORDER_NOT_PAYABLE_MESSAGE_PREFIX = "Order current status cannot be paid: ";
+    private static final String ORDER_CANCELLED_MESSAGE = "Order has been cancelled";
+    private static final String ORDER_INVALID_STATE_MESSAGE_PREFIX = "Order current status cannot be paid: ";
+    private static final String PAYMENT_ALREADY_SUCCESS_MESSAGE = "Payment already successful";
 
     private final PaymentRepository paymentRepository;
     private final OrderRepository orderRepository;
+    private final PaymentEventPublisher paymentEventPublisher;
 
-    public PaymentCommandService(PaymentRepository paymentRepository, OrderRepository orderRepository) {
+    public PaymentCommandService(
+            PaymentRepository paymentRepository,
+            OrderRepository orderRepository,
+            PaymentEventPublisher paymentEventPublisher) {
         this.paymentRepository = paymentRepository;
         this.orderRepository = orderRepository;
+        this.paymentEventPublisher = paymentEventPublisher;
     }
 
     @Transactional
@@ -38,13 +46,11 @@ public class PaymentCommandService {
         Order order = orderRepository.findByOrderNo(orderNo)
                 .filter(found -> found.getUserId().equals(userContext.getUserId()))
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, ORDER_NOT_FOUND_MESSAGE));
-        if (order.getStatus() != OrderStatus.PENDING_PAYMENT) {
-            throw new BusinessException(ErrorCode.CONFLICT, ORDER_NOT_PAYABLE_MESSAGE_PREFIX + order.getStatus());
-        }
+        validatePayable(order);
 
         Optional<Payment> existingPayment = paymentRepository.findByOrderNo(orderNo);
         if (existingPayment.isPresent()) {
-            return PaymentResponse.from(markSuccessIfNecessary(existingPayment.get()));
+            return PaymentResponse.from(completeExistingPayment(existingPayment.get()));
         }
 
         try {
@@ -55,21 +61,36 @@ public class PaymentCommandService {
                     request.normalizedChannel(),
                     request.idempotencyKey());
             payment.markSuccess(LocalDateTime.now());
-            return PaymentResponse.from(paymentRepository.saveAndFlush(payment));
+            Payment saved = paymentRepository.saveAndFlush(payment);
+            paymentEventPublisher.publishSuccess(saved);
+            return PaymentResponse.from(saved);
         } catch (DataIntegrityViolationException exception) {
             return paymentRepository.findByOrderNo(orderNo)
-                    .map(this::markSuccessIfNecessary)
+                    .map(this::completeExistingPayment)
                     .map(PaymentResponse::from)
                     .orElseThrow(() -> exception);
         }
     }
 
-    private Payment markSuccessIfNecessary(Payment payment) {
+    private void validatePayable(Order order) {
+        if (order.getStatus() == OrderStatus.CANCELLED) {
+            throw new BusinessException(ErrorCode.ORDER_CANCELLED, ORDER_CANCELLED_MESSAGE);
+        }
+        if (order.getStatus() != OrderStatus.PENDING_PAYMENT) {
+            throw new BusinessException(
+                    ErrorCode.ORDER_INVALID_STATE,
+                    ORDER_INVALID_STATE_MESSAGE_PREFIX + order.getStatus());
+        }
+    }
+
+    private Payment completeExistingPayment(Payment payment) {
         if (payment.isSuccess()) {
-            return payment;
+            throw new BusinessException(ErrorCode.PAYMENT_ALREADY_SUCCESS, PAYMENT_ALREADY_SUCCESS_MESSAGE);
         }
         payment.markSuccess(LocalDateTime.now());
-        return paymentRepository.saveAndFlush(payment);
+        Payment saved = paymentRepository.saveAndFlush(payment);
+        paymentEventPublisher.publishSuccess(saved);
+        return saved;
     }
 
     private String nextPaymentNo() {

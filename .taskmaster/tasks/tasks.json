@@ -701,7 +701,7 @@
           "10",
           "12"
         ],
-        "status": "in-progress",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -761,12 +761,13 @@
               4
             ],
             "details": "在支付发起流程中实现严格校验与幂等：1）支付前读取订单状态：若 `CANCELLED` 抛 `BusinessException(ErrorCode.ORDER_CANCELLED, ...)`；若非 `PENDING_PAYMENT` 且非取消，抛 `BusinessException(ErrorCode.ORDER_INVALID_STATE, ...)`。2）幂等创建：`PaymentRepository.findByOrderNo(orderNo)` 已存在则复用同一 paymentNo；若已 `SUCCESS`，不得重复发布事件，按验收标准抛 `BusinessException(ErrorCode.PAYMENT_ALREADY_SUCCESS, ...)`（HTTP 409），或选择返回首次成功 DTO（若采用返回成功 DTO，则仍需保证不会再发事件）。3）并发/最终防线：利用 `uk_payments_order_no`/`uk_payments_idempotency_key` 处理 DataIntegrityViolationException 回放读取同一记录。4）事件发布：引入 `RabbitTemplate`（配置 JSON message converter，如 `Jackson2JsonMessageConverter`）向 `PaymentEventNames.PAYMENT_EXCHANGE` 发送 `PaymentSuccessEvent`，routingKey 使用 `PaymentEventNames.PAYMENT_SUCCESS_ROUTING_KEY`；事件体使用 `common-core` 的 `PaymentSuccessEvent`（eventId 可用 UUID，paidAt 用 Instant，amount 精度保持 2 位）。5）防重复发事件：仅当数据库内状态从非 SUCCESS 迁移到 SUCCESS 时发布（可用“条件更新 + 行级锁/乐观锁”或在事务内对 payment 记录加锁并判断旧状态）。最后在 `payment-service/src/test` 新增 MockMvc/Service 测试：待支付订单支付成功生成 payment；同一 orderNo 重复支付不重复生成支付单且事件只发一次；已取消订单支付失败返回 ORDER_CANCELLED；订单状态非法返回 ORDER_INVALID_STATE；幂等命中已成功返回 PAYMENT_ALREADY_SUCCESS（code/HTTP 状态可断言）。",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "运行 `mvn -pl payment-service test`：覆盖支付成功/重复支付幂等/取消订单拒绝/事件只发布一次；必要时对 RabbitTemplate 使用 @MockBean 并断言发送次数。",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-12T13:37:29.116Z"
           }
         ],
-        "updatedAt": "2026-05-12T13:25:27.528Z"
+        "updatedAt": "2026-05-12T13:37:29.116Z"
       },
       {
         "id": "14",
@@ -914,9 +915,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-12T13:25:27.531Z",
+      "lastModified": "2026-05-12T13:37:29.122Z",
       "taskCount": 20,
-      "completedCount": 12,
+      "completedCount": 13,
       "tags": [
         "master"
       ]

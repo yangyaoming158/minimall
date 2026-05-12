@@ -2,12 +2,18 @@ package com.minimall.payment.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.startsWith;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.minimall.common.auth.constants.AuthHeaders;
+import com.minimall.common.core.event.payment.PaymentEventNames;
+import com.minimall.common.core.event.payment.PaymentSuccessEvent;
 import com.minimall.common.core.exception.ErrorCode;
 import com.minimall.payment.domain.Order;
 import com.minimall.payment.domain.OrderStatus;
@@ -19,9 +25,12 @@ import com.minimall.payment.repository.PaymentRepository;
 import java.math.BigDecimal;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
@@ -52,10 +61,14 @@ class PaymentControllerTest {
     @Autowired
     private PaymentRepository paymentRepository;
 
+    @MockBean
+    private RabbitTemplate rabbitTemplate;
+
     @BeforeEach
     void setUp() {
         paymentRepository.deleteAll();
         orderRepository.deleteAll();
+        reset(rabbitTemplate);
     }
 
     @Test
@@ -93,10 +106,22 @@ class PaymentControllerTest {
                     assertThat(payment.getIdempotencyKey()).isEqualTo("pay-idem-1001");
                     assertThat(payment.getPaidAt()).isNotNull();
                 });
+        Payment saved = paymentRepository.findByOrderNo("ORD-PAY-API-1001").orElseThrow();
+        ArgumentCaptor<PaymentSuccessEvent> eventCaptor = ArgumentCaptor.forClass(PaymentSuccessEvent.class);
+        verify(rabbitTemplate).convertAndSend(
+                eq(PaymentEventNames.PAYMENT_EXCHANGE),
+                eq(PaymentEventNames.PAYMENT_SUCCESS_ROUTING_KEY),
+                eventCaptor.capture());
+        assertThat(eventCaptor.getValue().getEventId()).isNotBlank();
+        assertThat(eventCaptor.getValue().getOrderNo()).isEqualTo("ORD-PAY-API-1001");
+        assertThat(eventCaptor.getValue().getPaymentNo()).isEqualTo(saved.getPaymentNo());
+        assertThat(eventCaptor.getValue().getAmount()).isEqualByComparingTo("39.80");
+        assertThat(eventCaptor.getValue().getPaidAt()).isNotNull();
+        assertThat(eventCaptor.getValue().getVersion()).isEqualTo(PaymentSuccessEvent.CURRENT_VERSION);
     }
 
     @Test
-    void payReplayReturnsExistingPaymentWithoutCreatingAnotherRecord() throws Exception {
+    void payReplayReturnsAlreadySuccessWithoutCreatingAnotherRecordOrRepublishingEvent() throws Exception {
         orderRepository.saveAndFlush(order("ORD-PAY-API-1002", 502L, OrderStatus.PENDING_PAYMENT, "18.50"));
 
         mockMvc.perform(post("/api/payments/ORD-PAY-API-1002/pay")
@@ -112,14 +137,55 @@ class PaymentControllerTest {
                         .header(AuthHeaders.USERNAME, "bob")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.paymentNo").value(saved.getPaymentNo()))
-                .andExpect(jsonPath("$.data.orderNo").value("ORD-PAY-API-1002"))
-                .andExpect(jsonPath("$.data.status").value("SUCCESS"))
-                .andExpect(jsonPath("$.data.amount").value(18.50));
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(ErrorCode.PAYMENT_ALREADY_SUCCESS.getCode()))
+                .andExpect(jsonPath("$.message").value("Payment already successful"));
 
         assertThat(paymentRepository.findAll()).hasSize(1);
+        assertThat(paymentRepository.findByOrderNo("ORD-PAY-API-1002"))
+                .isPresent()
+                .get()
+                .extracting(Payment::getPaymentNo)
+                .isEqualTo(saved.getPaymentNo());
+        verify(rabbitTemplate, times(1)).convertAndSend(
+                eq(PaymentEventNames.PAYMENT_EXCHANGE),
+                eq(PaymentEventNames.PAYMENT_SUCCESS_ROUTING_KEY),
+                org.mockito.ArgumentMatchers.any(PaymentSuccessEvent.class));
+    }
+
+    @Test
+    void payExistingPendingPaymentMarksSuccessAndPublishesOneEvent() throws Exception {
+        orderRepository.saveAndFlush(order("ORD-PAY-API-1007", 508L, OrderStatus.PENDING_PAYMENT, "27.50"));
+        paymentRepository.saveAndFlush(new Payment(
+                "PAY-PENDING-1007",
+                "ORD-PAY-API-1007",
+                new BigDecimal("27.50"),
+                PaymentChannel.MOCK,
+                "pending-idem-1007"));
+
+        mockMvc.perform(post("/api/payments/ORD-PAY-API-1007/pay")
+                        .header(AuthHeaders.USER_ID, "508")
+                        .header(AuthHeaders.USERNAME, "grace")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.paymentNo").value("PAY-PENDING-1007"))
+                .andExpect(jsonPath("$.data.status").value("SUCCESS"));
+
+        assertThat(paymentRepository.findAll()).hasSize(1);
+        assertThat(paymentRepository.findByOrderNo("ORD-PAY-API-1007"))
+                .isPresent()
+                .get()
+                .satisfies(payment -> {
+                    assertThat(payment.getStatus()).isEqualTo(PaymentStatus.SUCCESS);
+                    assertThat(payment.getPaidAt()).isNotNull();
+                });
+        verify(rabbitTemplate, times(1)).convertAndSend(
+                eq(PaymentEventNames.PAYMENT_EXCHANGE),
+                eq(PaymentEventNames.PAYMENT_SUCCESS_ROUTING_KEY),
+                org.mockito.ArgumentMatchers.any(PaymentSuccessEvent.class));
     }
 
     @Test
@@ -189,8 +255,25 @@ class PaymentControllerTest {
                         .content("{}"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.code").value(ErrorCode.CONFLICT.getCode()))
-                .andExpect(jsonPath("$.message").value("Order current status cannot be paid: CANCELLED"));
+                .andExpect(jsonPath("$.code").value(ErrorCode.ORDER_CANCELLED.getCode()))
+                .andExpect(jsonPath("$.message").value("Order has been cancelled"));
+
+        assertThat(paymentRepository.findAll()).isEmpty();
+    }
+
+    @Test
+    void payPaidOrderReturnsInvalidStateConflict() throws Exception {
+        orderRepository.saveAndFlush(order("ORD-PAY-API-1008", 509L, OrderStatus.PAID, "12.00"));
+
+        mockMvc.perform(post("/api/payments/ORD-PAY-API-1008/pay")
+                        .header(AuthHeaders.USER_ID, "509")
+                        .header(AuthHeaders.USERNAME, "heidi")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(ErrorCode.ORDER_INVALID_STATE.getCode()))
+                .andExpect(jsonPath("$.message").value("Order current status cannot be paid: PAID"));
 
         assertThat(paymentRepository.findAll()).isEmpty();
     }
