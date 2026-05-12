@@ -9,6 +9,9 @@ public enum ErrorCode {
     FORBIDDEN("40300", "Forbidden"),
     NOT_FOUND("40400", "Resource not found"),
     CONFLICT("40900", "Conflict"),
+    ORDER_CANCELLED("40901", "Order has been cancelled"),
+    ORDER_INVALID_STATE("40902", "Order status does not allow payment"),
+    PAYMENT_ALREADY_SUCCESS("40903", "Payment already successful"),
     INTERNAL_ERROR("50000", "Internal server error");
 
     private final String code;

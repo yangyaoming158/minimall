@@ -701,8 +701,69 @@
           "10",
           "12"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "in-progress",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "扩展 common-core：新增支付相关业务错误码并映射 HTTP 状态",
+            "description": "在 common-core 中新增前端可区分的业务错误码，并在全局异常处理器中映射到合适的 HTTP 状态码，确保 payment-service 可直接抛 BusinessException 返回稳定 code。",
+            "dependencies": [],
+            "details": "修改 `common-core/src/main/java/com/minimall/common/core/exception/ErrorCode.java`：新增 `ORDER_CANCELLED`、`ORDER_INVALID_STATE`、`PAYMENT_ALREADY_SUCCESS`（code 字符串需与现有 40000/40900 区分，且固定不可变）。修改 `common-core/src/main/java/com/minimall/common/core/exception/GlobalExceptionHandler.java` 的 `statusFor()`：为上述错误码分别映射到建议的 `400`/`409`。如项目已有针对错误码/异常映射的测试惯例，可在 `common-core/src/test` 补充覆盖，验证 code 与 HTTP 状态保持稳定。",
+            "status": "done",
+            "testStrategy": "运行 `mvn -pl common-core test`，验证新增错误码与异常映射测试通过。",
+            "updatedAt": "2026-05-12T12:30:50.455Z",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "完善 payment-service 基础能力：引入 JPA/Validation/AMQP 依赖并补齐配置",
+            "description": "为 payment-service 增加实现支付单与事件发布所需的 Spring 依赖与配置项，保持与 order-service 等模块一致的配置风格（使用环境变量覆盖，避免硬编码）。",
+            "dependencies": [
+              1
+            ],
+            "details": "修改 `payment-service/pom.xml`：新增 `spring-boot-starter-data-jpa`、`spring-boot-starter-validation`、`spring-boot-starter-amqp`、`mysql-connector-j`（runtime）、`h2`（test）、`spring-boot-starter-test`（test）、必要的测试插件（参考 `order-service/pom.xml` 的 surefire 版本）。修改 `payment-service/src/main/resources/application.yml`：补齐 `spring.datasource`/`spring.jpa`（对齐 `order-service/src/main/resources/application.yml` 的 env 变量写法与 open-in-view=false），并增加 `spring.rabbitmq.*` 的可配置项（host/port/username/password/virtual-host 等，全部可由环境变量覆盖）。",
+            "status": "pending",
+            "testStrategy": "运行 `mvn -pl payment-service test`（可先无测试但确保能启动测试上下文），再运行 `mvn -pl payment-service -DskipTests clean package` 确认依赖与打包正常。",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "实现 payment-service 持久层：Payment 领域模型、枚举与 Repository",
+            "description": "基于 `payments` 表实现 Payment 聚合的 JPA Entity、状态枚举与数据访问层，为幂等支付与查询接口提供稳定的数据模型。",
+            "dependencies": [
+              2
+            ],
+            "details": "在 `payment-service/src/main/java/com/minimall/payment/domain` 新增：`Payment` 实体（字段覆盖 payment_no/order_no/amount/channel/status/idempotency_key/paid_at/created_at/updated_at，DECIMAL(12,2) 用 BigDecimal precision/scale 映射；status/channel 用 `@Enumerated(EnumType.STRING)`；@Table 增加 uk_payments_payment_no/uk_payments_order_no/uk_payments_idempotency_key 与 idx_payments_status 对齐 `docs/sql/migrations/V1__initial_schema.sql`）。新增 `PaymentStatus` 枚举（至少包含 `PENDING`、`SUCCESS`，名称字符串需稳定序列化给前端）。如需要持久化 channel，新增 `PaymentChannel` 枚举（如 `MOCK`）。在 `payment-service/src/main/java/com/minimall/payment/repository` 新增 `PaymentRepository extends JpaRepository`，提供 `findByOrderNo`/`findByPaymentNo` 等查询方法。为支付前订单状态校验，新增最小化的订单读取方式：在 payment-service 内新增 `OrderStatus` 枚举（至少 `PENDING_PAYMENT`/`CANCELLED`/`PAID` 等）与 `OrderRepository`（仅用于读取 orders 表的 orderNo、userId、status、totalAmount），避免依赖 order-service 模块。",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "实现支付 API：稳定 DTO、支付单查询与“模拟支付成功”写库",
+            "description": "在 payment-service 暴露前端可直接接入的支付发起与支付状态查询接口，严格使用 ApiResponse 包裹并返回稳定 DTO（不暴露 Entity）。",
+            "dependencies": [
+              3
+            ],
+            "details": "在 `payment-service/src/main/java/com/minimall/payment/dto` 新增 record DTO：`PayPaymentRequest`（可包含 `channel`、可选 `idempotencyKey` 或从 Header 读取）、`PaymentResponse`（必须包含 `paymentNo`、`orderNo`、`status`、`amount`，status 为枚举）。在 `payment-service/src/main/java/com/minimall/payment/web` 新增 `PaymentController`：实现 `POST /api/payments/{orderNo}/pay` 与 `GET /api/payments/{orderNo}`（或按既有风格增加 `GET /api/payments/payment-no/{paymentNo}` 但需保持浏览器接口稳定、路径复数）。Controller 必须返回 `ApiResponse.success(data)`。新增 `PaymentQueryService/PaymentCommandService`：查询直接按 orderNo 返回 PaymentResponse；支付发起时先读取订单（userId 可用 `UserContextHolder.require()` 获取，沿用 `order-service` 的鉴权模式），若订单不存在抛 `BusinessException(ErrorCode.NOT_FOUND, ...)`，若订单状态为取消/非法状态先不支付（具体错误码在下一子任务落地）。初版可先完成“创建或返回支付单 + 写入 SUCCESS/paidAt”的基础流程，幂等与事件发布在下一子任务补齐。",
+            "status": "pending",
+            "testStrategy": "用 MockMvc 新增基础接口测试：成功返回 `ApiResponse.success` 且 data 字段包含 `paymentNo/orderNo/status/amount`，并验证不返回 Entity 字段（如 `id`）。",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "补齐幂等支付与 PaymentSuccessEvent 发布：防重复创建/防重复发事件并完善测试",
+            "description": "实现同一 orderNo 的重复支付幂等与“只发布一次 PaymentSuccessEvent”，并按验收标准返回可区分的业务错误码与 HTTP 状态。",
+            "dependencies": [
+              4
+            ],
+            "details": "在支付发起流程中实现严格校验与幂等：1）支付前读取订单状态：若 `CANCELLED` 抛 `BusinessException(ErrorCode.ORDER_CANCELLED, ...)`；若非 `PENDING_PAYMENT` 且非取消，抛 `BusinessException(ErrorCode.ORDER_INVALID_STATE, ...)`。2）幂等创建：`PaymentRepository.findByOrderNo(orderNo)` 已存在则复用同一 paymentNo；若已 `SUCCESS`，不得重复发布事件，按验收标准抛 `BusinessException(ErrorCode.PAYMENT_ALREADY_SUCCESS, ...)`（HTTP 409），或选择返回首次成功 DTO（若采用返回成功 DTO，则仍需保证不会再发事件）。3）并发/最终防线：利用 `uk_payments_order_no`/`uk_payments_idempotency_key` 处理 DataIntegrityViolationException 回放读取同一记录。4）事件发布：引入 `RabbitTemplate`（配置 JSON message converter，如 `Jackson2JsonMessageConverter`）向 `PaymentEventNames.PAYMENT_EXCHANGE` 发送 `PaymentSuccessEvent`，routingKey 使用 `PaymentEventNames.PAYMENT_SUCCESS_ROUTING_KEY`；事件体使用 `common-core` 的 `PaymentSuccessEvent`（eventId 可用 UUID，paidAt 用 Instant，amount 精度保持 2 位）。5）防重复发事件：仅当数据库内状态从非 SUCCESS 迁移到 SUCCESS 时发布（可用“条件更新 + 行级锁/乐观锁”或在事务内对 payment 记录加锁并判断旧状态）。最后在 `payment-service/src/test` 新增 MockMvc/Service 测试：待支付订单支付成功生成 payment；同一 orderNo 重复支付不重复生成支付单且事件只发一次；已取消订单支付失败返回 ORDER_CANCELLED；订单状态非法返回 ORDER_INVALID_STATE；幂等命中已成功返回 PAYMENT_ALREADY_SUCCESS（code/HTTP 状态可断言）。",
+            "status": "pending",
+            "testStrategy": "运行 `mvn -pl payment-service test`：覆盖支付成功/重复支付幂等/取消订单拒绝/事件只发布一次；必要时对 RabbitTemplate 使用 @MockBean 并断言发送次数。",
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2026-05-12T12:30:50.455Z"
       },
       {
         "id": "14",
@@ -850,7 +911,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-11T13:56:54.535Z",
+      "lastModified": "2026-05-12T12:30:50.459Z",
       "taskCount": 20,
       "completedCount": 12,
       "tags": [

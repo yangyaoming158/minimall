@@ -40,6 +40,13 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void paymentBusinessExceptionsUseStableCodesAndConflictStatus() {
+        assertBusinessException(ErrorCode.ORDER_CANCELLED, "order cancelled", "40901", HttpStatus.CONFLICT);
+        assertBusinessException(ErrorCode.ORDER_INVALID_STATE, "order paid", "40902", HttpStatus.CONFLICT);
+        assertBusinessException(ErrorCode.PAYMENT_ALREADY_SUCCESS, "already paid", "40903", HttpStatus.CONFLICT);
+    }
+
+    @Test
     void methodArgumentNotValidExceptionMapsFieldErrors() throws NoSuchMethodException {
         BeanPropertyBindingResult bindingResult = new BeanPropertyBindingResult(new SampleRequest(), "sampleRequest");
         bindingResult.addError(new FieldError("sampleRequest", "quantity", "must be greater than 0"));
@@ -82,6 +89,18 @@ class GlobalExceptionHandlerTest {
         ApiResponse<Void> body = response.getBody();
         assertNotNull(body);
         return body;
+    }
+
+    private void assertBusinessException(ErrorCode errorCode, String message, String expectedCode,
+            HttpStatus expectedStatus) {
+        ResponseEntity<ApiResponse<Void>> response = handler.handleBusinessException(
+                new BusinessException(errorCode, message));
+
+        assertEquals(expectedStatus, response.getStatusCode());
+        ApiResponse<Void> body = requireBody(response);
+        assertFalse(body.isSuccess());
+        assertEquals(expectedCode, body.getCode());
+        assertEquals(message, body.getMessage());
     }
 
     private record SampleRequest() {

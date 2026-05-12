@@ -464,3 +464,13 @@ Append one entry per implementation task so future sessions can recover project 
 - Test result: Contract keyword check succeeded. mvn -pl common-core test succeeded with 20 tests passing. mvn clean package -DskipTests succeeded for the full 10-module reactor.
 - Issues: One initial grep command failed because PowerShell interpreted the pattern pipe characters before WSL execution; rerunning through bash succeeded. TaskMaster CLI remains slow through the Windows node executable. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
 - Next: Continue with the next TaskMaster task after running task-master next.
+
+## Task 13.1 - Extend common-core payment business error codes
+- Date: 2026-05-12
+- Status: Done
+- Implemented: Added stable payment/order business error codes ORDER_CANCELLED, ORDER_INVALID_STATE, and PAYMENT_ALREADY_SUCCESS to common-core. Mapped the new codes to HTTP 409 Conflict in GlobalExceptionHandler so payment-service can return frontend-distinguishable ApiResponse errors through BusinessException. Added handler tests that assert each new code, message, and HTTP status.
+- Changed files: common-core/src/main/java/com/minimall/common/core/exception/ErrorCode.java; common-core/src/main/java/com/minimall/common/core/exception/GlobalExceptionHandler.java; common-core/src/test/java/com/minimall/common/core/exception/GlobalExceptionHandlerTest.java; .taskmaster/tasks/tasks.json; docs/dev-log.md
+- Commands run: task-master set-status --id=13.1 --status=in-progress; mvn -pl common-core test; mvn clean package -DskipTests; task-master set-status --id=13.1 --status=done
+- Test result: mvn -pl common-core test succeeded with 21 tests passing. mvn clean package -DskipTests succeeded for the full 10-module reactor.
+- Issues: TaskMaster set-status printed a successful update to done before the wrapper timed out. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
+- Next: Task 13.2 - complete payment-service JPA/Validation/AMQP dependencies and configuration.
