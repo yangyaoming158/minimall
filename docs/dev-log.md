@@ -474,3 +474,13 @@ Append one entry per implementation task so future sessions can recover project 
 - Test result: mvn -pl common-core test succeeded with 21 tests passing. mvn clean package -DskipTests succeeded for the full 10-module reactor.
 - Issues: TaskMaster set-status printed a successful update to done before the wrapper timed out. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
 - Next: Task 13.2 - complete payment-service JPA/Validation/AMQP dependencies and configuration.
+
+## Task 13.2 - Payment service dependencies and configuration
+- Date: 2026-05-12
+- Status: Done
+- Implemented: Added payment-service dependencies for Spring Data JPA, Validation, Spring AMQP, MySQL runtime, H2 test, Spring Boot test, and Surefire 3.2.5. Extended payment-service application.yml with environment-variable driven datasource, JPA, and RabbitMQ settings. Added a Spring Boot context test that starts payment-service with H2 and RabbitMQ test properties.
+- Changed files: payment-service/pom.xml; payment-service/src/main/resources/application.yml; payment-service/src/test/java/com/minimall/payment/PaymentServiceApplicationTest.java; .taskmaster/tasks/tasks.json; docs/dev-log.md
+- Commands run: task-master set-status --id=13.2 --status=in-progress; mvn -pl payment-service test; mvn -pl payment-service -am test; mvn clean package -DskipTests; task-master set-status --id=13.2 --status=done
+- Test result: mvn -pl payment-service test failed because Maven could not resolve sibling snapshot modules common-core/common-auth without -am. mvn -pl payment-service -am test succeeded with common-core 21 tests, common-auth 26 tests, and payment-service 1 context test passing. mvn clean package -DskipTests succeeded for the full 10-module reactor.
+- Issues: The first single-module Maven command is not sufficient in this workspace unless sibling modules are already installed. TaskMaster set-status wrote done but the wrapper timed out without success text. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
+- Next: Task 13.3 - implement payment-service persistence layer with Payment model, enums, repositories, and focused tests.

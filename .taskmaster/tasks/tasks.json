@@ -722,9 +722,10 @@
               1
             ],
             "details": "修改 `payment-service/pom.xml`：新增 `spring-boot-starter-data-jpa`、`spring-boot-starter-validation`、`spring-boot-starter-amqp`、`mysql-connector-j`（runtime）、`h2`（test）、`spring-boot-starter-test`（test）、必要的测试插件（参考 `order-service/pom.xml` 的 surefire 版本）。修改 `payment-service/src/main/resources/application.yml`：补齐 `spring.datasource`/`spring.jpa`（对齐 `order-service/src/main/resources/application.yml` 的 env 变量写法与 open-in-view=false），并增加 `spring.rabbitmq.*` 的可配置项（host/port/username/password/virtual-host 等，全部可由环境变量覆盖）。",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "运行 `mvn -pl payment-service test`（可先无测试但确保能启动测试上下文），再运行 `mvn -pl payment-service -DskipTests clean package` 确认依赖与打包正常。",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-12T12:47:30.986Z"
           },
           {
             "id": 3,
@@ -763,7 +764,7 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-05-12T12:30:50.455Z"
+        "updatedAt": "2026-05-12T12:47:30.986Z"
       },
       {
         "id": "14",
@@ -911,7 +912,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-12T12:30:50.459Z",
+      "lastModified": "2026-05-12T12:47:30.988Z",
       "taskCount": 20,
       "completedCount": 12,
       "tags": [
