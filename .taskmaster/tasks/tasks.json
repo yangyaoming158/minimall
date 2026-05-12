@@ -735,9 +735,10 @@
               2
             ],
             "details": "在 `payment-service/src/main/java/com/minimall/payment/domain` 新增：`Payment` 实体（字段覆盖 payment_no/order_no/amount/channel/status/idempotency_key/paid_at/created_at/updated_at，DECIMAL(12,2) 用 BigDecimal precision/scale 映射；status/channel 用 `@Enumerated(EnumType.STRING)`；@Table 增加 uk_payments_payment_no/uk_payments_order_no/uk_payments_idempotency_key 与 idx_payments_status 对齐 `docs/sql/migrations/V1__initial_schema.sql`）。新增 `PaymentStatus` 枚举（至少包含 `PENDING`、`SUCCESS`，名称字符串需稳定序列化给前端）。如需要持久化 channel，新增 `PaymentChannel` 枚举（如 `MOCK`）。在 `payment-service/src/main/java/com/minimall/payment/repository` 新增 `PaymentRepository extends JpaRepository`，提供 `findByOrderNo`/`findByPaymentNo` 等查询方法。为支付前订单状态校验，新增最小化的订单读取方式：在 payment-service 内新增 `OrderStatus` 枚举（至少 `PENDING_PAYMENT`/`CANCELLED`/`PAID` 等）与 `OrderRepository`（仅用于读取 orders 表的 orderNo、userId、status、totalAmount），避免依赖 order-service 模块。",
-            "status": "pending",
+            "status": "done",
             "testStrategy": null,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-12T13:07:17.199Z"
           },
           {
             "id": 4,
@@ -764,7 +765,7 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-05-12T12:47:30.986Z"
+        "updatedAt": "2026-05-12T13:07:17.199Z"
       },
       {
         "id": "14",
@@ -912,7 +913,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-12T12:47:30.988Z",
+      "lastModified": "2026-05-12T13:07:17.205Z",
       "taskCount": 20,
       "completedCount": 12,
       "tags": [
