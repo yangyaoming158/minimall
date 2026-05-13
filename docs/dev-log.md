@@ -554,3 +554,13 @@ Append one entry per implementation task so future sessions can recover project 
 - Test result: mvn -pl order-service -am test succeeded with common-core 21 tests, common-auth 26 tests, and order-service 57 tests passing. mvn clean package -DskipTests succeeded for the full 10-module reactor.
 - Issues: The server-timezone concern was reviewed but not changed in this fix because existing order timestamps use LocalDateTime with system-default time semantics. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
 - Next: Continue with the next TaskMaster task after running task-master next.
+
+## Development rule update - Stable WSL command discipline
+- Date: 2026-05-13
+- Status: Done
+- Implemented: Updated AGENTS.md with a Command Reliability section to reduce PowerShell-to-WSL quoting and parsing failures. The rule now prefers short WSL commands, shallow quoting for git commit messages, apply_patch for file edits and dev-log updates, simple fixed-string searches, and explicit avoidance of long inline printf blocks, heredocs, nested quotes, pipelines, command substitution, semicolon chains, and complex grep alternation through the Windows command bridge.
+- Changed files: AGENTS.md; docs/dev-log.md
+- Commands run: read AGENTS.md; read docs/dev-log.md; git status --short; apply_patch updates
+- Test result: Documentation-only rule change; no Maven build required.
+- Issues: This update directly addresses the repeated command-construction failures observed while completing Task 14.
+- Next: Future MiniMall work should follow the stable command templates in AGENTS.md before running TaskMaster, Maven, grep, git, or file-edit commands.

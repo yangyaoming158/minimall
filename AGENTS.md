@@ -39,6 +39,17 @@ After implementation:
 - Frontend-ready acceptance criteria only require stable backend API contracts for future frontend/admin integration; do not implement frontend pages, admin consoles, UI assets, or frontend build tooling in the current backend task tree. Real frontend development must wait for the user's next PRD.
 - If the same error appears twice, stop and report the blocker.
 
+## Command Reliability
+- The local workspace is reached through PowerShell into WSL. Prefer short, predictable commands and avoid clever shell composition.
+- Use this simple pattern for normal WSL commands: `wsl bash -lc "cd /home/oslab/projects/mini-mall-order && <command>"`.
+- For commands that need a quoted argument, keep quoting shallow. For example, use `wsl bash -lc "cd /home/oslab/projects/mini-mall-order && git commit -m 'message text'"`.
+- Do not use long inline `printf`/`echo` blocks to write files. Use `apply_patch` for source, docs, YAML, SQL, JSON, and dev-log edits.
+- Avoid pipelines, command substitution, nested quotes, heredocs, semicolon chains, and regex alternation through the PowerShell-to-WSL bridge. Split them into separate simple commands instead.
+- Prefer `grep -R fixedText -n <paths>` or separate fixed-string searches over complex grep patterns containing `|`, quotes, or shell metacharacters.
+- Do not create temporary edit scripts for routine changes. If a temporary file is truly unavoidable, create it under the project root with a `.codex-` prefix, delete it before continuing, and verify it is gone.
+- If a command fails due shell parsing or quoting, do not keep retrying variants. Simplify the command shape or switch to `apply_patch`, then continue.
+- Treat the WSL NAT/localhost warning as noise only when the command exit code is 0.
+
 ## Version Management
 - Keep `main` as the stable integration branch; do not commit accumulated task work directly to `main` unless the user explicitly requests it.
 - Before committing, ensure the current branch starts with `codex/`. If currently on `main`, create or switch to a `codex/` branch first, for example `codex/task-8-inventory` or `codex/checkpoint-current-work`.
