@@ -802,9 +802,10 @@
               1
             ],
             "details": "在 `order-service/pom.xml` 增加 `spring-boot-starter-amqp`，让 `common-core` 的 `PaymentRabbitTopologyAutoConfiguration` 自动声明 exchange/queue/binding；在 `order-service/src/main/resources/application.yml` 增加 `spring.rabbitmq.*` 环境变量配置（参考 `payment-service/src/main/resources/application.yml`）。新增 `order-service/src/main/java/com/minimall/order/config/OrderRabbitConfig.java` 提供 `Jackson2JsonMessageConverter`。新增消费者类（例如 `order-service/src/main/java/com/minimall/order/messaging/PaymentSuccessEventConsumer.java`），使用 `@RabbitListener(queues = PaymentEventNames.ORDER_PAYMENT_SUCCESS_QUEUE)` 接收 `PaymentSuccessEvent`。在 `@Transactional` 内先尝试插入 `OrderEvent(eventId=..., eventType=PAYMENT_SUCCESS, payload=...)`：若因唯一键冲突则视为重复消息直接 no-op；若插入成功则查询 `OrderRepository.findByOrderNo(event.getOrderNo())` 并按规则处理：1）订单为 `PENDING_PAYMENT` 时调用现有 `OrderStateMachine` 流转到 `PAID`（时间可用 event.paidAt 转换为 LocalDateTime 或用 now，并在 order_events 记录 from/to）；2）订单为其他状态（如 `CANCELLED/PAID/CLOSED/...`）不做流转，在 order_events.payload 记录 `ignored` 与原因；3）订单不存在则记录 `failed` 与原因。消费者需避免抛出业务异常导致无限重试（已处理的 ignored/failed 应能正常 ack）。",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "新增或调整测试用配置确保不依赖真实 RabbitMQ（例如在相关 SpringBootTest 中设置 `spring.rabbitmq.listener.simple.auto-startup=false`），并通过直接调用 consumer 方法或 Spring 容器注入 bean 的方式验证：PENDING_PAYMENT 订单收到事件后变为 PAID；CANCELLED 订单不变且被记录为 ignored；重复 eventId 不重复变更订单。",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-13T12:56:22.246Z"
           },
           {
             "id": 3,
@@ -819,7 +820,7 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-05-13T12:18:45.294Z"
+        "updatedAt": "2026-05-13T12:56:22.246Z"
       },
       {
         "id": "15",
@@ -952,7 +953,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-13T12:18:45.301Z",
+      "lastModified": "2026-05-13T12:56:22.250Z",
       "taskCount": 20,
       "completedCount": 13,
       "tags": [

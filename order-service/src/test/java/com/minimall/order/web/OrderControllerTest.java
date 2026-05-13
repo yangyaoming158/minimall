@@ -55,7 +55,8 @@ import org.springframework.test.web.servlet.MockMvc;
         "spring.datasource.password=",
         "spring.jpa.hibernate.ddl-auto=create-drop",
         "spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect",
-        "minimall.order.payment-expire-seconds=900"
+        "minimall.order.payment-expire-seconds=900",
+        "spring.rabbitmq.listener.simple.auto-startup=false"
 })
 class OrderControllerTest {
 

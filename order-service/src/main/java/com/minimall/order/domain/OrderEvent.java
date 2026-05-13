@@ -106,6 +106,12 @@ public class OrderEvent {
         return payload;
     }
 
+    public void updateResult(OrderStatus fromStatus, OrderStatus toStatus, String payload) {
+        this.fromStatus = fromStatus;
+        this.toStatus = toStatus;
+        this.payload = payload;
+    }
+
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
