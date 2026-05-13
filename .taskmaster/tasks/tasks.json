@@ -781,8 +781,45 @@
           "12",
           "13"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "in-progress",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "新增 order_events 持久层：OrderEvent 实体/枚举/Repository（eventId 唯一幂等）",
+            "description": "在 order-service 内新增 order_events 的 JPA 映射与访问层，为后续消费者基于 event_id 唯一约束实现幂等提供基础能力。",
+            "dependencies": [],
+            "details": "对齐现有表结构 `docs/sql/migrations/V1__initial_schema.sql` 的 `order_events`：新增 `order-service/src/main/java/com/minimall/order/domain/OrderEvent.java`（字段：eventId、orderNo、eventType、fromStatus、toStatus、payload、createdAt），其中 `fromStatus/toStatus` 使用现有 `OrderStatus` 枚举；新增 `order-service/src/main/java/com/minimall/order/domain/OrderEventType.java`（至少包含 PAYMENT_SUCCESS）；新增 `order-service/src/main/java/com/minimall/order/repository/OrderEventRepository.java`（JpaRepository）。payload 建议用 `String` 存 JSON（包含原始 PaymentSuccessEvent + handleResult/ignoredReason/errorMessage），避免引入额外 JSON 类型依赖并兼容当前 H2 测试方式。",
+            "status": "done",
+            "testStrategy": "新增 `order-service/src/test/java/com/minimall/order/repository/OrderEventRepositoryTest.java`（@DataJpaTest）验证：1）保存一条 order_event 成功；2）同一 eventId 重复插入触发唯一约束（DataIntegrityViolationException），用于后续幂等判定。",
+            "updatedAt": "2026-05-13T12:18:45.294Z",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "实现支付成功事件消费者：监听 PaymentSuccessEvent 并驱动订单 PENDING_PAYMENT->PAID",
+            "description": "在 order-service 中引入 Spring AMQP 消费 `PaymentSuccessEvent`，基于 order_events.event_id 唯一约束实现幂等消费，并通过 OrderStateMachine 完成订单状态流转。",
+            "dependencies": [
+              1
+            ],
+            "details": "在 `order-service/pom.xml` 增加 `spring-boot-starter-amqp`，让 `common-core` 的 `PaymentRabbitTopologyAutoConfiguration` 自动声明 exchange/queue/binding；在 `order-service/src/main/resources/application.yml` 增加 `spring.rabbitmq.*` 环境变量配置（参考 `payment-service/src/main/resources/application.yml`）。新增 `order-service/src/main/java/com/minimall/order/config/OrderRabbitConfig.java` 提供 `Jackson2JsonMessageConverter`。新增消费者类（例如 `order-service/src/main/java/com/minimall/order/messaging/PaymentSuccessEventConsumer.java`），使用 `@RabbitListener(queues = PaymentEventNames.ORDER_PAYMENT_SUCCESS_QUEUE)` 接收 `PaymentSuccessEvent`。在 `@Transactional` 内先尝试插入 `OrderEvent(eventId=..., eventType=PAYMENT_SUCCESS, payload=...)`：若因唯一键冲突则视为重复消息直接 no-op；若插入成功则查询 `OrderRepository.findByOrderNo(event.getOrderNo())` 并按规则处理：1）订单为 `PENDING_PAYMENT` 时调用现有 `OrderStateMachine` 流转到 `PAID`（时间可用 event.paidAt 转换为 LocalDateTime 或用 now，并在 order_events 记录 from/to）；2）订单为其他状态（如 `CANCELLED/PAID/CLOSED/...`）不做流转，在 order_events.payload 记录 `ignored` 与原因；3）订单不存在则记录 `failed` 与原因。消费者需避免抛出业务异常导致无限重试（已处理的 ignored/failed 应能正常 ack）。",
+            "status": "pending",
+            "testStrategy": "新增或调整测试用配置确保不依赖真实 RabbitMQ（例如在相关 SpringBootTest 中设置 `spring.rabbitmq.listener.simple.auto-startup=false`），并通过直接调用 consumer 方法或 Spring 容器注入 bean 的方式验证：PENDING_PAYMENT 订单收到事件后变为 PAID；CANCELLED 订单不变且被记录为 ignored；重复 eventId 不重复变更订单。",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "补齐订单支付成功消费测试：覆盖幂等、ignored、order_events 落库结果",
+            "description": "为 Task 14 的核心验收点补齐自动化测试，确保状态流转与 order_events 幂等记录在回归中稳定。",
+            "dependencies": [
+              2
+            ],
+            "details": "新增 `order-service/src/test/java/com/minimall/order/messaging/PaymentSuccessEventConsumerTest.java`（建议 @SpringBootTest + H2，复用现有测试风格，必要时关闭 listener auto-startup）或拆出可单测的 handler/service 并做纯单测。用例至少覆盖：1）创建一笔 `PENDING_PAYMENT` 订单，构造 `PaymentSuccessEvent(eventId=E1, orderNo=...)` 调用处理逻辑后订单状态为 `PAID` 且写入一条 order_events（from=PENDING_PAYMENT,to=PAID,eventType=PAYMENT_SUCCESS）；2）再次用同一 eventId=E1 调用，订单不重复更新且 order_events 条数不增加；3）创建一笔 `CANCELLED` 订单收到事件，状态保持 CANCELLED，order_events 写入 ignored（payload 含原因）；4）可选：订单不存在时记录 failed（payload 含原因）。",
+            "status": "pending",
+            "testStrategy": "运行 `mvn -pl order-service test`，断言订单状态、order_events 条数与 payload/result 字段；必要时补充针对重复 eventId 的断言（unique constraint + 数据行数）。",
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2026-05-13T12:18:45.294Z"
       },
       {
         "id": "15",
@@ -915,7 +952,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-12T13:37:29.122Z",
+      "lastModified": "2026-05-13T12:18:45.301Z",
       "taskCount": 20,
       "completedCount": 13,
       "tags": [

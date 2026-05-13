@@ -514,3 +514,13 @@ Append one entry per implementation task so future sessions can recover project 
 - Test result: mvn -pl payment-service -am test succeeded with common-core 21 tests, common-auth 26 tests, and payment-service 17 tests passing. mvn clean package -DskipTests succeeded for the full 10-module reactor.
 - Issues: H2 duplicate-key logs remain expected in repository tests. TaskMaster CLI remains slow through the Windows node executable. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
 - Next: Continue with the next TaskMaster task after running task-master next.
+
+## Task 14.1 - order_events persistence foundation
+- Date: 2026-05-13
+- Status: Done
+- Implemented: Added order_events persistence foundation in order-service. Created OrderEvent JPA mapping aligned to docs/sql/migrations/V1__initial_schema.sql, added OrderEventType with PAYMENT_SUCCESS, added OrderEventRepository with eventId lookup, and added repository tests for save/read, enum string persistence, and duplicate eventId rejection for idempotency.
+- Changed files: order-service/src/main/java/com/minimall/order/domain/OrderEvent.java; order-service/src/main/java/com/minimall/order/domain/OrderEventType.java; order-service/src/main/java/com/minimall/order/repository/OrderEventRepository.java; order-service/src/test/java/com/minimall/order/repository/OrderEventRepositoryTest.java; .taskmaster/tasks/tasks.json; docs/dev-log.md
+- Commands run: task-master next; task-master show 14; task-master expand --id=14 --num=3; task-master remove-subtask --id=14.4; task-master set-status --id=14 --status=in-progress; task-master set-status --id=14.1 --status=in-progress; mvn -pl order-service -am test; mvn clean package -DskipTests; task-master set-status --id=14.1 --status=done
+- Test result: mvn -pl order-service -am test succeeded with common-core 21 tests, common-auth 26 tests, and order-service 53 tests passing. mvn clean package -DskipTests succeeded for the full 10-module reactor.
+- Issues: task-master expand timed out but still created subtasks 14.1, 14.2, and 14.3. A duplicate 14.4 was partially created during the interrupted add-subtask command and was removed with TaskMaster. H2 duplicate-key logs in OrderEventRepositoryTest are expected from the unique-constraint assertion. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
+- Next: Task 14.2 - implement PaymentSuccessEvent consumer and PENDING_PAYMENT to PAID transition.
