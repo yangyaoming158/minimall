@@ -45,12 +45,8 @@ public class PaymentSuccessEventConsumer {
     }
 
     @RabbitListener(queues = PaymentEventNames.ORDER_PAYMENT_SUCCESS_QUEUE)
-    public void handle(PaymentSuccessEvent event) {
-        handlePaymentSuccess(event);
-    }
-
     @Transactional
-    public void handlePaymentSuccess(PaymentSuccessEvent event) {
+    public void handle(PaymentSuccessEvent event) {
         if (orderEventRepository.existsByEventId(event.getEventId())) {
             log.info("Duplicate payment success event ignored: eventId={}", event.getEventId());
             return;

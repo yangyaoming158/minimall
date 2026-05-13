@@ -71,7 +71,7 @@ class PaymentSuccessEventConsumerTest {
         Order order = saveOrder("ORD-PAY-1001", OrderStatus.PENDING_PAYMENT);
         Instant paidAt = Instant.parse("2026-05-13T10:15:30Z");
 
-        consumer.handlePaymentSuccess(newEvent("event-pay-1001", order.getOrderNo(), paidAt));
+        consumer.handle(newEvent("event-pay-1001", order.getOrderNo(), paidAt));
 
         assertThat(orderRepository.findByOrderNo(order.getOrderNo()))
                 .isPresent()
@@ -95,7 +95,7 @@ class PaymentSuccessEventConsumerTest {
     void cancelledOrderIsIgnoredAndStateDoesNotChange() {
         Order order = saveOrder("ORD-PAY-1002", OrderStatus.CANCELLED);
 
-        consumer.handlePaymentSuccess(newEvent("event-pay-1002", order.getOrderNo(), Instant.now()));
+        consumer.handle(newEvent("event-pay-1002", order.getOrderNo(), Instant.now()));
 
         assertThat(orderRepository.findByOrderNo(order.getOrderNo()))
                 .isPresent()
@@ -118,8 +118,8 @@ class PaymentSuccessEventConsumerTest {
         Order order = saveOrder("ORD-PAY-1003", OrderStatus.PENDING_PAYMENT);
         PaymentSuccessEvent event = newEvent("event-pay-1003", order.getOrderNo(), Instant.now());
 
-        consumer.handlePaymentSuccess(event);
-        consumer.handlePaymentSuccess(event);
+        consumer.handle(event);
+        consumer.handle(event);
 
         assertThat(orderEventRepository.findAll()).hasSize(1);
         OrderEvent recorded = orderEventRepository.findByEventId("event-pay-1003").orElseThrow();
@@ -138,7 +138,7 @@ class PaymentSuccessEventConsumerTest {
                 "ORD-PAY-MISSING",
                 Instant.parse("2026-05-13T11:15:30Z"));
 
-        consumer.handlePaymentSuccess(event);
+        consumer.handle(event);
 
         assertThat(orderRepository.findByOrderNo(event.getOrderNo())).isEmpty();
         assertThat(orderEventRepository.findAll()).hasSize(1);

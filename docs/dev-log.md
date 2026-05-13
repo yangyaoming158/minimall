@@ -544,3 +544,13 @@ Append one entry per implementation task so future sessions can recover project 
 - Test result: mvn -pl order-service -am test succeeded with common-core 21 tests, common-auth 26 tests, and order-service 57 tests passing. mvn clean package -DskipTests succeeded for the full 10-module reactor.
 - Issues: H2 duplicate-key logs in OrderEventRepositoryTest are expected from the unique-constraint assertion. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
 - Next: Continue with the next TaskMaster task after running task-master next.
+
+## Review fix - Task 14 payment success consumer transaction boundary
+- Date: 2026-05-13
+- Status: Done
+- Implemented: Addressed review feedback that @Transactional on handlePaymentSuccess was bypassed by the Rabbit listener self-invocation path. Moved the transaction boundary onto the @RabbitListener handle method and removed the internal delegate. Updated PaymentSuccessEventConsumerTest to call handle so test coverage matches the production listener entry point.
+- Changed files: order-service/src/main/java/com/minimall/order/messaging/PaymentSuccessEventConsumer.java; order-service/src/test/java/com/minimall/order/messaging/PaymentSuccessEventConsumerTest.java; docs/dev-log.md
+- Commands run: grep handlePaymentSuccess references; git diff --check; mvn -pl order-service -am test; mvn clean package -DskipTests
+- Test result: mvn -pl order-service -am test succeeded with common-core 21 tests, common-auth 26 tests, and order-service 57 tests passing. mvn clean package -DskipTests succeeded for the full 10-module reactor.
+- Issues: The server-timezone concern was reviewed but not changed in this fix because existing order timestamps use LocalDateTime with system-default time semantics. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
+- Next: Continue with the next TaskMaster task after running task-master next.
