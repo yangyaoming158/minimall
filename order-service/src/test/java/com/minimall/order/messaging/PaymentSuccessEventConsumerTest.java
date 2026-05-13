@@ -2,10 +2,14 @@ package com.minimall.order.messaging;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.minimall.common.core.event.payment.PaymentSuccessEvent;
 import com.minimall.order.client.inventory.InventoryClient;
 import com.minimall.order.client.product.ProductValidationService;
 import com.minimall.order.domain.Order;
+import com.minimall.order.domain.OrderEvent;
+import com.minimall.order.domain.OrderEventType;
 import com.minimall.order.domain.OrderStateMachine;
 import com.minimall.order.domain.OrderStatus;
 import com.minimall.order.repository.OrderEventRepository;
@@ -42,6 +46,9 @@ class PaymentSuccessEventConsumerTest {
     @Autowired
     private OrderEventRepository orderEventRepository;
 
+    @Autowired
+    private ObjectMapper objectMapper;
+
     @MockBean
     private ProductValidationService productValidationService;
 
@@ -73,15 +80,15 @@ class PaymentSuccessEventConsumerTest {
                     assertThat(updated.getStatus()).isEqualTo(OrderStatus.PAID);
                     assertThat(updated.getPaidAt()).isNotNull();
                 });
-        assertThat(orderEventRepository.findByEventId("event-pay-1001"))
-                .isPresent()
-                .get()
-                .satisfies(event -> {
-                    assertThat(event.getFromStatus()).isEqualTo(OrderStatus.PENDING_PAYMENT);
-                    assertThat(event.getToStatus()).isEqualTo(OrderStatus.PAID);
-                    assertThat(event.getPayload()).contains("\"handleResult\":\"processed\"");
-                    assertThat(event.getPayload()).contains("\"paymentNo\":\"PAY-event-pay-1001\"");
-                });
+        assertThat(orderEventRepository.findAll()).hasSize(1);
+        OrderEvent recorded = orderEventRepository.findByEventId("event-pay-1001").orElseThrow();
+        JsonNode payload = payload(recorded);
+        assertThat(recorded.getOrderNo()).isEqualTo(order.getOrderNo());
+        assertThat(recorded.getEventType()).isEqualTo(OrderEventType.PAYMENT_SUCCESS);
+        assertThat(recorded.getFromStatus()).isEqualTo(OrderStatus.PENDING_PAYMENT);
+        assertThat(recorded.getToStatus()).isEqualTo(OrderStatus.PAID);
+        assertThat(payload.path("handleResult").asText()).isEqualTo("processed");
+        assertThat(payload.path("paymentNo").asText()).isEqualTo("PAY-event-pay-1001");
     }
 
     @Test
@@ -95,15 +102,15 @@ class PaymentSuccessEventConsumerTest {
                 .get()
                 .extracting(Order::getStatus)
                 .isEqualTo(OrderStatus.CANCELLED);
-        assertThat(orderEventRepository.findByEventId("event-pay-1002"))
-                .isPresent()
-                .get()
-                .satisfies(event -> {
-                    assertThat(event.getFromStatus()).isEqualTo(OrderStatus.CANCELLED);
-                    assertThat(event.getToStatus()).isEqualTo(OrderStatus.CANCELLED);
-                    assertThat(event.getPayload()).contains("\"handleResult\":\"ignored\"");
-                    assertThat(event.getPayload()).contains("Order status is CANCELLED");
-                });
+        assertThat(orderEventRepository.findAll()).hasSize(1);
+        OrderEvent recorded = orderEventRepository.findByEventId("event-pay-1002").orElseThrow();
+        JsonNode payload = payload(recorded);
+        assertThat(recorded.getOrderNo()).isEqualTo(order.getOrderNo());
+        assertThat(recorded.getEventType()).isEqualTo(OrderEventType.PAYMENT_SUCCESS);
+        assertThat(recorded.getFromStatus()).isEqualTo(OrderStatus.CANCELLED);
+        assertThat(recorded.getToStatus()).isEqualTo(OrderStatus.CANCELLED);
+        assertThat(payload.path("handleResult").asText()).isEqualTo("ignored");
+        assertThat(payload.path("ignoredReason").asText()).isEqualTo("Order status is CANCELLED");
     }
 
     @Test
@@ -115,11 +122,34 @@ class PaymentSuccessEventConsumerTest {
         consumer.handlePaymentSuccess(event);
 
         assertThat(orderEventRepository.findAll()).hasSize(1);
+        OrderEvent recorded = orderEventRepository.findByEventId("event-pay-1003").orElseThrow();
+        assertThat(payload(recorded).path("handleResult").asText()).isEqualTo("processed");
         assertThat(orderRepository.findByOrderNo(order.getOrderNo()))
                 .isPresent()
                 .get()
                 .extracting(Order::getStatus)
                 .isEqualTo(OrderStatus.PAID);
+    }
+
+    @Test
+    void missingOrderRecordsFailedEvent() {
+        PaymentSuccessEvent event = newEvent(
+                "event-pay-missing",
+                "ORD-PAY-MISSING",
+                Instant.parse("2026-05-13T11:15:30Z"));
+
+        consumer.handlePaymentSuccess(event);
+
+        assertThat(orderRepository.findByOrderNo(event.getOrderNo())).isEmpty();
+        assertThat(orderEventRepository.findAll()).hasSize(1);
+        OrderEvent recorded = orderEventRepository.findByEventId(event.getEventId()).orElseThrow();
+        JsonNode payload = payload(recorded);
+        assertThat(recorded.getOrderNo()).isEqualTo(event.getOrderNo());
+        assertThat(recorded.getEventType()).isEqualTo(OrderEventType.PAYMENT_SUCCESS);
+        assertThat(recorded.getFromStatus()).isNull();
+        assertThat(recorded.getToStatus()).isNull();
+        assertThat(payload.path("handleResult").asText()).isEqualTo("failed");
+        assertThat(payload.path("errorMessage").asText()).isEqualTo("Order not found");
     }
 
     private Order saveOrder(String orderNo, OrderStatus status) {
@@ -149,5 +179,13 @@ class PaymentSuccessEventConsumerTest {
                 "PAY-" + eventId,
                 new BigDecimal("19.90"),
                 paidAt);
+    }
+
+    private JsonNode payload(OrderEvent event) {
+        try {
+            return objectMapper.readTree(event.getPayload());
+        } catch (Exception exception) {
+            throw new AssertionError("order event payload should be valid JSON", exception);
+        }
     }
 }

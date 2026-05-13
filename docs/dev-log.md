@@ -534,3 +534,13 @@ Append one entry per implementation task so future sessions can recover project 
 - Test result: mvn -pl order-service -am test succeeded with common-core 21 tests, common-auth 26 tests, and order-service 56 tests passing. mvn clean package -DskipTests succeeded for the full 10-module reactor.
 - Issues: H2 duplicate-key logs in OrderEventRepositoryTest are expected from the unique-constraint assertion. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
 - Next: Continue with the next TaskMaster task after running task-master next.
+
+## Task 14.3 - Payment success consumer acceptance tests
+- Date: 2026-05-13
+- Status: Done
+- Implemented: Strengthened PaymentSuccessEventConsumerTest to assert persisted order_events results rather than only payload substrings. The tests now verify eventType, orderNo, from/to status, one-row idempotency, parsed payload handleResult values for processed and ignored events, and a missing-order failed event with an errorMessage payload. TaskMaster now marks Task 14.3 done and parent Task 14 done.
+- Changed files: order-service/src/test/java/com/minimall/order/messaging/PaymentSuccessEventConsumerTest.java; .taskmaster/tasks/tasks.json; docs/dev-log.md
+- Commands run: task-master next; task-master show 14.3; task-master set-status --id=14.3 --status=in-progress; git diff --check; mvn -pl order-service -am test; mvn clean package -DskipTests; task-master set-status --id=14.3 --status=done; task-master set-status --id=14 --status=done
+- Test result: mvn -pl order-service -am test succeeded with common-core 21 tests, common-auth 26 tests, and order-service 57 tests passing. mvn clean package -DskipTests succeeded for the full 10-module reactor.
+- Issues: H2 duplicate-key logs in OrderEventRepositoryTest are expected from the unique-constraint assertion. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
+- Next: Continue with the next TaskMaster task after running task-master next.

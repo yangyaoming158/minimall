@@ -781,7 +781,7 @@
           "12",
           "13"
         ],
-        "status": "in-progress",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -815,12 +815,13 @@
               2
             ],
             "details": "新增 `order-service/src/test/java/com/minimall/order/messaging/PaymentSuccessEventConsumerTest.java`（建议 @SpringBootTest + H2，复用现有测试风格，必要时关闭 listener auto-startup）或拆出可单测的 handler/service 并做纯单测。用例至少覆盖：1）创建一笔 `PENDING_PAYMENT` 订单，构造 `PaymentSuccessEvent(eventId=E1, orderNo=...)` 调用处理逻辑后订单状态为 `PAID` 且写入一条 order_events（from=PENDING_PAYMENT,to=PAID,eventType=PAYMENT_SUCCESS）；2）再次用同一 eventId=E1 调用，订单不重复更新且 order_events 条数不增加；3）创建一笔 `CANCELLED` 订单收到事件，状态保持 CANCELLED，order_events 写入 ignored（payload 含原因）；4）可选：订单不存在时记录 failed（payload 含原因）。",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "运行 `mvn -pl order-service test`，断言订单状态、order_events 条数与 payload/result 字段；必要时补充针对重复 eventId 的断言（unique constraint + 数据行数）。",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-13T13:12:15.930Z"
           }
         ],
-        "updatedAt": "2026-05-13T12:56:22.246Z"
+        "updatedAt": "2026-05-13T13:12:15.930Z"
       },
       {
         "id": "15",
@@ -953,9 +954,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-13T12:56:22.250Z",
+      "lastModified": "2026-05-13T13:12:15.933Z",
       "taskCount": 20,
-      "completedCount": 13,
+      "completedCount": 14,
       "tags": [
         "master"
       ]
