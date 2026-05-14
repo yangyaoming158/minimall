@@ -836,8 +836,46 @@
           "4",
           "12"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "in-progress",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "补齐 notification-service 的依赖、配置与 Rabbit JSON 转换器",
+            "description": "为 notification-service 增加消费 RabbitMQ 与写入 MySQL 所需的基础依赖与配置，确保服务可启动、可连接 RabbitMQ/数据库并能反序列化 PaymentSuccessEvent。",
+            "dependencies": [],
+            "details": "参考 `order-service/pom.xml` 增加依赖：`spring-boot-starter-amqp`、`spring-boot-starter-data-jpa`、`mysql-connector-j`（runtime）、`h2`（test）、`spring-boot-starter-test`（test），并按需补齐 surefire 插件版本对齐。参考 `order-service/src/main/resources/application.yml`，在 `notification-service/src/main/resources/application.yml` 增加 `spring.datasource.*`、`spring.jpa.*`、`spring.rabbitmq.*` 的环境变量配置（禁止硬编码密码/主机/端口，沿用 `${SPRING_DATASOURCE_PASSWORD:change-me}` 等形式）。新增 `notification-service/src/main/java/com/minimall/notification/config/NotificationRabbitConfig.java`，提供 `Jackson2JsonMessageConverter`（模式参考 `order-service/src/main/java/com/minimall/order/config/OrderRabbitConfig.java`），以确保 `PaymentSuccessEvent` 能被正确反序列化；并确保 `common-core` 中的 `PaymentRabbitTopologyAutoConfiguration`（已声明 `NOTIFICATION_PAYMENT_SUCCESS_QUEUE`）可随 AMQP 依赖自动生效。",
+            "status": "done",
+            "testStrategy": "运行 `mvn -pl notification-service -DskipTests clean package`，并本地启动 `notification-service` 验证不因缺少配置/Bean 报错；确认应用能加载 Rabbit 相关配置（无需真实消费消息）。",
+            "updatedAt": "2026-05-14T12:10:59.014Z",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "实现通知日志领域模型与幂等写入：notification_logs(event_id) 唯一约束",
+            "description": "在 notification-service 中落地 notification_logs 的 JPA 实体、枚举与仓储接口，确保基于 event_id 唯一约束可实现幂等写入通知处理日志。",
+            "dependencies": [
+              1
+            ],
+            "details": "新增 `NotificationLog` JPA 实体映射 `notification_logs`，字段覆盖至少：`eventId`（唯一约束，长度 64）、`notificationType`（枚举，映射 `notification_type`）、`recipient`（必填，映射 `recipient`）、`status`（枚举，映射 `status`）、`payload`（字符串保存 JSON，映射 `payload`）、`errorMessage`、`sentAt`、`createdAt/updatedAt`（用 `@PrePersist/@PreUpdate` 维护，风格参考 `payment-service/src/main/java/com/minimall/payment/domain/Payment.java`）。新增 `NotificationLogStatus` 枚举（至少包含与表默认值一致的 `PENDING`，可扩展 `SENT/FAILED`），新增 `NotificationType` 枚举（至少包含 `PAYMENT_SUCCESS`）。新增 `NotificationLogRepository extends JpaRepository`，提供 `findByEventId`、`existsByEventId` 方法（模式参考 `order-service/src/main/java/com/minimall/order/repository/OrderEventRepository.java`）。确保实体层面声明 `@UniqueConstraint(name = \"uk_notification_logs_event_id\", columnNames = \"event_id\")` 与必要索引（参考 `order-service/src/main/java/com/minimall/order/domain/OrderEvent.java` 的写法）。",
+            "status": "pending",
+            "testStrategy": "新增一个基于 H2 的 `@SpringBootTest`（`spring.jpa.hibernate.ddl-auto=create-drop`）验证实体可建表并通过 `NotificationLogRepository.saveAndFlush()` 正常插入；再验证相同 `eventId` 的二次插入触发唯一约束（或在 repository 层用 existsByEventId 提前拦截）。",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "实现 PaymentSuccessEvent 消费者：写入通知日志并保证重复 eventId 忽略",
+            "description": "实现 notification-service 消费 PaymentSuccessEvent 的 RabbitMQ 消费者，收到事件后写入 notification_logs，重复 eventId 直接忽略，并确保异常不会导致服务崩溃或无限重试。",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "新增消费者类，例如 `notification-service/src/main/java/com/minimall/notification/messaging/PaymentSuccessEventConsumer.java`，使用 `@RabbitListener(queues = PaymentEventNames.NOTIFICATION_PAYMENT_SUCCESS_QUEUE)` 接收 `PaymentSuccessEvent`（常量位于 `common-core/src/main/java/com/minimall/common/core/event/payment/PaymentEventNames.java`）。在 `@Transactional` 内按幂等流程处理：1）优先 `notificationLogRepository.existsByEventId(event.getEventId())` 命中则记录日志并直接返回；2）构造 `NotificationLog(eventId=..., notificationType=PAYMENT_SUCCESS, recipient=...)` 并 `saveAndFlush`，若捕获 `DataIntegrityViolationException`（唯一约束并发冲突）也视为重复消息直接返回（模式参考 `order-service/src/main/java/com/minimall/order/messaging/PaymentSuccessEventConsumer.java`）；3）payload 建议记录 event 的关键字段（eventId/orderNo/paymentNo/amount/paidAt/version）并序列化为 JSON 字符串，序列化失败时使用降级 payload，避免抛出异常；4）整体处理用 try/catch 包裹，出现非幂等相关异常时更新日志为 FAILED（或至少记录 error_message）并吞掉异常，保证消息可 ack、服务不中断（满足“异常消息不会导致服务崩溃”验收点）。为消费者新增测试：仿照 `order-service/src/test/java/com/minimall/order/messaging/PaymentSuccessEventConsumerTest.java` 的风格，在 `notification-service` 增加 `@SpringBootTest + H2` 测试类，设置 `spring.rabbitmq.listener.simple.auto-startup=false`，通过直接调用 `consumer.handle(event)` 验证：首次写入 1 条通知日志；重复 eventId 不新增；（可选）mock/spy ObjectMapper 让序列化抛异常时，consumer 不抛出且仍能落库/记录错误信息。",
+            "status": "pending",
+            "testStrategy": "运行 `mvn -pl notification-service test`；（集成验证可选）在本地 RabbitMQ 启动后运行服务并向 `minimall.payment.exchange` 发送 `payment.success` 消息，验证 `notification_logs` 仅插入一条且重复 eventId 不重复写入。",
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2026-05-14T12:10:59.014Z"
       },
       {
         "id": "16",
@@ -954,7 +992,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-13T13:12:15.933Z",
+      "lastModified": "2026-05-14T12:10:59.018Z",
       "taskCount": 20,
       "completedCount": 14,
       "tags": [

@@ -564,3 +564,13 @@ Append one entry per implementation task so future sessions can recover project 
 - Test result: Documentation-only rule change; no Maven build required.
 - Issues: This update directly addresses the repeated command-construction failures observed while completing Task 14.
 - Next: Future MiniMall work should follow the stable command templates in AGENTS.md before running TaskMaster, Maven, grep, git, or file-edit commands.
+
+## Task 15.1 - notification-service dependencies configuration and Rabbit JSON converter
+- Date: 2026-05-14
+- Status: Done
+- Implemented: Added notification-service JPA and AMQP foundation dependencies, MySQL runtime and H2/test support, Surefire 3.2.5, environment-variable driven datasource/JPA/RabbitMQ configuration, a Jackson2JsonMessageConverter Rabbit config, and a Spring Boot context test that verifies the JSON converter plus shared payment Rabbit topology load without starting a real listener.
+- Changed files: notification-service/pom.xml; notification-service/src/main/resources/application.yml; notification-service/src/main/java/com/minimall/notification/config/NotificationRabbitConfig.java; notification-service/src/test/java/com/minimall/notification/NotificationServiceApplicationTest.java; .taskmaster/tasks/tasks.json; docs/dev-log.md
+- Commands run: task-master show 15; task-master set-status --id=15 --status=in-progress; task-master expand --id=15 --num=3; task-master add-subtask/remove-subtask cleanup; task-master show 15.1; task-master set-status --id=15.1 --status=in-progress; mvn -pl notification-service -am test; git diff --check; mvn clean package -DskipTests; task-master set-status --id=15.1 --status=done
+- Test result: mvn -pl notification-service -am test succeeded with common-core 21 tests, common-auth 26 tests, and notification-service 1 context test passing. git diff --check succeeded. mvn clean package -DskipTests succeeded for the full 10-module reactor.
+- Issues: TaskMaster expand timed out but wrote subtasks 15.1-15.3. An accidental duplicate 15.4 was removed with TaskMaster before implementation. WSL still prints a NAT/localhost warning after commands, but commands completed successfully.
+- Next: Task 15.2 - implement notification_logs domain model and idempotent repository foundation.
