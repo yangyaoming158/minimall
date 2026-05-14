@@ -19,6 +19,7 @@ During implementation:
 - Do not introduce components outside the current task.
 - Do not manually edit `.taskmaster/tasks/tasks.json` unless TaskMaster CLI/MCP is unavailable.
 - Use TaskMaster commands whenever possible.
+- If global task-master is unavailable, use the project-local CLI: node node_modules/task-master-ai/dist/task-master.js COMMAND, replacing COMMAND with next, show 15.2, set-status --id=15.2 --status=in-progress, etc.
 
 After implementation:
 1. Run the task's testStrategy.
