@@ -1,6 +1,44 @@
 spring:
   application:
     name: api-gateway
+  autoconfigure:
+    exclude:
+      - com.minimall.common.auth.config.CommonAuthAutoConfiguration
+  cloud:
+    discovery:
+      enabled: false
+    gateway:
+      routes:
+        - id: user-service
+          uri: ${USER_SERVICE_BASE_URL:http://localhost:8101}
+          predicates:
+            - Path=/api/user/**
+          filters:
+            - RewritePath=/api/user/(?<segment>.*), /api/$\{segment}
+        - id: product-service
+          uri: ${PRODUCT_SERVICE_BASE_URL:http://localhost:8102}
+          predicates:
+            - Path=/api/product/**
+          filters:
+            - RewritePath=/api/product/(?<segment>.*), /api/$\{segment}
+        - id: inventory-service
+          uri: ${INVENTORY_SERVICE_BASE_URL:http://localhost:8103}
+          predicates:
+            - Path=/api/inventory/**
+          filters:
+            - RewritePath=/api/inventory/(?<segment>.*), /api/$\{segment}
+        - id: order-service
+          uri: ${ORDER_SERVICE_BASE_URL:http://localhost:8104}
+          predicates:
+            - Path=/api/order/**
+          filters:
+            - RewritePath=/api/order/(?<segment>.*), /api/$\{segment}
+        - id: payment-service
+          uri: ${PAYMENT_SERVICE_BASE_URL:http://localhost:8105}
+          predicates:
+            - Path=/api/payment/**
+          filters:
+            - RewritePath=/api/payment/(?<segment>.*), /api/$\{segment}
 
 server:
   port: 8080

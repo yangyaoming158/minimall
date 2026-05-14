@@ -892,8 +892,75 @@
           "5",
           "6"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "in-progress",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Gateway routing foundation and service URL configuration",
+            "description": "Add api-gateway route configuration and environment-driven downstream service URLs without authentication logic yet.",
+            "details": "Update api-gateway dependencies/config as needed for tests. Configure routes for user, product, inventory, order, and payment services under frontend-facing /api/{service}/** prefixes using RewritePath or equivalent so downstream controllers keep their existing /api/** paths. Use environment-variable service URLs and do not hardcode hosts or ports beyond local defaults. Add focused gateway route tests proving route predicates and rewrite behavior for the configured services.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 16,
+            "updatedAt": "2026-05-14T13:39:01.662Z",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Gateway JWT authentication and trusted user header propagation",
+            "description": "Validate Authorization Bearer JWT for protected gateway APIs and inject trusted user headers for downstream services.",
+            "details": "Use common-auth JwtUtils and AuthHeaders. Public login/register paths and OPTIONS preflight must bypass JWT. Remove any incoming X-User-Id/X-Username headers from browser requests before forwarding, and inject only values parsed from a valid JWT. Return ApiResponse-shaped 401/403 responses for auth failures. Add WebTestClient coverage for missing/invalid/valid JWT and spoofed header stripping.",
+            "status": "pending",
+            "dependencies": [
+              1
+            ],
+            "parentTaskId": 16,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Gateway CORS and ApiResponse error handling",
+            "description": "Add configurable browser CORS support and gateway-owned ApiResponse error serialization.",
+            "details": "Configure CORS for /api/** with configurable allowed origins/origin patterns, methods, and headers. Ensure OPTIONS preflight is not blocked by authentication or rate limiting. Add centralized gateway response helpers for 401/403/429 ApiResponse bodies with stable codes/messages. Add tests for preflight behavior and error response shape.",
+            "status": "pending",
+            "dependencies": [
+              1,
+              2
+            ],
+            "parentTaskId": 16,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Gateway request logging and Redis-backed rate limiting",
+            "description": "Add gateway request logging and configurable Redis-backed request rate limiting.",
+            "details": "Add a lightweight global request log filter that records method/path/status/duration without sensitive headers. Add Redis-backed rate limiting by IP or authenticated user key with configurable replenish/burst values. Ensure 429 responses use ApiResponse structure and preflight requests are not incorrectly limited. Add tests for rate-limit configuration and response shape.",
+            "status": "pending",
+            "dependencies": [
+              1,
+              2,
+              3
+            ],
+            "parentTaskId": 16,
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Gateway integration regression verification",
+            "description": "Add final gateway regression tests and documentation notes after route/auth/CORS/rate-limit pieces are complete.",
+            "details": "Verify the browser-facing /api/{service}/** route contract across user/product/inventory/order/payment, public auth bypass, protected auth, trusted header propagation, CORS preflight, request logging presence, and 429 ApiResponse behavior. Run api-gateway focused tests and full reactor package. Mark parent Task 16 done only when all subtasks pass.",
+            "status": "pending",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "parentTaskId": 16,
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2026-05-14T13:39:01.662Z"
       },
       {
         "id": "17",
@@ -994,7 +1061,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-14T13:17:32.936Z",
+      "lastModified": "2026-05-14T13:39:01.666Z",
       "taskCount": 20,
       "completedCount": 15,
       "tags": [
