@@ -836,7 +836,7 @@
           "4",
           "12"
         ],
-        "status": "in-progress",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -871,12 +871,13 @@
               2
             ],
             "details": "新增消费者类，例如 `notification-service/src/main/java/com/minimall/notification/messaging/PaymentSuccessEventConsumer.java`，使用 `@RabbitListener(queues = PaymentEventNames.NOTIFICATION_PAYMENT_SUCCESS_QUEUE)` 接收 `PaymentSuccessEvent`（常量位于 `common-core/src/main/java/com/minimall/common/core/event/payment/PaymentEventNames.java`）。在 `@Transactional` 内按幂等流程处理：1）优先 `notificationLogRepository.existsByEventId(event.getEventId())` 命中则记录日志并直接返回；2）构造 `NotificationLog(eventId=..., notificationType=PAYMENT_SUCCESS, recipient=...)` 并 `saveAndFlush`，若捕获 `DataIntegrityViolationException`（唯一约束并发冲突）也视为重复消息直接返回（模式参考 `order-service/src/main/java/com/minimall/order/messaging/PaymentSuccessEventConsumer.java`）；3）payload 建议记录 event 的关键字段（eventId/orderNo/paymentNo/amount/paidAt/version）并序列化为 JSON 字符串，序列化失败时使用降级 payload，避免抛出异常；4）整体处理用 try/catch 包裹，出现非幂等相关异常时更新日志为 FAILED（或至少记录 error_message）并吞掉异常，保证消息可 ack、服务不中断（满足“异常消息不会导致服务崩溃”验收点）。为消费者新增测试：仿照 `order-service/src/test/java/com/minimall/order/messaging/PaymentSuccessEventConsumerTest.java` 的风格，在 `notification-service` 增加 `@SpringBootTest + H2` 测试类，设置 `spring.rabbitmq.listener.simple.auto-startup=false`，通过直接调用 `consumer.handle(event)` 验证：首次写入 1 条通知日志；重复 eventId 不新增；（可选）mock/spy ObjectMapper 让序列化抛异常时，consumer 不抛出且仍能落库/记录错误信息。",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "运行 `mvn -pl notification-service test`；（集成验证可选）在本地 RabbitMQ 启动后运行服务并向 `minimall.payment.exchange` 发送 `payment.success` 消息，验证 `notification_logs` 仅插入一条且重复 eventId 不重复写入。",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-14T13:17:32.936Z"
           }
         ],
-        "updatedAt": "2026-05-14T13:11:56.488Z"
+        "updatedAt": "2026-05-14T13:17:32.936Z"
       },
       {
         "id": "16",
@@ -993,9 +994,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-14T13:11:56.488Z",
+      "lastModified": "2026-05-14T13:17:32.936Z",
       "taskCount": 20,
-      "completedCount": 14,
+      "completedCount": 15,
       "tags": [
         "master"
       ]
