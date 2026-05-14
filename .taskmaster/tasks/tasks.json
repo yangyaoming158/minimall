@@ -857,9 +857,10 @@
               1
             ],
             "details": "新增 `NotificationLog` JPA 实体映射 `notification_logs`，字段覆盖至少：`eventId`（唯一约束，长度 64）、`notificationType`（枚举，映射 `notification_type`）、`recipient`（必填，映射 `recipient`）、`status`（枚举，映射 `status`）、`payload`（字符串保存 JSON，映射 `payload`）、`errorMessage`、`sentAt`、`createdAt/updatedAt`（用 `@PrePersist/@PreUpdate` 维护，风格参考 `payment-service/src/main/java/com/minimall/payment/domain/Payment.java`）。新增 `NotificationLogStatus` 枚举（至少包含与表默认值一致的 `PENDING`，可扩展 `SENT/FAILED`），新增 `NotificationType` 枚举（至少包含 `PAYMENT_SUCCESS`）。新增 `NotificationLogRepository extends JpaRepository`，提供 `findByEventId`、`existsByEventId` 方法（模式参考 `order-service/src/main/java/com/minimall/order/repository/OrderEventRepository.java`）。确保实体层面声明 `@UniqueConstraint(name = \"uk_notification_logs_event_id\", columnNames = \"event_id\")` 与必要索引（参考 `order-service/src/main/java/com/minimall/order/domain/OrderEvent.java` 的写法）。",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "新增一个基于 H2 的 `@SpringBootTest`（`spring.jpa.hibernate.ddl-auto=create-drop`）验证实体可建表并通过 `NotificationLogRepository.saveAndFlush()` 正常插入；再验证相同 `eventId` 的二次插入触发唯一约束（或在 repository 层用 existsByEventId 提前拦截）。",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-14T13:11:56.488Z"
           },
           {
             "id": 3,
@@ -875,7 +876,7 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-05-14T12:10:59.014Z"
+        "updatedAt": "2026-05-14T13:11:56.488Z"
       },
       {
         "id": "16",
@@ -992,7 +993,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-14T12:10:59.018Z",
+      "lastModified": "2026-05-14T13:11:56.488Z",
       "taskCount": 20,
       "completedCount": 14,
       "tags": [
