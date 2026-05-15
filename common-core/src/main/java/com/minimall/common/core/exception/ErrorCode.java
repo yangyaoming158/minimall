@@ -7,6 +7,7 @@ public enum ErrorCode {
     VALIDATION_ERROR("40001", "Validation failed"),
     UNAUTHORIZED("40100", "Unauthorized"),
     FORBIDDEN("40300", "Forbidden"),
+    TOO_MANY_REQUESTS("42900", "Too many requests"),
     NOT_FOUND("40400", "Resource not found"),
     CONFLICT("40900", "Conflict"),
     ORDER_CANCELLED("40901", "Order has been cancelled"),

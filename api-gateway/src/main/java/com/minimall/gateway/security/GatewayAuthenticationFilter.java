@@ -1,23 +1,18 @@
 package com.minimall.gateway.security;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.minimall.common.auth.constants.AuthHeaders;
 import com.minimall.common.auth.context.UserContext;
 import com.minimall.common.auth.jwt.JwtUtils;
 import com.minimall.common.core.exception.BusinessException;
 import com.minimall.common.core.exception.ErrorCode;
-import com.minimall.common.core.response.ApiResponse;
+import com.minimall.gateway.web.GatewayErrorResponseWriter;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
-import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.server.reactive.ServerHttpRequest;
-import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
@@ -30,11 +25,11 @@ public class GatewayAuthenticationFilter implements GlobalFilter, Ordered {
     private static final String USER_REGISTER_PATH = "/api/user/users/register";
 
     private final JwtUtils jwtUtils;
-    private final ObjectMapper objectMapper;
+    private final GatewayErrorResponseWriter errorResponseWriter;
 
-    public GatewayAuthenticationFilter(JwtUtils jwtUtils, ObjectMapper objectMapper) {
+    public GatewayAuthenticationFilter(JwtUtils jwtUtils, GatewayErrorResponseWriter errorResponseWriter) {
         this.jwtUtils = jwtUtils;
-        this.objectMapper = objectMapper;
+        this.errorResponseWriter = errorResponseWriter;
     }
 
     @Override
@@ -48,11 +43,10 @@ public class GatewayAuthenticationFilter implements GlobalFilter, Ordered {
 
         String authorization = sanitizedRequest.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
         if (authorization == null || authorization.isBlank()) {
-            return writeError(sanitizedExchange, HttpStatus.UNAUTHORIZED, ErrorCode.UNAUTHORIZED, "Missing token");
+            return errorResponseWriter.unauthorized(sanitizedExchange, "Missing token");
         }
         if (!authorization.trim().regionMatches(true, 0, BEARER_PREFIX, 0, BEARER_PREFIX.length())) {
-            return writeError(sanitizedExchange, HttpStatus.UNAUTHORIZED, ErrorCode.UNAUTHORIZED,
-                    "Missing bearer token");
+            return errorResponseWriter.unauthorized(sanitizedExchange, "Missing bearer token");
         }
 
         try {
@@ -65,8 +59,8 @@ public class GatewayAuthenticationFilter implements GlobalFilter, Ordered {
                     .build();
             return chain.filter(sanitizedExchange.mutate().request(authenticatedRequest).build());
         } catch (BusinessException exception) {
-            return writeError(sanitizedExchange, statusFor(exception.getErrorCode()), exception.getErrorCode(),
-                    exception.getMessage());
+            return errorResponseWriter.write(sanitizedExchange, statusFor(exception.getErrorCode()),
+                    exception.getErrorCode(), exception.getMessage());
         }
     }
 
@@ -102,25 +96,5 @@ public class GatewayAuthenticationFilter implements GlobalFilter, Ordered {
             return HttpStatus.FORBIDDEN;
         }
         return HttpStatus.UNAUTHORIZED;
-    }
-
-    private Mono<Void> writeError(
-            ServerWebExchange exchange,
-            HttpStatus status,
-            ErrorCode errorCode,
-            String message) {
-        ServerHttpResponse response = exchange.getResponse();
-        response.setStatusCode(status);
-        response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
-
-        byte[] bytes;
-        try {
-            bytes = objectMapper.writeValueAsBytes(ApiResponse.failure(errorCode, message));
-        } catch (JsonProcessingException exception) {
-            return Mono.error(exception);
-        }
-
-        DataBuffer buffer = response.bufferFactory().wrap(bytes);
-        return response.writeWith(Mono.just(buffer));
     }
 }

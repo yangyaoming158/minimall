@@ -47,6 +47,12 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void tooManyRequestsUsesStableCodeAndHttpStatus() {
+        assertBusinessException(ErrorCode.TOO_MANY_REQUESTS, "rate limit exceeded", "42900",
+                HttpStatus.TOO_MANY_REQUESTS);
+    }
+
+    @Test
     void methodArgumentNotValidExceptionMapsFieldErrors() throws NoSuchMethodException {
         BeanPropertyBindingResult bindingResult = new BeanPropertyBindingResult(new SampleRequest(), "sampleRequest");
         bindingResult.addError(new FieldError("sampleRequest", "quantity", "must be greater than 0"));

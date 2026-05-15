@@ -1,5 +1,7 @@
 package com.minimall.gateway;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.minimall.common.auth.constants.AuthHeaders;
 import com.minimall.common.auth.jwt.JwtUtils;
 import com.minimall.common.core.exception.ErrorCode;
@@ -100,6 +102,24 @@ class GatewayAuthenticationFilterTest {
                 .header(AuthHeaders.USERNAME, "mallory")
                 .exchange()
                 .expectStatus().isOk();
+    }
+
+    @Test
+    void apiPreflightRequestReturnsCorsHeadersWithoutJwt() {
+        webTestClient.options()
+                .uri("/api/order/orders/my")
+                .header(HttpHeaders.ORIGIN, "http://localhost:5173")
+                .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "GET")
+                .header(HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS, "Authorization, Content-Type")
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().valueEquals(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "http://localhost:5173")
+                .expectHeader().value(HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS,
+                        value -> assertThat(value).contains("GET"))
+                .expectHeader().value(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS,
+                        value -> assertThat(value).contains("Authorization"))
+                .expectHeader().value(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS,
+                        value -> assertThat(value).contains("Content-Type"));
     }
 
     @TestConfiguration

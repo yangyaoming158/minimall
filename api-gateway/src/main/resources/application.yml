@@ -45,6 +45,13 @@ minimall:
     jwt:
       secret: ${MINIMALL_AUTH_JWT_SECRET}
       expire-seconds: ${MINIMALL_AUTH_JWT_EXPIRE_SECONDS:3600}
+  gateway:
+    cors:
+      allowed-origin-patterns: ${MINIMALL_GATEWAY_CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:*,http://127.0.0.1:*}
+      allowed-methods: ${MINIMALL_GATEWAY_CORS_ALLOWED_METHODS:GET,POST,PUT,PATCH,DELETE,OPTIONS}
+      allowed-headers: ${MINIMALL_GATEWAY_CORS_ALLOWED_HEADERS:*}
+      allow-credentials: ${MINIMALL_GATEWAY_CORS_ALLOW_CREDENTIALS:false}
+      max-age: ${MINIMALL_GATEWAY_CORS_MAX_AGE:1800}
 
 server:
   port: 8080

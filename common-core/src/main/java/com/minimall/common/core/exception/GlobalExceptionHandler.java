@@ -74,6 +74,7 @@ public class GlobalExceptionHandler {
             case BAD_REQUEST, VALIDATION_ERROR -> HttpStatus.BAD_REQUEST;
             case UNAUTHORIZED -> HttpStatus.UNAUTHORIZED;
             case FORBIDDEN -> HttpStatus.FORBIDDEN;
+            case TOO_MANY_REQUESTS -> HttpStatus.TOO_MANY_REQUESTS;
             case NOT_FOUND -> HttpStatus.NOT_FOUND;
             case CONFLICT, ORDER_CANCELLED, ORDER_INVALID_STATE, PAYMENT_ALREADY_SUCCESS -> HttpStatus.CONFLICT;
             default -> HttpStatus.INTERNAL_SERVER_ERROR;

@@ -923,13 +923,14 @@
             "title": "Gateway CORS and ApiResponse error handling",
             "description": "Add configurable browser CORS support and gateway-owned ApiResponse error serialization.",
             "details": "Configure CORS for /api/** with configurable allowed origins/origin patterns, methods, and headers. Ensure OPTIONS preflight is not blocked by authentication or rate limiting. Add centralized gateway response helpers for 401/403/429 ApiResponse bodies with stable codes/messages. Add tests for preflight behavior and error response shape.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               1,
               2
             ],
             "parentTaskId": 16,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-15T07:38:48.072Z"
           },
           {
             "id": 4,
@@ -961,7 +962,7 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-05-15T07:08:34.188Z"
+        "updatedAt": "2026-05-15T07:38:48.072Z"
       },
       {
         "id": "17",
@@ -1062,7 +1063,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-15T07:08:34.189Z",
+      "lastModified": "2026-05-15T07:38:48.073Z",
       "taskCount": 20,
       "completedCount": 15,
       "tags": [
