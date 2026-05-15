@@ -52,6 +52,15 @@ class GatewayRoutesTest {
         assertRewrite(routes, "payment-service", "/api/payment/(?<segment>.*)", "/api/$\\{segment}");
     }
 
+    @Test
+    void doesNotConfigureInternalBrowserFacingRoutes() {
+        List<String> allPathPredicates = routesById().values().stream()
+                .flatMap(route -> pathPredicateArgs(route).stream())
+                .toList();
+
+        assertThat(allPathPredicates).noneMatch(path -> path.startsWith("/internal"));
+    }
+
     private Map<String, RouteDefinition> routesById() {
         return gatewayProperties.getRoutes().stream()
                 .collect(Collectors.toMap(RouteDefinition::getId, Function.identity()));

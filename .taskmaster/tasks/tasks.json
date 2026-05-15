@@ -892,7 +892,7 @@
           "5",
           "6"
         ],
-        "status": "in-progress",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -952,7 +952,7 @@
             "title": "Gateway integration regression verification",
             "description": "Add final gateway regression tests and documentation notes after route/auth/CORS/rate-limit pieces are complete.",
             "details": "Verify the browser-facing /api/{service}/** route contract across user/product/inventory/order/payment, public auth bypass, protected auth, trusted header propagation, CORS preflight, request logging presence, and 429 ApiResponse behavior. Run api-gateway focused tests and full reactor package. Mark parent Task 16 done only when all subtasks pass.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               1,
               2,
@@ -960,10 +960,11 @@
               4
             ],
             "parentTaskId": 16,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-15T09:09:46.116Z"
           }
         ],
-        "updatedAt": "2026-05-15T08:18:20.232Z"
+        "updatedAt": "2026-05-15T09:09:46.116Z"
       },
       {
         "id": "17",
@@ -1064,9 +1065,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-15T08:18:20.232Z",
+      "lastModified": "2026-05-15T09:09:46.117Z",
       "taskCount": 20,
-      "completedCount": 15,
+      "completedCount": 16,
       "tags": [
         "master"
       ]
