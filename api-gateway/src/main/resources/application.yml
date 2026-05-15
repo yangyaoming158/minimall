@@ -52,6 +52,13 @@ minimall:
       allowed-headers: ${MINIMALL_GATEWAY_CORS_ALLOWED_HEADERS:*}
       allow-credentials: ${MINIMALL_GATEWAY_CORS_ALLOW_CREDENTIALS:false}
       max-age: ${MINIMALL_GATEWAY_CORS_MAX_AGE:1800}
+    rate-limit:
+      enabled: ${MINIMALL_GATEWAY_RATE_LIMIT_ENABLED:true}
+      replenish-rate: ${MINIMALL_GATEWAY_RATE_LIMIT_REPLENISH_RATE:10}
+      burst-capacity: ${MINIMALL_GATEWAY_RATE_LIMIT_BURST_CAPACITY:20}
+      requested-tokens: ${MINIMALL_GATEWAY_RATE_LIMIT_REQUESTED_TOKENS:1}
+      key-prefix: ${MINIMALL_GATEWAY_RATE_LIMIT_KEY_PREFIX:minimall:gateway:rate-limit}
+      fail-open: ${MINIMALL_GATEWAY_RATE_LIMIT_FAIL_OPEN:true}
 
 server:
   port: 8080

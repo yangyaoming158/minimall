@@ -937,14 +937,15 @@
             "title": "Gateway request logging and Redis-backed rate limiting",
             "description": "Add gateway request logging and configurable Redis-backed request rate limiting.",
             "details": "Add a lightweight global request log filter that records method/path/status/duration without sensitive headers. Add Redis-backed rate limiting by IP or authenticated user key with configurable replenish/burst values. Ensure 429 responses use ApiResponse structure and preflight requests are not incorrectly limited. Add tests for rate-limit configuration and response shape.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               1,
               2,
               3
             ],
             "parentTaskId": 16,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-15T08:18:20.232Z"
           },
           {
             "id": 5,
@@ -962,7 +963,7 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-05-15T07:38:48.072Z"
+        "updatedAt": "2026-05-15T08:18:20.232Z"
       },
       {
         "id": "17",
@@ -1063,7 +1064,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-15T07:38:48.073Z",
+      "lastModified": "2026-05-15T08:18:20.232Z",
       "taskCount": 20,
       "completedCount": 15,
       "tags": [
