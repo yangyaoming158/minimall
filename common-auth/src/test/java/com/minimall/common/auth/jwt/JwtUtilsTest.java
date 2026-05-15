@@ -45,7 +45,7 @@ class JwtUtilsTest {
         JwtUtils jwtUtils = new JwtUtils(properties(3600));
 
         String token = jwtUtils.generateToken(1001L, "alice");
-        String tamperedToken = token.substring(0, token.length() - 1) + "x";
+        String tamperedToken = tamperSignature(token);
 
         assertUnauthorized(() -> jwtUtils.parseToken(tamperedToken), "Invalid or expired token");
     }
@@ -103,6 +103,12 @@ class JwtUtilsTest {
         properties.setSecret(SECRET);
         properties.setExpireSeconds(expireSeconds);
         return properties;
+    }
+
+    private static String tamperSignature(String token) {
+        int signatureStart = token.lastIndexOf('.') + 1;
+        char replacement = token.charAt(signatureStart) == 'a' ? 'b' : 'a';
+        return token.substring(0, signatureStart) + replacement + token.substring(signatureStart + 1);
     }
 
     private static void assertUnauthorized(ThrowingCallable callable, String message) {

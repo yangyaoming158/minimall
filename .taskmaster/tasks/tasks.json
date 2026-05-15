@@ -910,12 +910,13 @@
             "title": "Gateway JWT authentication and trusted user header propagation",
             "description": "Validate Authorization Bearer JWT for protected gateway APIs and inject trusted user headers for downstream services.",
             "details": "Use common-auth JwtUtils and AuthHeaders. Public login/register paths and OPTIONS preflight must bypass JWT. Remove any incoming X-User-Id/X-Username headers from browser requests before forwarding, and inject only values parsed from a valid JWT. Return ApiResponse-shaped 401/403 responses for auth failures. Add WebTestClient coverage for missing/invalid/valid JWT and spoofed header stripping.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               1
             ],
             "parentTaskId": 16,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-15T07:08:34.188Z"
           },
           {
             "id": 3,
@@ -960,7 +961,7 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-05-14T13:39:01.662Z"
+        "updatedAt": "2026-05-15T07:08:34.188Z"
       },
       {
         "id": "17",
@@ -1061,7 +1062,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-14T13:39:01.666Z",
+      "lastModified": "2026-05-15T07:08:34.189Z",
       "taskCount": 20,
       "completedCount": 15,
       "tags": [

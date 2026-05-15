@@ -11,7 +11,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.cloud.gateway.config.GatewayProperties;
-import org.springframework.cloud.gateway.filter.FilterDefinition;
 import org.springframework.cloud.gateway.handler.predicate.PredicateDefinition;
 import org.springframework.cloud.gateway.route.RouteDefinition;
 import org.springframework.test.context.TestPropertySource;
@@ -22,7 +21,9 @@ import org.springframework.test.context.TestPropertySource;
         "PRODUCT_SERVICE_BASE_URL=http://product-service.test",
         "INVENTORY_SERVICE_BASE_URL=http://inventory-service.test",
         "ORDER_SERVICE_BASE_URL=http://order-service.test",
-        "PAYMENT_SERVICE_BASE_URL=http://payment-service.test"
+        "PAYMENT_SERVICE_BASE_URL=http://payment-service.test",
+        "minimall.auth.jwt.secret=test-gateway-route-jwt-secret",
+        "minimall.auth.jwt.expire-seconds=3600"
 })
 class GatewayRoutesTest {
 

@@ -40,6 +40,12 @@ spring:
           filters:
             - RewritePath=/api/payment/(?<segment>.*), /api/$\{segment}
 
+minimall:
+  auth:
+    jwt:
+      secret: ${MINIMALL_AUTH_JWT_SECRET}
+      expire-seconds: ${MINIMALL_AUTH_JWT_EXPIRE_SECONDS:3600}
+
 server:
   port: 8080
 
