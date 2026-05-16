@@ -6,6 +6,8 @@ Task 2 provisions local development dependencies with Docker Compose:
 - Redis: `127.0.0.1:${REDIS_PORT}`
 - RabbitMQ AMQP: `127.0.0.1:${RABBITMQ_AMQP_PORT}`
 - RabbitMQ management UI: `http://127.0.0.1:${RABBITMQ_MANAGEMENT_PORT}`
+- Prometheus: `http://127.0.0.1:${PROMETHEUS_PORT}`
+- Grafana: `http://127.0.0.1:${GRAFANA_PORT}`
 
 Copy `.env.example` to `.env` before starting Docker Compose, then replace all `change-me-*` values locally. The real `.env` file is ignored by Git.
 
@@ -24,6 +26,14 @@ Docker Compose reads these variables from `.env`:
 - `RABBITMQ_MANAGEMENT_PORT`
 - `RABBITMQ_DEFAULT_USER`
 - `RABBITMQ_DEFAULT_PASS`
+- `PROMETHEUS_IMAGE`
+- `PROMETHEUS_PORT`
+- `GRAFANA_IMAGE`
+- `GRAFANA_PORT`
+- `GRAFANA_ADMIN_USER`
+- `GRAFANA_ADMIN_PASSWORD`
+- `GRAFANA_USERS_ALLOW_SIGN_UP`
+- `GRAFANA_PROMETHEUS_URL`
 
 ## Spring Service Variables
 
@@ -41,6 +51,8 @@ Spring services should use these environment variable names when database, cache
 - `SPRING_RABBITMQ_PASSWORD`
 
 For services running directly from WSL or the host, use `127.0.0.1` with the published ports. For services later running inside the Compose network, use service names `mysql`, `redis`, and `rabbitmq` with container ports `3306`, `6379`, and `5672`.
+
+Observability setup and Docker Desktop + WSL scrape-target notes are documented in `docs/observability.md`.
 
 ## Commands
 

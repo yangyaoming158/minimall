@@ -1032,7 +1032,7 @@
           "2",
           "16"
         ],
-        "status": "in-progress",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -1063,16 +1063,17 @@
             "title": "Grafana provisioning and observability docs",
             "description": "Add Grafana provisioning dashboard files and documentation for reproducing observability checks.",
             "details": "Provide datasource and dashboard provisioning, a basic HTTP and JVM metrics dashboard, and docs for validating actuator endpoints Prometheus scraping and Grafana startup.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               1,
               2
             ],
             "parentTaskId": 18,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-16T14:09:41.699Z"
           }
         ],
-        "updatedAt": "2026-05-16T13:46:35.481Z"
+        "updatedAt": "2026-05-16T14:09:41.699Z"
       },
       {
         "id": "19",
@@ -1144,9 +1145,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-16T13:46:35.486Z",
+      "lastModified": "2026-05-16T14:09:41.699Z",
       "taskCount": 20,
-      "completedCount": 17,
+      "completedCount": 18,
       "tags": [
         "master"
       ]

@@ -99,10 +99,14 @@ services:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:?GRAFANA_ADMIN_USER is required}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD is required}
       GF_USERS_ALLOW_SIGN_UP: ${GRAFANA_USERS_ALLOW_SIGN_UP:-false}
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/minimall-observability.json
+      GRAFANA_PROMETHEUS_URL: ${GRAFANA_PROMETHEUS_URL:-http://prometheus:9090}
       TZ: ${TZ:-Asia/Shanghai}
     ports:
       - "${GRAFANA_PORT:-3000}:3000"
     volumes:
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards:ro
       - grafana-data:/var/lib/grafana
     depends_on:
       prometheus:
