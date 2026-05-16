@@ -977,7 +977,7 @@
           "10",
           "11"
         ],
-        "status": "in-progress",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -1008,16 +1008,17 @@
             "title": "Order timeout scheduler regression coverage",
             "description": "Add final regression coverage for the full timeout scheduler behavior and document verification.",
             "details": "Cover the scheduler-facing flow for expired pending orders, non-expired orders, paid orders, and repeated scans that must not release inventory twice. Verify order-service tests and full reactor packaging before marking Task 17 complete.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               1,
               2
             ],
             "parentTaskId": 17,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-16T02:54:57.326Z"
           }
         ],
-        "updatedAt": "2026-05-16T02:46:00.279Z"
+        "updatedAt": "2026-05-16T02:54:57.326Z"
       },
       {
         "id": "18",
@@ -1104,9 +1105,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-16T02:46:00.279Z",
+      "lastModified": "2026-05-16T02:54:57.326Z",
       "taskCount": 20,
-      "completedCount": 16,
+      "completedCount": 17,
       "tags": [
         "master"
       ]

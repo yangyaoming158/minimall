@@ -23,7 +23,7 @@ public class OrderTimeoutScheduler {
         this.properties = properties;
     }
 
-    @Scheduled(fixedDelayString = "#{@orderTimeoutProperties.fixedDelay}")
+    @Scheduled(fixedDelayString = "${minimall.order.timeout.fixed-delay:60000}")
     public void cancelExpiredPendingOrders() {
         if (!properties.isEnabled()) {
             log.debug("Order timeout scheduler is disabled");
