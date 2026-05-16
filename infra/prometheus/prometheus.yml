@@ -1,0 +1,48 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets:
+          - prometheus:9090
+
+  - job_name: minimall-services
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - host.docker.internal:8080
+        labels:
+          system: minimall-order
+          service: api-gateway
+      - targets:
+          - host.docker.internal:8101
+        labels:
+          system: minimall-order
+          service: user-service
+      - targets:
+          - host.docker.internal:8102
+        labels:
+          system: minimall-order
+          service: product-service
+      - targets:
+          - host.docker.internal:8103
+        labels:
+          system: minimall-order
+          service: inventory-service
+      - targets:
+          - host.docker.internal:8104
+        labels:
+          system: minimall-order
+          service: order-service
+      - targets:
+          - host.docker.internal:8105
+        labels:
+          system: minimall-order
+          service: payment-service
+      - targets:
+          - host.docker.internal:8106
+        labels:
+          system: minimall-order
+          service: notification-service

@@ -1050,12 +1050,13 @@
             "title": "Prometheus and Grafana compose wiring",
             "description": "Add Prometheus and Grafana Docker Compose observability services with Prometheus scrape configuration.",
             "details": "Provide Compose services for Prometheus and Grafana using environment variables and mounted configuration. Add Prometheus scrape targets for the service actuator prometheus endpoints without hardcoded secrets.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               1
             ],
             "parentTaskId": 18,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-16T13:46:35.481Z"
           },
           {
             "id": 3,
@@ -1071,7 +1072,7 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-05-16T03:18:35.694Z"
+        "updatedAt": "2026-05-16T13:46:35.481Z"
       },
       {
         "id": "19",
@@ -1143,7 +1144,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-16T03:18:35.698Z",
+      "lastModified": "2026-05-16T13:46:35.486Z",
       "taskCount": 20,
       "completedCount": 17,
       "tags": [
