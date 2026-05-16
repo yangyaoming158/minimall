@@ -43,6 +43,10 @@ management:
 minimall:
   order:
     payment-expire-seconds: ${ORDER_PAYMENT_EXPIRE_SECONDS:900}
+    timeout:
+      enabled: ${MINIMALL_ORDER_TIMEOUT_ENABLED:true}
+      fixed-delay: ${MINIMALL_ORDER_TIMEOUT_FIXED_DELAY:60000}
+      batch-size: ${MINIMALL_ORDER_TIMEOUT_BATCH_SIZE:100}
     idempotency:
       lock-ttl-seconds: ${ORDER_IDEMPOTENCY_LOCK_TTL_SECONDS:30}
   clients:
