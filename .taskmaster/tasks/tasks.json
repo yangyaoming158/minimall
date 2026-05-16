@@ -1032,8 +1032,46 @@
           "2",
           "16"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "in-progress",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Actuator Prometheus endpoint foundation",
+            "description": "Add Prometheus registry dependencies and expose health info metrics and prometheus actuator endpoints for all Spring Boot services.",
+            "details": "Update service Maven dependencies and application.yml management exposure so each service publishes health info metrics and prometheus endpoints. Add focused verification for representative service actuator configuration.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 18,
+            "updatedAt": "2026-05-16T03:18:35.694Z",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Prometheus and Grafana compose wiring",
+            "description": "Add Prometheus and Grafana Docker Compose observability services with Prometheus scrape configuration.",
+            "details": "Provide Compose services for Prometheus and Grafana using environment variables and mounted configuration. Add Prometheus scrape targets for the service actuator prometheus endpoints without hardcoded secrets.",
+            "status": "pending",
+            "dependencies": [
+              1
+            ],
+            "parentTaskId": 18,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Grafana provisioning and observability docs",
+            "description": "Add Grafana provisioning dashboard files and documentation for reproducing observability checks.",
+            "details": "Provide datasource and dashboard provisioning, a basic HTTP and JVM metrics dashboard, and docs for validating actuator endpoints Prometheus scraping and Grafana startup.",
+            "status": "pending",
+            "dependencies": [
+              1,
+              2
+            ],
+            "parentTaskId": 18,
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2026-05-16T03:18:35.694Z"
       },
       {
         "id": "19",
@@ -1105,7 +1143,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-16T02:54:57.326Z",
+      "lastModified": "2026-05-16T03:18:35.698Z",
       "taskCount": 20,
       "completedCount": 17,
       "tags": [
