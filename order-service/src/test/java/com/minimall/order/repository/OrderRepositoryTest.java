@@ -3,9 +3,11 @@ package com.minimall.order.repository;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.minimall.order.domain.Order;
+import com.minimall.order.domain.OrderStateMachine;
 import com.minimall.order.domain.OrderStatus;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
@@ -101,5 +103,73 @@ class OrderRepositoryTest {
         assertThat(orderRepository.findByUserId(103L, PageRequest.of(0, 10)).getContent())
                 .extracting(Order::getOrderNo)
                 .containsExactly("ORD-1003");
+    }
+
+    @Test
+    void findsOnlyExpiredPendingPaymentOrdersForTimeoutCancellation() {
+        LocalDateTime now = LocalDateTime.of(2026, 5, 16, 10, 0);
+        orderRepository.saveAndFlush(order("ORD-EXPIRED-1001", 201L, now.minusMinutes(1)));
+        orderRepository.saveAndFlush(order("ORD-FUTURE-1001", 202L, now.plusMinutes(1)));
+        Order paid = order("ORD-PAID-1001", 203L, now.minusMinutes(5));
+        new OrderStateMachine().transition(paid, OrderStatus.PAID, now.minusMinutes(4));
+        orderRepository.saveAndFlush(paid);
+
+        List<Order> expiredOrders = orderRepository.findExpiredOrders(
+                OrderStatus.PENDING_PAYMENT,
+                now,
+                PageRequest.of(0, 10));
+
+        assertThat(expiredOrders)
+                .extracting(Order::getOrderNo)
+                .containsExactly("ORD-EXPIRED-1001");
+    }
+
+    @Test
+    void conditionallyCancelsOnlyPendingPaymentOrder() {
+        LocalDateTime now = LocalDateTime.of(2026, 5, 16, 10, 10);
+        Order pending = orderRepository.saveAndFlush(order("ORD-COND-CANCEL-1001", 204L, now.minusMinutes(1)));
+        Order paid = order("ORD-COND-CANCEL-1002", 205L, now.minusMinutes(2));
+        new OrderStateMachine().transition(paid, OrderStatus.PAID, now.minusMinutes(1));
+        paid = orderRepository.saveAndFlush(paid);
+
+        int updatedPending = orderRepository.updateStatusIfCurrent(
+                pending.getId(),
+                OrderStatus.PENDING_PAYMENT,
+                OrderStatus.CANCELLED,
+                now);
+        int updatedPaid = orderRepository.updateStatusIfCurrent(
+                paid.getId(),
+                OrderStatus.PENDING_PAYMENT,
+                OrderStatus.CANCELLED,
+                now);
+
+        assertThat(updatedPending).isEqualTo(1);
+        assertThat(updatedPaid).isZero();
+        assertThat(orderRepository.findByOrderNo("ORD-COND-CANCEL-1001"))
+                .isPresent()
+                .get()
+                .satisfies(order -> {
+                    assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELLED);
+                    assertThat(order.getClosedAt()).isEqualTo(now);
+                    assertThat(order.getUpdatedAt()).isEqualTo(now);
+                });
+        assertThat(orderRepository.findByOrderNo("ORD-COND-CANCEL-1002"))
+                .isPresent()
+                .get()
+                .satisfies(order -> assertThat(order.getStatus()).isEqualTo(OrderStatus.PAID));
+    }
+
+    private Order order(String orderNo, Long userId, LocalDateTime expireAt) {
+        return new Order(
+                orderNo,
+                userId,
+                "timeout-user",
+                "SKU-TIMEOUT-1001",
+                "Timeout Product",
+                2,
+                new BigDecimal("10.00"),
+                new BigDecimal("20.00"),
+                "idem-" + orderNo,
+                expireAt);
     }
 }

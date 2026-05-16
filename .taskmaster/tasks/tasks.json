@@ -977,8 +977,46 @@
           "10",
           "11"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "in-progress",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Order timeout cancellation service foundation",
+            "description": "Add order-service support for finding expired pending-payment orders and cancelling them with an idempotent conditional update.",
+            "details": "Create the repository/service methods needed to select orders whose expireAt is before now and status is PENDING_PAYMENT, transition only still-pending orders to CANCELLED, and call inventory release only after a successful state change. Cover expired, non-expired, paid, and repeated execution behavior at the service level.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 17,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-16T02:30:33.812Z"
+          },
+          {
+            "id": 2,
+            "title": "Order timeout scheduler wiring",
+            "description": "Wire the timeout cancellation service to Spring Scheduler with environment-driven scheduling settings.",
+            "details": "Enable scheduling for order-service, add configurable scheduler enabled/fixed-delay/batch-size settings, and make the scheduled job invoke the timeout cancellation service without requiring external infrastructure.",
+            "status": "pending",
+            "dependencies": [
+              1
+            ],
+            "parentTaskId": 17,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Order timeout scheduler regression coverage",
+            "description": "Add final regression coverage for the full timeout scheduler behavior and document verification.",
+            "details": "Cover the scheduler-facing flow for expired pending orders, non-expired orders, paid orders, and repeated scans that must not release inventory twice. Verify order-service tests and full reactor packaging before marking Task 17 complete.",
+            "status": "pending",
+            "dependencies": [
+              1,
+              2
+            ],
+            "parentTaskId": 17,
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2026-05-16T02:30:33.812Z"
       },
       {
         "id": "18",
@@ -1065,7 +1103,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-15T09:09:46.117Z",
+      "lastModified": "2026-05-16T02:30:33.813Z",
       "taskCount": 20,
       "completedCount": 16,
       "tags": [
