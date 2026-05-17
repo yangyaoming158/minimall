@@ -1094,8 +1094,46 @@
           "16",
           "17"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "in-progress",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create k6 gateway load script",
+            "description": "Add a k6 script under pressure/ that uses api-gateway as BASE_URL and covers login, product list/detail, order, cancel/detail, and payment-facing flows using current backend API contracts.",
+            "details": "Use environment variables for BASE_URL, USERNAME, PASSWORD, PRODUCT_ID, PRODUCT_STATUS, page/size, VUs, duration, quantity, and payment callback inputs. Implement per-VU login token handling, Authorization header reuse, ApiResponse success/error structure assertions, custom thresholds for latency and error rate, and summary output with QPS, average latency, P95, and error rate. Do not hardcode service ports, hostnames, credentials, or secrets.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 19,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-17T11:23:30.633Z"
+          },
+          {
+            "id": 2,
+            "title": "Document pressure test usage and observations",
+            "description": "Document how to run the k6 pressure test through api-gateway, required startup prerequisites, parameters, token strategy, gateway route mapping, metrics, and sample output.",
+            "details": "Add pressure documentation with BASE_URL and credential parameters, frontend-facing route expectations, ApiResponse assertion rules, local dependency/service startup notes, Docker Desktop and WSL Prometheus limitation notes, example command lines, sample result fields, and bottleneck observation checklist.",
+            "status": "pending",
+            "dependencies": [
+              "19.1"
+            ],
+            "parentTaskId": 19,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Verify pressure assets and complete Task 19",
+            "description": "Run available script checks, record an example pressure-test result when services are available, verify inventory non-negative observation guidance, and close Task 19.",
+            "details": "Run the script validation command available in the local environment, run the pressure test if k6 and services are available, document pass/fail or environment blocker, confirm output includes QPS, average latency, P95, and error rate, and update TaskMaster and dev log only after verification.",
+            "status": "pending",
+            "dependencies": [
+              "19.1",
+              "19.2"
+            ],
+            "parentTaskId": 19,
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2026-05-17T11:23:30.633Z"
       },
       {
         "id": "20",
@@ -1145,7 +1183,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-16T14:21:32.000Z",
+      "lastModified": "2026-05-17T11:23:30.634Z",
       "taskCount": 20,
       "completedCount": 18,
       "tags": [
