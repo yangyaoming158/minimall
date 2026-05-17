@@ -1112,12 +1112,13 @@
             "title": "Document pressure test usage and observations",
             "description": "Document how to run the k6 pressure test through api-gateway, required startup prerequisites, parameters, token strategy, gateway route mapping, metrics, and sample output.",
             "details": "Add pressure documentation with BASE_URL and credential parameters, frontend-facing route expectations, ApiResponse assertion rules, local dependency/service startup notes, Docker Desktop and WSL Prometheus limitation notes, example command lines, sample result fields, and bottleneck observation checklist.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "19.1"
             ],
             "parentTaskId": 19,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-17T11:36:43.794Z"
           },
           {
             "id": 3,
@@ -1133,7 +1134,7 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-05-17T11:23:30.633Z"
+        "updatedAt": "2026-05-17T11:36:43.794Z"
       },
       {
         "id": "20",
@@ -1183,7 +1184,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-17T11:23:30.634Z",
+      "lastModified": "2026-05-17T11:36:43.794Z",
       "taskCount": 20,
       "completedCount": 18,
       "tags": [
