@@ -1165,7 +1165,7 @@
           "18",
           "19"
         ],
-        "status": "in-progress",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -1212,22 +1212,23 @@
             "title": "Run final end-to-end acceptance",
             "description": "Execute and record the final delivery acceptance flow through the gateway and containerized runtime.",
             "details": "Verify from-zero startup, Prometheus up=1 for at least one containerized Java service, Grafana MiniMall Observability dashboard metrics, and the full register/login, product, order, payment, order PAID, and notification-log chain. Record results and blockers in project documentation.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "20.3"
             ],
             "parentTaskId": 20,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-18T12:38:03.893Z"
           }
         ],
-        "updatedAt": "2026-05-18T12:19:16.971Z"
+        "updatedAt": "2026-05-18T12:38:03.893Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-18T12:19:16.975Z",
+      "lastModified": "2026-05-18T12:38:03.898Z",
       "taskCount": 20,
-      "completedCount": 19,
+      "completedCount": 20,
       "tags": [
         "master"
       ]
