@@ -1186,12 +1186,13 @@
             "title": "Containerize Java services for Compose runtime",
             "description": "Add Docker/Compose runtime support for api-gateway and Java services.",
             "details": "Provide Dockerfile or shared image build approach for api-gateway, user-service, product-service, inventory-service, order-service, payment-service, and notification-service. Wire them into the Compose network with service-name URLs, container ports, environment variables, health checks, and Prometheus scrape targets that do not rely on dynamic WSL IPs.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "20.1"
             ],
             "parentTaskId": 20,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-18T12:06:59.574Z"
           },
           {
             "id": 3,
@@ -1218,12 +1219,12 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-05-18T11:51:53.369Z"
+        "updatedAt": "2026-05-18T12:06:59.574Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-18T11:51:53.369Z",
+      "lastModified": "2026-05-18T12:06:59.577Z",
       "taskCount": 20,
       "completedCount": 19,
       "tags": [

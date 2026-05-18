@@ -72,6 +72,25 @@ Every Spring Boot service exposes:
 - `/actuator/metrics`
 - `/actuator/prometheus`
 
+The checked-in Prometheus configuration scrapes containerized Java services by
+Compose service name:
+
+- `api-gateway:8080`
+- `user-service:8101`
+- `product-service:8102`
+- `inventory-service:8103`
+- `order-service:8104`
+- `payment-service:8105`
+- `notification-service:8106`
+
+Start the Java service containers with the Compose `services` profile after the
+Maven jars have been built:
+
+```bash
+mvn clean package -DskipTests
+docker compose --env-file .env --profile services up -d --build
+```
+
 For a service running directly in WSL or on the host, check the endpoint from that same environment first:
 
 ```bash
@@ -80,9 +99,15 @@ curl --noproxy '*' -fsS http://127.0.0.1:8103/actuator/prometheus
 
 ## Docker Desktop And WSL
 
-`infra/prometheus/prometheus.yml` uses `host.docker.internal` for service scrape targets. This is stable when Docker containers can reach services through the Docker Desktop host gateway.
+`infra/prometheus/prometheus.yml` now uses Docker Compose service names for Java
+service scrape targets. This is the stable path for Docker Desktop + WSL because
+Prometheus and the Java services share the same Compose network.
 
-When Java services run directly inside WSL while Prometheus runs in Docker Desktop, `host.docker.internal` can resolve to the Windows/Docker Desktop host rather than the WSL VM. In that setup, Prometheus may register the targets but show them as down.
+When Java services run directly inside WSL while Prometheus runs in Docker
+Desktop, `host.docker.internal` can resolve to the Windows/Docker Desktop host
+rather than the WSL VM. In that setup, Prometheus may register host-based
+targets but show them as down. Keep any host-based Prometheus override local and
+outside Git.
 
 To confirm this is a network path issue rather than an actuator issue:
 
@@ -91,7 +116,9 @@ To confirm this is a network path issue rather than an actuator issue:
 3. Find the current WSL IP with `hostname -I`.
 4. From the Prometheus container, test `http://<wsl-ip>:8103/actuator/prometheus`.
 
-The WSL IP is environment-specific and can change after restart, so do not commit it into `infra/prometheus/prometheus.yml`. For a stable long-term setup, run the Java services in the same Compose network and scrape service names such as `inventory-service:8103`, or use a local-only Prometheus configuration override outside Git.
+The WSL IP is environment-specific and can change after restart, so do not commit
+it into `infra/prometheus/prometheus.yml`. Use the checked-in Compose service
+targets for stable project verification.
 
 ## Grafana Provisioning Checks
 

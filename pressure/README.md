@@ -269,13 +269,11 @@ During a real run, record:
 Pressure-test correctness is determined by k6 request results. Prometheus and
 Grafana are supporting signals.
 
-When Java services run directly in WSL and Prometheus/Grafana run in Docker
-Desktop, Prometheus targets using `host.docker.internal` can appear down because
-Docker Desktop may resolve that hostname to the Windows/Docker host rather than
-the WSL VM. This does not by itself mean the pressure script or business API is
-failing.
+The checked-in Prometheus configuration expects the Java services to run in the
+Compose `services` profile and scrapes service names such as
+`api-gateway:8080` and `inventory-service:8103`.
 
-For temporary local diagnosis, verify the service actuator endpoint inside WSL,
-then test the same endpoint from the Prometheus container with the current WSL
-IP. Do not commit the dynamic WSL IP. A stable Compose runtime for Java services
-belongs to the later runtime delivery task.
+When Java services run directly in WSL while Prometheus/Grafana run in Docker
+Desktop, local-only host-based Prometheus overrides can still appear down
+depending on the Docker Desktop network path. This does not by itself mean the
+pressure script or business API is failing. Do not commit a dynamic WSL IP.

@@ -54,6 +54,22 @@ For services running directly from WSL or the host, use `127.0.0.1` with the pub
 
 Observability setup and Docker Desktop + WSL scrape-target notes are documented in `docs/observability.md`.
 
+Java service containers are available through the Compose `services` profile.
+Build the Maven jars first, then run:
+
+```bash
+docker compose --env-file .env --profile services up -d --build
+```
+
+The service containers use Compose network names for dependencies:
+
+- MySQL: `mysql:3306`
+- Redis: `redis:6379`
+- RabbitMQ: `rabbitmq:5672`
+- Gateway downstream service URLs: `http://user-service:8101`,
+  `http://product-service:8102`, `http://inventory-service:8103`,
+  `http://order-service:8104`, and `http://payment-service:8105`
+
 ## Commands
 
 Validate configuration:

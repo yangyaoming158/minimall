@@ -1,3 +1,32 @@
+x-java-service-build: &java-service-build
+  context: .
+  dockerfile: infra/docker/java-service.Dockerfile
+
+x-java-service-environment: &java-service-environment
+  TZ: ${TZ:-Asia/Shanghai}
+  JAVA_OPTS: ${JAVA_OPTS:-}
+  SPRING_DATASOURCE_URL: "jdbc:mysql://mysql:3306/${MYSQL_DATABASE:?MYSQL_DATABASE is required}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false"
+  SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:?MYSQL_USER is required}
+  SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD is required}
+  SPRING_DATA_REDIS_HOST: redis
+  SPRING_DATA_REDIS_PORT: 6379
+  SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+  SPRING_RABBITMQ_HOST: rabbitmq
+  SPRING_RABBITMQ_PORT: 5672
+  SPRING_RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:?RABBITMQ_DEFAULT_USER is required}
+  SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:?RABBITMQ_DEFAULT_PASS is required}
+  SPRING_RABBITMQ_VIRTUAL_HOST: /
+  MINIMALL_AUTH_JWT_SECRET: ${MINIMALL_AUTH_JWT_SECRET:?MINIMALL_AUTH_JWT_SECRET is required}
+  MINIMALL_AUTH_JWT_EXPIRE_SECONDS: ${MINIMALL_AUTH_JWT_EXPIRE_SECONDS:-3600}
+  MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED: ${MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED:-true}
+
+x-java-service-healthcheck: &java-service-healthcheck
+  test: ["CMD-SHELL", "wget -q --spider \"http://127.0.0.1:$${SERVER_PORT}/actuator/health\" || exit 1"]
+  interval: 15s
+  timeout: 5s
+  retries: 20
+  start_period: 45s
+
 services:
   mysql:
     image: mysql:8.4
@@ -87,8 +116,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     networks:
       - minimall-local
 
@@ -117,6 +144,215 @@ services:
       timeout: 10s
       retries: 5
       start_period: 30s
+    networks:
+      - minimall-local
+
+  user-service:
+    image: ${MINIMALL_IMAGE_PREFIX:-minimall}/user-service:${MINIMALL_IMAGE_TAG:-local}
+    profiles:
+      - services
+    build:
+      <<: *java-service-build
+      args:
+        JAVA_RUNTIME_IMAGE: ${JAVA_RUNTIME_IMAGE:-eclipse-temurin:17-jre-alpine}
+        JAR_FILE: user-service/target/user-service-0.0.1-SNAPSHOT.jar
+    restart: unless-stopped
+    environment:
+      <<: *java-service-environment
+      SERVER_PORT: 8101
+    ports:
+      - "${USER_SERVICE_PORT:-8101}:8101"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck: *java-service-healthcheck
+    networks:
+      - minimall-local
+
+  product-service:
+    image: ${MINIMALL_IMAGE_PREFIX:-minimall}/product-service:${MINIMALL_IMAGE_TAG:-local}
+    profiles:
+      - services
+    build:
+      <<: *java-service-build
+      args:
+        JAVA_RUNTIME_IMAGE: ${JAVA_RUNTIME_IMAGE:-eclipse-temurin:17-jre-alpine}
+        JAR_FILE: product-service/target/product-service-0.0.1-SNAPSHOT.jar
+    restart: unless-stopped
+    environment:
+      <<: *java-service-environment
+      SERVER_PORT: 8102
+      PRODUCT_DETAIL_CACHE_TTL_SECONDS: ${PRODUCT_DETAIL_CACHE_TTL_SECONDS:-300}
+    ports:
+      - "${PRODUCT_SERVICE_PORT:-8102}:8102"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck: *java-service-healthcheck
+    networks:
+      - minimall-local
+
+  inventory-service:
+    image: ${MINIMALL_IMAGE_PREFIX:-minimall}/inventory-service:${MINIMALL_IMAGE_TAG:-local}
+    profiles:
+      - services
+    build:
+      <<: *java-service-build
+      args:
+        JAVA_RUNTIME_IMAGE: ${JAVA_RUNTIME_IMAGE:-eclipse-temurin:17-jre-alpine}
+        JAR_FILE: inventory-service/target/inventory-service-0.0.1-SNAPSHOT.jar
+    restart: unless-stopped
+    environment:
+      <<: *java-service-environment
+      SERVER_PORT: 8103
+    ports:
+      - "${INVENTORY_SERVICE_PORT:-8103}:8103"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck: *java-service-healthcheck
+    networks:
+      - minimall-local
+
+  order-service:
+    image: ${MINIMALL_IMAGE_PREFIX:-minimall}/order-service:${MINIMALL_IMAGE_TAG:-local}
+    profiles:
+      - services
+    build:
+      <<: *java-service-build
+      args:
+        JAVA_RUNTIME_IMAGE: ${JAVA_RUNTIME_IMAGE:-eclipse-temurin:17-jre-alpine}
+        JAR_FILE: order-service/target/order-service-0.0.1-SNAPSHOT.jar
+    restart: unless-stopped
+    environment:
+      <<: *java-service-environment
+      SERVER_PORT: 8104
+      PRODUCT_SERVICE_BASE_URL: http://product-service:8102
+      INVENTORY_SERVICE_BASE_URL: http://inventory-service:8103
+      ORDER_PAYMENT_EXPIRE_SECONDS: ${ORDER_PAYMENT_EXPIRE_SECONDS:-900}
+      MINIMALL_ORDER_TIMEOUT_ENABLED: ${MINIMALL_ORDER_TIMEOUT_ENABLED:-true}
+      MINIMALL_ORDER_TIMEOUT_FIXED_DELAY: ${MINIMALL_ORDER_TIMEOUT_FIXED_DELAY:-60000}
+      MINIMALL_ORDER_TIMEOUT_BATCH_SIZE: ${MINIMALL_ORDER_TIMEOUT_BATCH_SIZE:-100}
+      ORDER_IDEMPOTENCY_LOCK_TTL_SECONDS: ${ORDER_IDEMPOTENCY_LOCK_TTL_SECONDS:-30}
+    ports:
+      - "${ORDER_SERVICE_PORT:-8104}:8104"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      product-service:
+        condition: service_healthy
+      inventory-service:
+        condition: service_healthy
+    healthcheck: *java-service-healthcheck
+    networks:
+      - minimall-local
+
+  payment-service:
+    image: ${MINIMALL_IMAGE_PREFIX:-minimall}/payment-service:${MINIMALL_IMAGE_TAG:-local}
+    profiles:
+      - services
+    build:
+      <<: *java-service-build
+      args:
+        JAVA_RUNTIME_IMAGE: ${JAVA_RUNTIME_IMAGE:-eclipse-temurin:17-jre-alpine}
+        JAR_FILE: payment-service/target/payment-service-0.0.1-SNAPSHOT.jar
+    restart: unless-stopped
+    environment:
+      <<: *java-service-environment
+      SERVER_PORT: 8105
+    ports:
+      - "${PAYMENT_SERVICE_PORT:-8105}:8105"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck: *java-service-healthcheck
+    networks:
+      - minimall-local
+
+  notification-service:
+    image: ${MINIMALL_IMAGE_PREFIX:-minimall}/notification-service:${MINIMALL_IMAGE_TAG:-local}
+    profiles:
+      - services
+    build:
+      <<: *java-service-build
+      args:
+        JAVA_RUNTIME_IMAGE: ${JAVA_RUNTIME_IMAGE:-eclipse-temurin:17-jre-alpine}
+        JAR_FILE: notification-service/target/notification-service-0.0.1-SNAPSHOT.jar
+    restart: unless-stopped
+    environment:
+      <<: *java-service-environment
+      SERVER_PORT: 8106
+    ports:
+      - "${NOTIFICATION_SERVICE_PORT:-8106}:8106"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck: *java-service-healthcheck
+    networks:
+      - minimall-local
+
+  api-gateway:
+    image: ${MINIMALL_IMAGE_PREFIX:-minimall}/api-gateway:${MINIMALL_IMAGE_TAG:-local}
+    profiles:
+      - services
+    build:
+      <<: *java-service-build
+      args:
+        JAVA_RUNTIME_IMAGE: ${JAVA_RUNTIME_IMAGE:-eclipse-temurin:17-jre-alpine}
+        JAR_FILE: api-gateway/target/api-gateway-0.0.1-SNAPSHOT.jar
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+      JAVA_OPTS: ${JAVA_OPTS:-}
+      SERVER_PORT: 8080
+      USER_SERVICE_BASE_URL: http://user-service:8101
+      PRODUCT_SERVICE_BASE_URL: http://product-service:8102
+      INVENTORY_SERVICE_BASE_URL: http://inventory-service:8103
+      ORDER_SERVICE_BASE_URL: http://order-service:8104
+      PAYMENT_SERVICE_BASE_URL: http://payment-service:8105
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      MINIMALL_AUTH_JWT_SECRET: ${MINIMALL_AUTH_JWT_SECRET:?MINIMALL_AUTH_JWT_SECRET is required}
+      MINIMALL_AUTH_JWT_EXPIRE_SECONDS: ${MINIMALL_AUTH_JWT_EXPIRE_SECONDS:-3600}
+      MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED: ${MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED:-true}
+      MINIMALL_GATEWAY_CORS_ALLOWED_ORIGIN_PATTERNS: ${MINIMALL_GATEWAY_CORS_ALLOWED_ORIGIN_PATTERNS:-http://localhost:*,http://127.0.0.1:*}
+      MINIMALL_GATEWAY_CORS_ALLOWED_METHODS: ${MINIMALL_GATEWAY_CORS_ALLOWED_METHODS:-GET,POST,PUT,PATCH,DELETE,OPTIONS}
+      MINIMALL_GATEWAY_CORS_ALLOWED_HEADERS: ${MINIMALL_GATEWAY_CORS_ALLOWED_HEADERS:-*}
+      MINIMALL_GATEWAY_CORS_ALLOW_CREDENTIALS: ${MINIMALL_GATEWAY_CORS_ALLOW_CREDENTIALS:-false}
+      MINIMALL_GATEWAY_CORS_MAX_AGE: ${MINIMALL_GATEWAY_CORS_MAX_AGE:-1800}
+      MINIMALL_GATEWAY_RATE_LIMIT_ENABLED: ${MINIMALL_GATEWAY_RATE_LIMIT_ENABLED:-true}
+      MINIMALL_GATEWAY_RATE_LIMIT_REPLENISH_RATE: ${MINIMALL_GATEWAY_RATE_LIMIT_REPLENISH_RATE:-10}
+      MINIMALL_GATEWAY_RATE_LIMIT_BURST_CAPACITY: ${MINIMALL_GATEWAY_RATE_LIMIT_BURST_CAPACITY:-20}
+      MINIMALL_GATEWAY_RATE_LIMIT_REQUESTED_TOKENS: ${MINIMALL_GATEWAY_RATE_LIMIT_REQUESTED_TOKENS:-1}
+      MINIMALL_GATEWAY_RATE_LIMIT_KEY_PREFIX: ${MINIMALL_GATEWAY_RATE_LIMIT_KEY_PREFIX:-minimall:gateway:rate-limit}
+      MINIMALL_GATEWAY_RATE_LIMIT_FAIL_OPEN: ${MINIMALL_GATEWAY_RATE_LIMIT_FAIL_OPEN:-true}
+    ports:
+      - "${API_GATEWAY_PORT:-8080}:8080"
+    depends_on:
+      redis:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+      product-service:
+        condition: service_healthy
+      inventory-service:
+        condition: service_healthy
+      order-service:
+        condition: service_healthy
+      payment-service:
+        condition: service_healthy
+    healthcheck: *java-service-healthcheck
     networks:
       - minimall-local
 
