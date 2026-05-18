@@ -1199,12 +1199,13 @@
             "title": "Document deployment architecture and operations",
             "description": "Complete delivery documentation for architecture, modules, database, events, APIs, deployment, observability, and pressure-test usage.",
             "details": "Update or add README/deployment/architecture documentation so a developer can start dependencies and services from zero, understand environment-variable mapping, service startup order, health checks, database migration, RabbitMQ events, Prometheus/Grafana usage, and pressure-test entrypoints.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "20.2"
             ],
             "parentTaskId": 20,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-18T12:19:16.971Z"
           },
           {
             "id": 4,
@@ -1219,12 +1220,12 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-05-18T12:06:59.574Z"
+        "updatedAt": "2026-05-18T12:19:16.971Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-18T12:06:59.577Z",
+      "lastModified": "2026-05-18T12:19:16.975Z",
       "taskCount": 20,
       "completedCount": 19,
       "tags": [

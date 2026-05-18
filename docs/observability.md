@@ -2,6 +2,8 @@
 
 Task 18 adds a local Prometheus and Grafana path for MiniMall service metrics.
 
+For the full deployment and operations sequence, see `docs/deployment.md`.
+
 ## Services
 
 The local Compose stack includes:

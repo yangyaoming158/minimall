@@ -9,6 +9,10 @@ Task 2 provisions local development dependencies with Docker Compose:
 - Prometheus: `http://127.0.0.1:${PROMETHEUS_PORT}`
 - Grafana: `http://127.0.0.1:${GRAFANA_PORT}`
 
+For the full zero-to-running-services path, including database migration,
+service container startup, health checks, and pressure-test entrypoints, see
+`docs/deployment.md`.
+
 Copy `.env.example` to `.env` before starting Docker Compose, then replace all `change-me-*` values locally. The real `.env` file is ignored by Git.
 
 ## Compose Variables
