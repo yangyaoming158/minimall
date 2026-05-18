@@ -1165,27 +1165,65 @@
           "18",
           "19"
         ],
-        "status": "pending",
+        "status": "in-progress",
         "subtasks": [
           {
             "id": 1,
             "title": "Frontend integration guide and readiness acceptance checklist",
             "description": "Add frontend-facing delivery documentation and acceptance checklist after backend tasks are complete.",
             "details": "Document API base URL, gateway routing table, CORS configuration, auth token flow, ApiResponse and ErrorCode contract, user-facing API examples, local frontend environment variables, and admin/backoffice gaps if not implemented. Include a checklist that marks each backend endpoint as ready for frontend UI, admin UI, internal-only, or not yet exposed. The final acceptance must prove a browser frontend can use api-gateway as the single API entrypoint without calling service-internal URLs.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               16,
               19
             ],
             "parentTaskId": 20,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-18T11:49:16.075Z"
+          },
+          {
+            "id": 2,
+            "title": "Containerize Java services for Compose runtime",
+            "description": "Add Docker/Compose runtime support for api-gateway and Java services.",
+            "details": "Provide Dockerfile or shared image build approach for api-gateway, user-service, product-service, inventory-service, order-service, payment-service, and notification-service. Wire them into the Compose network with service-name URLs, container ports, environment variables, health checks, and Prometheus scrape targets that do not rely on dynamic WSL IPs.",
+            "status": "pending",
+            "dependencies": [
+              "20.1"
+            ],
+            "parentTaskId": 20,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Document deployment architecture and operations",
+            "description": "Complete delivery documentation for architecture, modules, database, events, APIs, deployment, observability, and pressure-test usage.",
+            "details": "Update or add README/deployment/architecture documentation so a developer can start dependencies and services from zero, understand environment-variable mapping, service startup order, health checks, database migration, RabbitMQ events, Prometheus/Grafana usage, and pressure-test entrypoints.",
+            "status": "pending",
+            "dependencies": [
+              "20.2"
+            ],
+            "parentTaskId": 20,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Run final end-to-end acceptance",
+            "description": "Execute and record the final delivery acceptance flow through the gateway and containerized runtime.",
+            "details": "Verify from-zero startup, Prometheus up=1 for at least one containerized Java service, Grafana MiniMall Observability dashboard metrics, and the full register/login, product, order, payment, order PAID, and notification-log chain. Record results and blockers in project documentation.",
+            "status": "pending",
+            "dependencies": [
+              "20.3"
+            ],
+            "parentTaskId": 20,
             "parentId": "undefined"
           }
-        ]
+        ],
+        "updatedAt": "2026-05-18T11:51:53.369Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-17T16:05:50.901Z",
+      "lastModified": "2026-05-18T11:51:53.369Z",
       "taskCount": 20,
       "completedCount": 19,
       "tags": [
