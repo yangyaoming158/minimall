@@ -20,7 +20,7 @@ class GatewayErrorResponseWriterTest {
     @Test
     void writesForbiddenApiResponse() throws Exception {
         MockServerWebExchange exchange = MockServerWebExchange.from(
-                MockServerHttpRequest.get("/api/order/orders/my").build());
+                MockServerHttpRequest.get("/api/orders/my").build());
 
         writer.forbidden(exchange, "Forbidden").block();
 
@@ -30,7 +30,7 @@ class GatewayErrorResponseWriterTest {
     @Test
     void writesTooManyRequestsApiResponse() throws Exception {
         MockServerWebExchange exchange = MockServerWebExchange.from(
-                MockServerHttpRequest.get("/api/order/orders/my").build());
+                MockServerHttpRequest.get("/api/orders/my").build());
 
         writer.tooManyRequests(exchange).block();
 

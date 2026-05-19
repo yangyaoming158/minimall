@@ -64,13 +64,14 @@ class GatewayIntegrationRegressionTest {
     void routesFrontendServicePrefixesAndPropagatesTrustedUserHeaders() {
         String token = jwtUtils.generateToken(42L, "alice");
 
-        expectPublicUserRoute();
-        expectProtectedRoute("/api/product/products", "product", token);
-        expectProtectedRoute("/api/inventory/inventories", "inventory", token);
-        expectProtectedRoute("/api/order/orders/my", "order", token);
-        expectProtectedRoute("/api/payment/payments/ORDER-1", "payment", token);
+        expectPublicUserRoutes();
+        expectProtectedRoute("/api/products", "product", token);
+        expectProtectedRoute("/api/inventories/SKU-1", "inventory", token);
+        expectProtectedRoute("/api/orders/my", "order", token);
+        expectProtectedRoute("/api/payments/ORDER-1", "payment", token);
 
         assertThat(rateLimiter.keys()).containsExactly(
+                "ip:unknown",
                 "ip:unknown",
                 "user:42",
                 "user:42",
@@ -81,7 +82,7 @@ class GatewayIntegrationRegressionTest {
     @Test
     void protectedApiRequiresJwtBeforeRateLimiting() {
         webTestClient.get()
-                .uri("/api/order/orders/my")
+                .uri("/api/orders/my")
                 .exchange()
                 .expectStatus().isUnauthorized()
                 .expectHeader().contentTypeCompatibleWith("application/json")
@@ -98,7 +99,7 @@ class GatewayIntegrationRegressionTest {
         rateLimiter.deny();
 
         webTestClient.options()
-                .uri("/api/order/orders/my")
+                .uri("/api/orders/my")
                 .header(HttpHeaders.ORIGIN, "http://localhost:5173")
                 .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "GET")
                 .header(HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS, "Authorization, Content-Type")
@@ -121,7 +122,7 @@ class GatewayIntegrationRegressionTest {
         String token = jwtUtils.generateToken(42L, "alice");
 
         webTestClient.get()
-                .uri("/api/payment/payments/ORDER-1")
+                .uri("/api/payments/ORDER-1")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                 .exchange()
                 .expectStatus().isEqualTo(429)
@@ -139,17 +140,28 @@ class GatewayIntegrationRegressionTest {
         String token = jwtUtils.generateToken(42L, "alice");
 
         webTestClient.get()
-                .uri("/api/product/products")
+                .uri("/api/products")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                 .exchange()
                 .expectStatus().isOk();
 
-        assertThat(output).contains("gateway request method=GET path=/api/product/products status=200 durationMs=");
+        assertThat(output).contains("gateway request method=GET path=/api/products status=200 durationMs=");
     }
 
-    private void expectPublicUserRoute() {
+    private void expectPublicUserRoutes() {
         webTestClient.post()
-                .uri("/api/user/users/login")
+                .uri("/api/users/login")
+                .header(AuthHeaders.USER_ID, "999")
+                .header(AuthHeaders.USERNAME, "mallory")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.service").isEqualTo("user")
+                .jsonPath("$.userId").isEqualTo("")
+                .jsonPath("$.username").isEqualTo("");
+
+        webTestClient.post()
+                .uri("/api/users/register")
                 .header(AuthHeaders.USER_ID, "999")
                 .header(AuthHeaders.USERNAME, "mallory")
                 .exchange()

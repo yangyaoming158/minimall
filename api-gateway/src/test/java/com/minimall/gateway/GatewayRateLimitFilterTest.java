@@ -76,7 +76,7 @@ class GatewayRateLimitFilterTest {
         String token = jwtUtils.generateToken(42L, "alice");
 
         webTestClient.get()
-                .uri("/api/order/orders/my")
+                .uri("/api/orders/my")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                 .exchange()
                 .expectStatus().isOk();
@@ -90,7 +90,7 @@ class GatewayRateLimitFilterTest {
         String token = jwtUtils.generateToken(42L, "alice");
 
         webTestClient.get()
-                .uri("/api/order/orders/my")
+                .uri("/api/orders/my")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                 .exchange()
                 .expectStatus().isEqualTo(429)
@@ -106,7 +106,7 @@ class GatewayRateLimitFilterTest {
     @Test
     void publicRequestFallsBackToIpRateLimitKey() {
         webTestClient.post()
-                .uri("/api/user/users/login")
+                .uri("/api/users/login")
                 .exchange()
                 .expectStatus().isOk();
 
@@ -118,7 +118,7 @@ class GatewayRateLimitFilterTest {
         rateLimiter.deny();
 
         webTestClient.options()
-                .uri("/api/order/orders/my")
+                .uri("/api/orders/my")
                 .header(HttpHeaders.ORIGIN, "http://localhost:5173")
                 .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "GET")
                 .header(HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS, "Authorization, Content-Type")

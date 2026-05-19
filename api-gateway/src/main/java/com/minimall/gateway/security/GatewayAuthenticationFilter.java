@@ -21,8 +21,8 @@ import reactor.core.publisher.Mono;
 public class GatewayAuthenticationFilter implements GlobalFilter, Ordered {
 
     private static final String BEARER_PREFIX = "Bearer ";
-    private static final String USER_LOGIN_PATH = "/api/user/users/login";
-    private static final String USER_REGISTER_PATH = "/api/user/users/register";
+    private static final String USER_LOGIN_PATH = "/api/users/login";
+    private static final String USER_REGISTER_PATH = "/api/users/register";
 
     private final JwtUtils jwtUtils;
     private final GatewayErrorResponseWriter errorResponseWriter;

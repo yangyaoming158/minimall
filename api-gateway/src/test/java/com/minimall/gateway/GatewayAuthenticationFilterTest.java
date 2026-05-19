@@ -45,7 +45,7 @@ class GatewayAuthenticationFilterTest {
     @Test
     void missingJwtReturnsUnauthorizedApiResponse() {
         webTestClient.get()
-                .uri("/api/order/orders/my")
+                .uri("/api/orders/my")
                 .exchange()
                 .expectStatus().isUnauthorized()
                 .expectHeader().contentTypeCompatibleWith("application/json")
@@ -58,7 +58,7 @@ class GatewayAuthenticationFilterTest {
     @Test
     void invalidJwtReturnsUnauthorizedApiResponse() {
         webTestClient.get()
-                .uri("/api/order/orders/my")
+                .uri("/api/orders/my")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer invalid-token")
                 .exchange()
                 .expectStatus().isUnauthorized()
@@ -74,7 +74,7 @@ class GatewayAuthenticationFilterTest {
         String token = jwtUtils.generateToken(42L, "alice");
 
         webTestClient.get()
-                .uri("/api/order/orders/my")
+                .uri("/api/orders/my")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                 .header(AuthHeaders.USER_ID, "999")
                 .header(AuthHeaders.USERNAME, "mallory")
@@ -88,7 +88,20 @@ class GatewayAuthenticationFilterTest {
     @Test
     void publicLoginPathBypassesJwtAndStripsSpoofedHeaders() {
         webTestClient.post()
-                .uri("/api/user/users/login")
+                .uri("/api/users/login")
+                .header(AuthHeaders.USER_ID, "999")
+                .header(AuthHeaders.USERNAME, "mallory")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.userId").isEqualTo("")
+                .jsonPath("$.username").isEqualTo("");
+    }
+
+    @Test
+    void publicRegisterPathBypassesJwtAndStripsSpoofedHeaders() {
+        webTestClient.post()
+                .uri("/api/users/register")
                 .header(AuthHeaders.USER_ID, "999")
                 .header(AuthHeaders.USERNAME, "mallory")
                 .exchange()
@@ -101,7 +114,7 @@ class GatewayAuthenticationFilterTest {
     @Test
     void optionsRequestBypassesJwt() {
         webTestClient.options()
-                .uri("/api/order/orders/my")
+                .uri("/api/orders/my")
                 .header(AuthHeaders.USER_ID, "999")
                 .header(AuthHeaders.USERNAME, "mallory")
                 .exchange()
@@ -111,7 +124,7 @@ class GatewayAuthenticationFilterTest {
     @Test
     void apiPreflightRequestReturnsCorsHeadersWithoutJwt() {
         webTestClient.options()
-                .uri("/api/order/orders/my")
+                .uri("/api/orders/my")
                 .header(HttpHeaders.ORIGIN, "http://localhost:5173")
                 .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "GET")
                 .header(HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS, "Authorization, Content-Type")

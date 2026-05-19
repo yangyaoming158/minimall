@@ -34,22 +34,22 @@ class GatewayRoutesTest {
     void configuresFrontendServiceRoutesWithEnvironmentDrivenUris() {
         Map<String, RouteDefinition> routes = routesById();
 
-        assertRoute(routes, "user-service", "http://user-service.test", "/api/user/**");
-        assertRoute(routes, "product-service", "http://product-service.test", "/api/product/**");
-        assertRoute(routes, "inventory-service", "http://inventory-service.test", "/api/inventory/**");
-        assertRoute(routes, "order-service", "http://order-service.test", "/api/order/**");
-        assertRoute(routes, "payment-service", "http://payment-service.test", "/api/payment/**");
+        assertRoute(routes, "user-service", "http://user-service.test", "/api/users/**");
+        assertRoute(routes, "product-service", "http://product-service.test", "/api/products/**");
+        assertRoute(routes, "inventory-service", "http://inventory-service.test", "/api/inventories/**");
+        assertRoute(routes, "order-service", "http://order-service.test", "/api/orders/**");
+        assertRoute(routes, "payment-service", "http://payment-service.test", "/api/payments/**");
     }
 
     @Test
-    void routeFiltersRewriteFrontendPrefixesToDownstreamApiPaths() {
+    void canonicalRoutesForwardWithoutLegacyRewriteFilters() {
         Map<String, RouteDefinition> routes = routesById();
 
-        assertRewrite(routes, "user-service", "/api/user/(?<segment>.*)", "/api/$\\{segment}");
-        assertRewrite(routes, "product-service", "/api/product/(?<segment>.*)", "/api/$\\{segment}");
-        assertRewrite(routes, "inventory-service", "/api/inventory/(?<segment>.*)", "/api/$\\{segment}");
-        assertRewrite(routes, "order-service", "/api/order/(?<segment>.*)", "/api/$\\{segment}");
-        assertRewrite(routes, "payment-service", "/api/payment/(?<segment>.*)", "/api/$\\{segment}");
+        assertNoRewrite(routes, "user-service");
+        assertNoRewrite(routes, "product-service");
+        assertNoRewrite(routes, "inventory-service");
+        assertNoRewrite(routes, "order-service");
+        assertNoRewrite(routes, "payment-service");
     }
 
     @Test
@@ -59,6 +59,20 @@ class GatewayRoutesTest {
                 .toList();
 
         assertThat(allPathPredicates).noneMatch(path -> path.startsWith("/internal"));
+    }
+
+    @Test
+    void doesNotConfigureLegacyServicePrefixRoutes() {
+        List<String> allPathPredicates = routesById().values().stream()
+                .flatMap(route -> pathPredicateArgs(route).stream())
+                .toList();
+
+        assertThat(allPathPredicates).doesNotContain(
+                "/api/user/**",
+                "/api/product/**",
+                "/api/inventory/**",
+                "/api/order/**",
+                "/api/payment/**");
     }
 
     private Map<String, RouteDefinition> routesById() {
@@ -77,19 +91,12 @@ class GatewayRoutesTest {
         assertThat(pathPredicateArgs(route)).contains(pathPattern);
     }
 
-    private void assertRewrite(
+    private void assertNoRewrite(
             Map<String, RouteDefinition> routes,
-            String routeId,
-            String regexp,
-            String replacement) {
+            String routeId) {
         RouteDefinition route = routes.get(routeId);
         assertThat(route).as("route " + routeId).isNotNull();
-        List<String> rewriteArgs = route.getFilters().stream()
-                .filter(filter -> "RewritePath".equals(filter.getName()))
-                .flatMap(filter -> filter.getArgs().values().stream())
-                .toList();
-
-        assertThat(rewriteArgs).contains(regexp, replacement);
+        assertThat(route.getFilters()).noneMatch(filter -> "RewritePath".equals(filter.getName()));
     }
 
     private List<String> pathPredicateArgs(RouteDefinition route) {

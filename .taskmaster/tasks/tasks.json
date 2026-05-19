@@ -1257,12 +1257,13 @@
         "description": "Add or adjust api-gateway routes so canonical browser paths forward to existing downstream service controllers.",
         "details": "Support /api/users, /api/products, /api/inventories, /api/orders, and /api/payments through the gateway. Apply the selected legacy path strategy from task 1. Keep downstream controller paths stable unless the task explicitly proves a safer local change. Verification: gateway route tests cover canonical register, login, product, inventory, order, and payment paths.",
         "testStrategy": "",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           "1"
         ],
         "priority": "high",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-05-19T11:04:19.175Z"
       },
       {
         "id": 3,
@@ -1353,15 +1354,15 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-19T10:54:08.849Z",
+      "lastModified": "2026-05-19T11:04:19.175Z",
       "taskCount": 8,
-      "completedCount": 1,
+      "completedCount": 2,
       "tags": [
         "phase0-api-polish"
       ],
-      "created": "2026-05-19T10:55:09.475Z",
+      "created": "2026-05-19T11:05:04.203Z",
       "description": "Tasks for phase0-api-polish context",
-      "updated": "2026-05-19T10:55:09.475Z"
+      "updated": "2026-05-19T11:05:04.203Z"
     }
   }
 }

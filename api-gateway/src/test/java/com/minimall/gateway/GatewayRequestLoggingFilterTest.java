@@ -20,7 +20,7 @@ class GatewayRequestLoggingFilterTest {
 
     @Test
     void logsRequestSummaryWithoutSensitiveHeaders(CapturedOutput output) {
-        MockServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/api/order/orders/my")
+        MockServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/api/orders/my")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer secret-token")
                 .build());
 
@@ -29,18 +29,18 @@ class GatewayRequestLoggingFilterTest {
             return Mono.empty();
         }).block();
 
-        assertThat(output).contains("gateway request method=GET path=/api/order/orders/my status=201 durationMs=");
+        assertThat(output).contains("gateway request method=GET path=/api/orders/my status=201 durationMs=");
         assertThat(output).doesNotContain(HttpHeaders.AUTHORIZATION);
         assertThat(output).doesNotContain("secret-token");
     }
 
     @Test
     void logsOkWhenResponseStatusIsImplicit(CapturedOutput output) {
-        MockServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.post("/api/user/users/login")
+        MockServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.post("/api/users/login")
                 .build());
 
         filter.filter(exchange, filteredExchange -> Mono.empty()).block();
 
-        assertThat(output).contains("gateway request method=POST path=/api/user/users/login status=200 durationMs=");
+        assertThat(output).contains("gateway request method=POST path=/api/users/login status=200 durationMs=");
     }
 }
