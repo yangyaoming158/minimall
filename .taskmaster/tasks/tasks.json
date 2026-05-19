@@ -1271,12 +1271,13 @@
         "description": "Keep gateway authentication, trusted header handling, rate limiting, and internal API blocking intact after canonical route changes.",
         "details": "Ensure protected canonical routes still require Bearer JWT, public register and login plus CORS preflight remain open, spoofed X-User-Id and X-Username are stripped, and /internal paths are not routed. Verification: gateway security tests assert 401, 403 or 404 for internal exposure, 429 ApiResponse for rate limit, and trusted header injection only after JWT validation.",
         "testStrategy": "",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           "2"
         ],
         "priority": "high",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-05-19T11:16:45.285Z"
       },
       {
         "id": 4,
@@ -1354,15 +1355,15 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-19T11:04:19.175Z",
+      "lastModified": "2026-05-19T11:16:45.285Z",
       "taskCount": 8,
-      "completedCount": 2,
+      "completedCount": 3,
       "tags": [
         "phase0-api-polish"
       ],
-      "created": "2026-05-19T11:05:04.203Z",
+      "created": "2026-05-19T11:18:07.478Z",
       "description": "Tasks for phase0-api-polish context",
-      "updated": "2026-05-19T11:05:04.203Z"
+      "updated": "2026-05-19T11:18:07.478Z"
     }
   }
 }

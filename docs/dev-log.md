@@ -834,3 +834,13 @@ Append one entry per implementation task so future sessions can recover project 
 - Test result: git diff --check succeeded. No Maven command was run because this was a workflow/documentation and TaskMaster checkpoint commit with no Java source changes.
 - Issues: `.taskmaster/docs/phase0-api-contract-polish-prd.txt:Zone.Identifier` is Windows download metadata, so it was intentionally ignored rather than committed.
 - Next: Continue with Phase 0 Task 3 when requested.
+
+## Phase 0 Task 3 - Verify gateway security boundaries
+- Date: 2026-05-19
+- Status: Done
+- Implemented: Verified Task 3 without splitting because the scope stayed within api-gateway security boundaries. Added `GatewayInternalPathBlockFilter` to block `/internal` and `/internal/**` before gateway routing and return a 403 `ApiResponse` instead of relying on implicit no-route behavior. Extended gateway integration regression tests to assert internal product and inventory paths return the 403 envelope before routing or rate limiting. Existing canonical security coverage continues to verify protected routes require JWT, public login/register and CORS preflight remain open, spoofed trusted headers are stripped, trusted headers are injected only after JWT validation, and rate-limit denials return 429 `ApiResponse`.
+- Changed files: api-gateway/src/main/java/com/minimall/gateway/security/GatewayInternalPathBlockFilter.java; api-gateway/src/test/java/com/minimall/gateway/GatewayIntegrationRegressionTest.java; .taskmaster/tasks/tasks.json; docs/dev-log.md
+- Commands run: node node_modules/task-master-ai/dist/task-master.js tags; node node_modules/task-master-ai/dist/task-master.js next --tag=phase0-api-polish; node node_modules/task-master-ai/dist/task-master.js show 3; node node_modules/task-master-ai/dist/task-master.js set-status --id=3 --status=in-progress; gateway security source/test reads; rg checks for internal boundary coverage; git diff --check; mvn -pl api-gateway -am test; mvn clean package -DskipTests; node node_modules/task-master-ai/dist/task-master.js set-status --id=3 --status=done.
+- Test result: mvn -pl api-gateway -am test succeeded with common-core 22 tests, common-auth 26 tests, and api-gateway 26 tests passing. mvn clean package -DskipTests succeeded for the full 10-module reactor.
+- Issues: Netty printed the known operation-not-permitted warning while enumerating network interfaces during gateway tests, but all tests passed.
+- Next: Continue with the next ready Phase 0 task when requested.

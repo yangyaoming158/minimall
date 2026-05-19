@@ -136,6 +136,14 @@ class GatewayIntegrationRegressionTest {
     }
 
     @Test
+    void internalPathsReturnForbiddenApiResponseBeforeRoutingOrRateLimiting() {
+        expectInternalPathForbidden("/internal/products/SKU-1");
+        expectInternalPathForbidden("/internal/inventories/deduct");
+
+        assertThat(rateLimiter.keys()).isEmpty();
+    }
+
+    @Test
     void requestLoggingRecordsBrowserFacingPath(CapturedOutput output) {
         String token = jwtUtils.generateToken(42L, "alice");
 
@@ -184,6 +192,18 @@ class GatewayIntegrationRegressionTest {
                 .jsonPath("$.service").isEqualTo(expectedService)
                 .jsonPath("$.userId").isEqualTo("42")
                 .jsonPath("$.username").isEqualTo("alice");
+    }
+
+    private void expectInternalPathForbidden(String uri) {
+        webTestClient.get()
+                .uri(uri)
+                .exchange()
+                .expectStatus().isForbidden()
+                .expectHeader().contentTypeCompatibleWith("application/json")
+                .expectBody()
+                .jsonPath("$.success").isEqualTo(false)
+                .jsonPath("$.code").isEqualTo(ErrorCode.FORBIDDEN.getCode())
+                .jsonPath("$.message").isEqualTo("Internal API is not exposed");
     }
 
     @TestConfiguration
