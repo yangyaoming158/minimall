@@ -1,0 +1,1237 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": "1",
+        "title": "初始化 Maven 多模块项目与服务空壳",
+        "description": "建立 mini-mall-order 的 Java 17、Spring Boot 3.x、Spring Cloud 2023.x Maven 多模块工程，并为所有服务创建可启动的空壳应用。",
+        "details": "创建父级 pom.xml 与模块：common-core、common-auth、api-gateway、user-service、product-service、inventory-service、order-service、payment-service、notification-service。统一 dependencyManagement、插件、Java 版本、基础 application.yml 与端口约定。每个服务提供启动类和 actuator health。",
+        "testStrategy": "mvn clean package -DskipTests 成功；每个服务模块可单独启动；各服务 /actuator/health 返回 UP；父 POM modules 完整且无循环依赖。",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "配置父级 Maven 工程与统一依赖管理",
+            "description": "创建根 pom.xml，声明 Java 17、Spring Boot 3.x、Spring Cloud 2023.x、模块列表和统一插件/依赖管理。",
+            "details": "父级 POM 使用 packaging=pom，modules 包含 common-core、common-auth、api-gateway、user-service、product-service、inventory-service、order-service、payment-service、notification-service。统一 properties、dependencyManagement、maven-compiler-plugin、spring-boot-maven-plugin 版本策略。",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 1,
+            "updatedAt": "2026-04-29T15:32:56.628Z",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "创建 common 与服务模块空壳 POM",
+            "description": "为 common-core、common-auth 以及所有业务服务创建目录结构和模块 pom.xml。",
+            "details": "每个模块提供标准 Maven 目录 src/main/java 与 src/main/resources。common 模块保持普通 jar；服务模块继承父 POM，按服务类型引入 spring-boot-starter-web 或 gateway、actuator 等最小依赖，暂不实现业务逻辑。",
+            "status": "done",
+            "dependencies": [
+              1
+            ],
+            "parentTaskId": 1,
+            "parentId": "undefined",
+            "updatedAt": "2026-04-29T15:49:28.102Z"
+          },
+          {
+            "id": 3,
+            "title": "补齐服务启动类、基础配置与构建验证",
+            "description": "为所有服务模块创建 Spring Boot 启动类、基础 application.yml、端口约定和 actuator health 配置。",
+            "details": "各服务提供可启动 Application 类，application.yml 声明 spring.application.name、server.port、management.endpoints.web.exposure.include=health。完成后运行 mvn clean package -DskipTests，并按需单独启动服务验证 /actuator/health 返回 UP。",
+            "status": "done",
+            "dependencies": [
+              2
+            ],
+            "parentTaskId": 1,
+            "parentId": "undefined",
+            "updatedAt": "2026-04-29T16:16:54.315Z"
+          }
+        ],
+        "updatedAt": "2026-04-29T16:16:54.315Z"
+      },
+      {
+        "id": "2",
+        "title": "配置本地基础设施 Docker Compose：MySQL、Redis、RabbitMQ",
+        "description": "提供本地开发所需基础设施编排，包含 MySQL、Redis、RabbitMQ 及基础管理端口。",
+        "details": "创建 docker-compose.yml 与 .env.example 扩展项。MySQL 挂载初始化目录，Redis 暴露标准端口，RabbitMQ 使用 management 镜像并暴露 AMQP 与管理 UI。记录启动、停止、清理数据卷命令。",
+        "testStrategy": "docker compose up -d 成功；MySQL/Redis/RabbitMQ 容器健康；RabbitMQ 管理页可访问；应用配置可通过环境变量连接三类基础设施。",
+        "priority": "high",
+        "dependencies": [
+          "1"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create Docker Compose and env template",
+            "description": "Create docker-compose.yml and .env.example for MySQL, Redis, and RabbitMQ management.",
+            "details": "Use named volumes, environment-variable driven credentials and ports, healthchecks, and no hardcoded secrets in application code.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 2,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-01T02:19:50.464Z"
+          },
+          {
+            "id": 2,
+            "title": "Add init directories and connection conventions",
+            "description": "Create infrastructure initialization directories and document local connection variables for services.",
+            "details": "Prepare MySQL init mount location, keep credentials in .env.example, and document expected JDBC, Redis, and RabbitMQ environment variable names.",
+            "status": "done",
+            "dependencies": [
+              "2.1"
+            ],
+            "parentTaskId": 2,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-01T02:28:00.555Z"
+          },
+          {
+            "id": 3,
+            "title": "Verify Docker Compose startup and document commands",
+            "description": "Run docker compose validation/startup checks and document start, stop, and cleanup commands.",
+            "details": "Verify docker compose config and docker compose up -d when Docker is available; check MySQL, Redis, RabbitMQ health and RabbitMQ management endpoint.",
+            "status": "done",
+            "dependencies": [
+              "2.2"
+            ],
+            "parentTaskId": 2,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-01T02:42:11.210Z"
+          }
+        ],
+        "updatedAt": "2026-05-01T02:42:11.210Z"
+      },
+      {
+        "id": "3",
+        "title": "建立数据库 migration/schema 基础结构",
+        "description": "建立数据库 schema 管理结构，为各服务核心表提供初始 migration。",
+        "details": "创建 docs/sql 或 migration 目录，定义 users、products、inventory、inventory_records、orders、order_events、payments、notification_logs 等基础表和关键唯一约束。字段保持 MVP 必需，后续服务任务可补充索引与字段。",
+        "testStrategy": "初始化 SQL 可在空 MySQL 上重复执行或按 migration 工具执行；核心表存在；关键唯一约束存在：username、product_id、order_no、payment_no、payments.order_no、event_id、inventory_records(order_no,change_type)。",
+        "priority": "high",
+        "dependencies": [
+          "1"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create migration directory and schema documentation",
+            "description": "Create database migration directory structure and document naming, execution, and verification conventions.",
+            "details": "Use docs/sql or migration directory. Define where V1 initial schema lives and how Task 3 verification should run against local MySQL.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 3,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-01T02:59:35.093Z"
+          },
+          {
+            "id": 2,
+            "title": "Create initial schema migration SQL",
+            "description": "Create the V1 initial MySQL schema migration for core MiniMall tables.",
+            "details": "Define users, products, inventory, inventory_records, orders, order_events, payments, and notification_logs with MVP fields, status fields as varchar values, timestamps, idempotency keys, and required unique constraints.",
+            "status": "done",
+            "dependencies": [
+              "3.1"
+            ],
+            "parentTaskId": 3,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-01T03:27:08.494Z"
+          },
+          {
+            "id": 3,
+            "title": "Verify schema on local MySQL",
+            "description": "Execute the initial schema against local MySQL and verify core tables and unique constraints.",
+            "details": "Use the running Docker Compose MySQL from Task 2. Verify required tables exist and key unique constraints exist: username, product_id, order_no, payment_no, payments.order_no, event_id, and inventory_records(order_no, change_type).",
+            "status": "done",
+            "dependencies": [
+              "3.2"
+            ],
+            "parentTaskId": 3,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-02T02:56:46.566Z"
+          }
+        ],
+        "updatedAt": "2026-05-02T02:56:46.566Z"
+      },
+      {
+        "id": "4",
+        "title": "实现 common-core：ApiResponse、ErrorCode、BusinessException、全局异常",
+        "description": "实现所有服务共享的基础响应和异常体系。",
+        "details": "在 common-core 中提供 ApiResponse<T>、ErrorCode、BusinessException、GlobalExceptionHandler、参数校验错误处理和系统异常兜底。保证所有 REST API 返回统一 JSON 结构。",
+        "testStrategy": "common-core 单元测试通过；业务异常、参数异常、未知异常均转换为 ApiResponse；下游服务引入 common-core 后编译通过。",
+        "priority": "high",
+        "dependencies": [
+          "1"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement ApiResponse ErrorCode and BusinessException contracts",
+            "description": "Create common-core response envelope, error code enum, and business exception types.",
+            "details": "Add ApiResponse<T> with success/failure factory methods, ErrorCode enum with stable code/message values, and BusinessException constructors/accessors. Add focused unit tests for response and exception behavior.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 4,
+            "updatedAt": "2026-05-02T03:10:50.251Z",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Implement global exception handler mappings",
+            "description": "Add Spring MVC global exception handler for business, validation, and fallback exceptions.",
+            "details": "Add required common-core dependencies, implement GlobalExceptionHandler returning ApiResponse for BusinessException, MethodArgumentNotValidException, ConstraintViolationException, and unexpected exceptions. Add focused handler tests.",
+            "status": "done",
+            "dependencies": [
+              "4.1"
+            ],
+            "parentTaskId": 4,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-02T03:23:12.858Z"
+          },
+          {
+            "id": 3,
+            "title": "Verify common-core integration and build",
+            "description": "Run common-core tests and full reactor compile/package checks after exception handling is complete.",
+            "details": "Run common-core unit tests, verify downstream modules that depend on common-core compile, run mvn clean package -DskipTests when relevant, and mark parent Task 4 complete only after verification.",
+            "status": "done",
+            "dependencies": [
+              "4.2"
+            ],
+            "parentTaskId": 4,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-02T04:34:03.762Z"
+          }
+        ],
+        "updatedAt": "2026-05-02T04:34:03.762Z"
+      },
+      {
+        "id": "5",
+        "title": "实现 common-auth：JwtUtils、UserContext、请求头约定",
+        "description": "实现认证上下文共享能力，包括 JWT 工具、用户上下文和服务间请求头约定。",
+        "details": "在 common-auth 中提供 JwtUtils、UserContext ThreadLocal、UserContextFilter 或拦截器、请求头常量 X-User-Id/X-Username。JWT secret、过期时间从配置读取。",
+        "testStrategy": "JWT 生成和解析测试通过；过期/非法 token 能被识别；UserContext 在请求结束后清理；依赖 common-auth 的服务可读取透传用户信息。",
+        "priority": "high",
+        "dependencies": [
+          "4"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "搭建 common-auth 基础结构：请求头常量与 UserContext ThreadLocal",
+            "description": "在 common-auth 模块内建立认证上下文共享的基础骨架，包含请求头约定与 ThreadLocal 上下文对象。",
+            "dependencies": [],
+            "details": "分析现状：`common-auth` 目前无 Java 源码，仅有 `pom.xml`；`common-core` 使用 `@AutoConfiguration` + `META-INF/spring/...AutoConfiguration.imports` 注册。此子任务需：1) 新建包 `com.minimall.common.auth`（如 `context`、`constants`、`config`）；2) 增加请求头常量类（至少 `X-User-Id`、`X-Username`）；3) 增加 `UserContext`（userId/username）与 `UserContextHolder`（ThreadLocal set/get/clear）；4) 在 `common-auth` 增加 `spring-web`、`spring-context`、`spring-boot-autoconfigure` 等依赖，并准备后续自动装配文件目录结构（先不强绑定具体 Filter 实现）。",
+            "status": "done",
+            "testStrategy": null,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-02T05:05:04.630Z"
+          },
+          {
+            "id": 2,
+            "title": "实现 JwtUtils：基于配置生成/解析 JWT（含非法与过期识别）",
+            "description": "实现 JWT 的签发与校验工具类，支持从配置读取 secret 与过期时间，并将 userId/username 写入 claims。",
+            "dependencies": [
+              1
+            ],
+            "details": "在 `common-auth` 中新增 `JwtProperties`（例如前缀 `minimall.auth.jwt`，字段包含 `secret`、`expireSeconds`/`expireDuration`），并通过 `@ConfigurationProperties` 注入；实现 `JwtUtils`：1) `generateToken(userId, username)` 生成 Bearer 可用的 token；2) `parseToken(token)` 解析并返回 userId/username；3) 对签名不匹配、格式错误、过期等场景统一识别并抛出 `BusinessException(ErrorCode.UNAUTHORIZED, ...)`（符合项目硬规则）；4) 在 `pom.xml` 引入选定 JWT 库（如 `jjwt` 或 `java-jwt`）并保持依赖最小化。",
+            "status": "done",
+            "testStrategy": "新增 `common-auth` 单元测试：覆盖 token 生成/解析成功、篡改 token 识别、过期 token 识别（可用极短过期时间或手工构造 exp）。",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-02T07:52:36.506Z"
+          },
+          {
+            "id": 3,
+            "title": "实现 UserContextFilter + 自动装配：读取 JWT/透传头并在请求结束清理",
+            "description": "提供可复用的 Web 过滤器，将用户信息写入 UserContext，并保证请求结束后 ThreadLocal 清理；同时固化服务间透传约定。",
+            "dependencies": [
+              2
+            ],
+            "details": "实现 `UserContextFilter`（建议继承 `OncePerRequestFilter`）：1) 优先从透传请求头 `X-User-Id`/`X-Username` 读取并写入 `UserContextHolder`；2) 若透传头不存在，则从 `Authorization: Bearer <token>` 解析 JWT 并写入；3) 对非法/过期 token 返回 401 且响应体为 `ApiResponse.failure(ErrorCode.UNAUTHORIZED, ...)`（避免默认错误响应破坏统一返回结构）；4) 在 `finally` 中调用 `UserContextHolder.clear()` 确保请求结束必清理；5) 增加 `CommonAuthAutoConfiguration` 并通过 `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports` 注册，按 `common-core` 既有模式提供可被覆盖的 Bean（`@ConditionalOnMissingBean`）；6) 补齐测试：Mock 请求验证 Filter 内可读到 UserContext、链路结束后已清理、非法 token 返回 ApiResponse；7) 按流程将进度追加到 `docs/dev-log.md`。",
+            "status": "done",
+            "testStrategy": "使用 `spring-test`/`MockHttpServletRequest`+`MockFilterChain` 编写 Filter 测试：验证 header 透传路径、JWT 路径、异常路径（401 + ApiResponse）、以及请求结束 ThreadLocal 清理。",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-02T08:07:33.581Z"
+          }
+        ],
+        "updatedAt": "2026-05-02T08:07:33.581Z"
+      },
+      {
+        "id": "6",
+        "title": "实现 user-service：注册、登录、/me",
+        "description": "实现用户注册、登录和当前用户查询接口。",
+        "details": "基于 users 表实现 POST /api/users/register、POST /api/users/login、GET /api/users/me。密码使用 BCrypt 存储，登录成功签发 JWT，/me 从 UserContext 读取用户信息。",
+        "testStrategy": "注册成功并写入非明文密码；重复用户名返回业务错误；登录成功返回 token；错误密码或不存在用户返回统一错误；带透传用户头访问 /me 返回当前用户。",
+        "priority": "high",
+        "dependencies": [
+          "1",
+          "3",
+          "4",
+          "5"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "user-service 增加用户模型与持久层（users表映射+依赖配置）",
+            "description": "在 user-service 中引入访问 users 表所需的依赖与基础代码，包含实体/枚举、Repository/DAO、以及基础配置，为注册与登录逻辑提供数据读写能力。",
+            "dependencies": [],
+            "details": "1) 参考 `docs/sql/migrations/V1__initial_schema.sql` 中 users 表字段（id/username/password_hash/email/phone/status/created_at/updated_at）建立用户实体；status 字段用 `UserStatus` 枚举（如 ACTIVE/DISABLED），字符串落库。\n2) 在 `user-service/pom.xml` 增加数据库访问依赖（例如 Spring Data JPA 或 MyBatis 其一）与 MySQL 驱动；增加 BCrypt 依赖（推荐 `spring-security-crypto`，避免引入整套 security）。\n3) 在 `user-service/src/main/resources/application.yml` 补充最小化数据库配置策略：不硬编码地址/密码，优先使用环境变量（如 `SPRING_DATASOURCE_URL/USERNAME/PASSWORD`），并关闭自动建表（若用 JPA 则 `ddl-auto=none`）。\n4) 提供基础查询/写入能力：按 username 查询、保存新用户；为唯一约束 `users.username` 冲突预留异常处理入口（后续在业务层转 `BusinessException(ErrorCode.CONFLICT)`）。",
+            "status": "done",
+            "testStrategy": "增加 Repository/DAO 的基础单测或 `@DataJpaTest`：插入用户后可按 username 查询到；status 枚举可正确序列化/反序列化；保存重复 username 时能触发唯一约束异常（仅验证抛出即可）。",
+            "updatedAt": "2026-05-02T08:53:01.182Z",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "实现注册与登录接口（BCrypt 存储+JWT 签发）",
+            "description": "实现 `POST /api/users/register` 与 `POST /api/users/login`，确保返回统一 `ApiResponse`，并按约束处理重复用户名与登录失败场景。",
+            "dependencies": [
+              1
+            ],
+            "details": "1) 新增 Controller：`/api/users/register`、`/api/users/login` 路由；所有返回体包装为 `ApiResponse`（成功 `ApiResponse.success(data)`）。\n2) 新增 DTO：RegisterRequest（username/password/email/phone 可选）、LoginRequest（username/password）、LoginResponse（token 等必要字段）。\n3) 注册逻辑：校验请求参数（建议引入 `spring-boot-starter-validation` 并使用 `@Valid`），使用 `BCryptPasswordEncoder` 将明文密码转为 `password_hash`；创建用户时默认 status=ACTIVE；当 username 已存在或唯一索引冲突时，抛 `BusinessException(ErrorCode.CONFLICT, \"用户名已存在\")`。\n4) 登录逻辑：按 username 查询用户，不存在或 BCrypt 校验失败时，统一抛 `BusinessException(ErrorCode.UNAUTHORIZED, \"用户名或密码错误\")`（避免泄露信息）；成功后调用 `common-auth` 的 `JwtUtils.generateToken(userId, username)` 签发 JWT。\n5) JwtUtils 注入前提：确保 `minimall.auth.jwt.secret` 可通过环境变量（`MINIMALL_AUTH_JWT_SECRET`）或 yml 配置提供，避免运行期缺少 JWT 组件。",
+            "status": "done",
+            "testStrategy": "使用 `@SpringBootTest + MockMvc`：注册成功写入非明文 `password_hash`；重复用户名返回 CONFLICT（ApiResponse failure）；登录成功返回 token；用户不存在/密码错误返回同一 UNAUTHORIZED 错误码与消息结构。",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-02T09:25:27.908Z"
+          },
+          {
+            "id": 3,
+            "title": "实现 /me 接口（读取 UserContext）并补齐接口级验证",
+            "description": "实现 `GET /api/users/me`，从 `UserContextHolder` 获取当前登录用户信息并返回；补齐与 common-auth 过滤器配合的接口测试。",
+            "dependencies": [
+              2
+            ],
+            "details": "1) 新增 `/api/users/me` Controller 方法：从 `common-auth` 的 `UserContextHolder.require()`（或 get 并自行转业务异常）读取 `userId/username`，返回 `ApiResponse.success(MeResponse)`。\n2) 约束：未携带透传头或 Authorization Bearer JWT 时，`UserContextHolder` 为空；按统一策略返回业务错误（推荐 `BusinessException(ErrorCode.UNAUTHORIZED, \"Unauthorized\")` 或与现有 Filter 行为一致）。\n3) 与 `UserContextFilter` 行为对齐：Filter 优先读取 `X-User-Id/X-Username`，其次解析 Bearer JWT；因此 /me 测试覆盖两种方式。\n4) 文档与交付：在实现完成并验证后，按项目要求追加记录到 `docs/dev-log.md`（与 Task 6 相关的变更与验证结果）。",
+            "status": "done",
+            "testStrategy": "MockMvc 测试：带 `X-User-Id/X-Username` 请求 /me 返回对应用户；带 `Authorization: Bearer <token>` 请求 /me 返回对应用户；不带任何认证信息请求 /me 返回 UNAUTHORIZED 的 ApiResponse；请求结束后（同线程）`UserContextHolder` 不残留（可通过额外断言或 Filter 相关测试验证）。",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-02T14:57:51.372Z"
+          }
+        ],
+        "updatedAt": "2026-05-02T14:57:51.372Z"
+      },
+      {
+        "id": "7",
+        "title": "实现 product-service：商品 CRUD、上下架、详情缓存",
+        "description": "实现商品管理与商品详情 Redis 缓存。",
+        "details": "基于 products 表提供商品创建、更新、列表、详情、上下架接口。商品详情使用 Redis 缓存，商品变更和上下架后删除缓存。为 order-service 暴露可查询商品详情和状态的接口。",
+        "testStrategy": "商品 CRUD 接口返回 ApiResponse；详情查询首次走 DB 后写缓存，后续命中缓存；上下架后缓存失效；下架商品状态可被 order-service 校验。",
+        "priority": "high",
+        "dependencies": [
+          "1",
+          "2",
+          "3",
+          "4"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "补齐 product-service 基础工程：依赖、配置、产品领域模型",
+            "description": "在现有仅包含启动类与 application.yml 的 product-service 中，补齐实现 CRUD 所需的基础设施与 products 表映射。",
+            "dependencies": [],
+            "details": "基于现有项目约定（`common-core` 的 `ApiResponse`/`BusinessException`/`ErrorCode`，以及 `user-service` 的 JPA Entity+Repository 模式）完成：1) 在 `product-service/pom.xml` 增加 `spring-boot-starter-data-jpa`、`mysql-connector-j`、`spring-boot-starter-validation`、`spring-boot-starter-data-redis` 等依赖；2) 在 `product-service/src/main/resources/application.yml` 增加 datasource 与 redis 配置，使用 `.env.example` 中的 `SPRING_DATASOURCE_*`、`SPRING_DATA_REDIS_*` 环境变量；3) 创建 `Product` 实体映射 `docs/sql/migrations/V1__initial_schema.sql` 的 `products` 表（字段：`productId`/`name`/`description`/`price`/`status`/`createdAt`/`updatedAt`），`status` 使用 `EnumType.STRING`；4) 新增 `ProductStatus` 枚举（至少包含 `ON_SHELF`、`OFF_SHELF`）；5) 新增 `ProductRepository extends JpaRepository`，提供按 `productId` 查询与存在性校验方法。",
+            "status": "done",
+            "testStrategy": "运行 product-service 的基础启动测试（如已有 `@SpringBootTest` 模板可复用）；验证应用能加载 JPA/Redis 配置且不报错（本地可通过 `mvn -pl product-service test`/启动应用进行验证）。",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-03T03:15:02.785Z"
+          },
+          {
+            "id": 2,
+            "title": "实现商品管理 REST API：创建、更新、列表、详情、上下架",
+            "description": "基于 products 表提供商品创建、更新、分页/列表、详情查询以及上架/下架接口，并遵循全局异常与返回体规范。",
+            "dependencies": [
+              1
+            ],
+            "details": "新增 `ProductController`（路径风格参考 `user-service/src/main/java/com/minimall/user/web/UserAuthController.java` 的 `/api/...` 约定），所有接口直接返回 `ApiResponse`；新增 `ProductService` 承载业务：1) 创建商品：生成/接收 `productId`（按任务要求决定是前端传入还是后端生成），保存默认状态 `ON_SHELF`；2) 更新商品：校验存在性，不存在抛 `new BusinessException(ErrorCode.NOT_FOUND, ...)`；3) 列表：支持按 `status` 过滤（可选）与分页（如使用 Spring Data `Pageable`）；4) 详情：按 `productId` 查询；5) 上下架：仅允许在两种状态间切换，非法操作抛 `BusinessException(ErrorCode.BAD_REQUEST, ...)`；6) 为 order-service 暴露“可查询商品详情和状态”的对内查询接口（建议新增单独的 `InternalProductController`，例如 `/internal/products/{productId}` 返回包含 `productId`、`name`、`price`、`status` 的 DTO，便于后续 order-service 调用）。",
+            "status": "done",
+            "testStrategy": "使用 `@SpringBootTest` + MockMvc（或 WebMvcTest）覆盖：CRUD 与上下架接口均返回 `ApiResponse`；不存在商品返回 `NOT_FOUND` 对应 code；非法上下架返回 `BAD_REQUEST` 对应 code；列表/详情字段与数据库一致。",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-03T03:42:41.426Z"
+          },
+          {
+            "id": 3,
+            "title": "实现商品详情 Redis 缓存：查询写缓存、变更/上下架失效、对内校验复用",
+            "description": "为商品详情查询增加 Redis 缓存（cache-aside），并在商品更新及上下架后删除缓存，保证 order-service 校验读取到最新状态。",
+            "dependencies": [
+              2
+            ],
+            "details": "在 `ProductService` 的详情查询路径实现 cache-aside：1) 设计缓存 key（例如 `product:detail:{productId}`），序列化使用 JSON（建议在 product-service 内新增 Redis 序列化配置或使用 `StringRedisTemplate`+Jackson，避免默认 JDK 序列化）；2) 查询流程：先查 Redis，命中直接返回；未命中查 DB，查到后写入 Redis（可设置合理 TTL，避免永久脏数据）；3) 缓存失效：在商品更新、上架、下架成功提交事务后删除对应 key（可通过 `@Transactional` + 事务后回调/或在成功分支显式删除，确保不会对失败事务误删）；4) 对内接口（子任务2的 internal 查询）复用同一查询逻辑与缓存策略，确保 order-service 校验商品状态时受益于缓存但在状态变更后能及时失效。",
+            "status": "done",
+            "testStrategy": "集成测试验证：详情首次请求走 DB 并写入 Redis，第二次命中 Redis（可通过统计 repository 调用次数/或在测试中先写入不同值验证命中）；更新/上下架后 key 被删除，下一次查询回源 DB 并重建缓存；下架商品通过 internal 查询可返回 `OFF_SHELF` 状态供 order-service 校验失败。",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-03T07:07:38.099Z"
+          }
+        ],
+        "updatedAt": "2026-05-03T07:07:38.099Z"
+      },
+      {
+        "id": "8",
+        "title": "实现 inventory-service：库存查询、扣减、释放、流水、幂等",
+        "description": "实现库存服务的核心扣减、释放和幂等流水能力。",
+        "details": "基于 inventory 与 inventory_records 表提供库存查询、扣减、释放接口。扣减使用条件更新防止负库存，扣减/释放基于 orderNo + changeType 唯一约束保证幂等。\n<info added on 2026-05-03T07:59:08.314Z>\n面向前端/UI 可用的库存查询接口验收标准补充：所有对外暴露给浏览器/网关调用的库存 API（建议统一放在 `/api/inventories` 下）必须返回 `ApiResponse<T>`（字段形态与 `common-core/src/main/java/com/minimall/common/core/response/ApiResponse.java` 一致，测试断言参考 `product-service/src/test/java/com/minimall/product/web/ProductControllerTest.java` 的 `$.success/$.code/$.message/$.data`）。对外返回的库存 DTO 必须包含 `productId`、数值型 `availableStock`、数值型 `lockedStock`，并提供稳定的库存状态字段（使用 enum 并序列化为字符串，风格对齐 `product-service/src/main/java/com/minimall/product/domain/ProductStatus.java` 在 JSON 中输出 `ON_SHELF/OFF_SHELF` 的方式；库存状态可命名为 `stockState`/`state` 等，但必须是稳定的枚举/字符串字段而非临时计算字段名）。库存查询必须支持“安全查询语义”（只读 GET，不产生扣减/锁定副作用；支持按 `productId` 查询，必要时可扩展批量查询参数；对不存在的 `productId` 返回确定性的 HTTP/业务结果，不允许返回内部实现细节或内部专用字段）。同时补充 HTTP 级集成测试：在 `inventory-service` 增加类似 `ProductControllerTest`/`UserAuthControllerTest` 的 `@SpringBootTest + @AutoConfigureMockMvc` 测试，用 H2 配置验证 UI 查询接口返回的 `ApiResponse` 结构与字段（包含 `productId/availableStock/lockedStock/stockState`），确保网关可直接透传消费且不依赖 internal-only payload。\n</info added on 2026-05-03T07:59:08.314Z>",
+        "testStrategy": "库存查询正确；并发扣减后 available_stock 不为负；库存不足返回业务错误；同一 orderNo 重复扣减或释放不会重复改变库存；流水记录完整。",
+        "priority": "high",
+        "dependencies": [
+          "1",
+          "2",
+          "3",
+          "4"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "补齐 inventory-service 持久化基础：JPA依赖、实体/枚举、Repository",
+            "description": "为库存服务补齐 Spring Data JPA、校验与测试依赖，并基于现有 SQL Schema（inventory、inventory_records）建立实体、枚举与数据访问层，为查询/扣减/释放与幂等打基础。",
+            "dependencies": [],
+            "details": "代码现状：`inventory-service/src/main/java/com/minimall/inventory/InventoryServiceApplication.java` 仅有启动类，`inventory-service/pom.xml` 尚无 JPA/validation/mysql/h2/test 依赖；DB schema 已在 `docs/sql/migrations/V1__initial_schema.sql` 定义 `inventory` 与 `inventory_records`（包含 `uk_inventory_product_id`、`uk_inventory_records_order_change(order_no,change_type)`）。本子任务建议落地：1）在 `inventory-service/pom.xml` 增加 `spring-boot-starter-data-jpa`、`spring-boot-starter-validation`、`mysql-connector-j`(runtime)、`h2`(test)、`spring-boot-starter-test`(test)，对齐 `product-service/pom.xml` 的依赖结构；2）新增实体 `Inventory` 映射 `inventory` 表，字段至少包含 `productId(String)`、`availableStock(int)`、`lockedStock(int)`、`status(枚举，EnumType.STRING)`、`createdAt/updatedAt(LocalDateTime)`，并仿照 `product-service/src/main/java/com/minimall/product/domain/Product.java` 使用 `@Table(uniqueConstraints/indexes)` 与 `@PrePersist/@PreUpdate`；3）新增实体 `InventoryRecord` 映射 `inventory_records` 表，字段至少包含 `productId`、`orderNo`、`changeType(枚举，EnumType.STRING)`、`quantity(int)`、`status(枚举，EnumType.STRING)`、时间戳，并声明唯一约束 `order_no + change_type`；4）新增枚举：`InventoryStatus`（对齐表默认 `ACTIVE`）、`InventoryChangeType`（如 `DEDUCT/RELEASE`，用于幂等键）、`InventoryRecordStatus`（如 `SUCCESS`，对齐表默认）；5）新增 `InventoryRepository`、`InventoryRecordRepository`（Spring Data JPA），为后续查询/条件更新/按 orderNo+changeType 查重提供方法签名。",
+            "status": "done",
+            "testStrategy": "先不做完整业务测试；仅验证可编译与基本上下文启动：后续子任务会通过 `@SpringBootTest + H2` 覆盖实体映射与接口返回。",
+            "updatedAt": "2026-05-06T11:56:44.456Z",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "实现对外库存查询 API（/api/inventories）+ 稳定 DTO/枚举 + MockMvc 集成测试",
+            "description": "实现面向网关/浏览器的安全只读库存查询接口，所有响应统一返回 `ApiResponse<T>`，DTO 字段满足 `productId/availableStock/lockedStock/stockState`，并补齐 H2+MockMvc 的 HTTP 级集成测试确保契约稳定。",
+            "dependencies": [
+              1
+            ],
+            "details": "对齐现有约定：`ApiResponse` 定义见 `common-core/src/main/java/com/minimall/common/core/response/ApiResponse.java`，HTTP 断言风格参考 `product-service/src/test/java/com/minimall/product/web/ProductControllerTest.java`（断言 `$.success/$.code/$.message/$.data`）。本子任务建议落地：1）新增对外 Controller（如 `com.minimall.inventory.web.InventoryController`）并统一前缀 `@RequestMapping(\"/api/inventories\")`；2）新增对外 DTO（建议 Java record，风格对齐 `user-service/src/main/java/com/minimall/user/dto/LoginResponse.java`），例如 `InventoryResponse(String productId, int availableStock, int lockedStock, StockState stockState)`；3）新增 `StockState` 枚举并确保 JSON 输出为字符串枚举名（对齐 `product-service/src/main/java/com/minimall/product/domain/ProductStatus.java` 的序列化效果）；`stockState` 可来自库存 `status` + 是否缺货的稳定判定（例如 `ACTIVE` 且 `availableStock>0` => `IN_STOCK`，否则 `OUT_OF_STOCK`，或直接映射为 `ACTIVE/INACTIVE`，但必须是稳定枚举字段）；4）提供查询路由：至少支持 `GET /api/inventories/{productId}`（可选扩展 `GET /api/inventories?productId=...` 或 `productIds=...`），语义必须只读、无扣减/锁定副作用；5）不存在的 `productId` 需要确定性返回（建议抛 `BusinessException(ErrorCode.NOT_FOUND, \"Inventory not found\")`，由 `common-core` 的 `GlobalExceptionHandler` 转为 `ApiResponse.failure`，避免泄露内部细节）。6）新增 `inventory-service` 集成测试（类名建议 `InventoryControllerTest`），使用 `@SpringBootTest + @AutoConfigureMockMvc + @TestPropertySource` 参考 `ProductControllerTest` 的 H2 配置；在测试内写入库存数据（走 Repository），断言返回的 `ApiResponse` 结构与字段齐全，且 `stockState` 为字符串枚举值。",
+            "status": "done",
+            "testStrategy": "新增 `inventory-service/src/test/java/.../InventoryControllerTest.java`：1）存在库存时断言 HTTP 200 且 `$.success=true`、`$.code=0`、`$.data.productId/availableStock/lockedStock/stockState`；2）不存在时断言 HTTP 404（或约定的业务 HTTP）且 `$.success=false`、`$.code=40400`、`$.message` 稳定。",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-06T12:35:50.436Z"
+          },
+          {
+            "id": 3,
+            "title": "实现库存扣减/释放/流水记录与幂等（orderNo+changeType 唯一约束）并补齐并发/幂等测试",
+            "description": "实现库存扣减与释放的核心写入链路：条件更新防止负库存、写入流水、用 `orderNo + changeType` 唯一约束实现幂等，确保重复请求与并发场景下库存正确且不会重复扣减/释放。",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "基于 schema（`docs/sql/migrations/V1__initial_schema.sql`）：`inventory(available_stock, locked_stock)` 与 `inventory_records(unique(order_no, change_type))`。本子任务建议落地：1）新增内部调用 Controller（避免暴露给浏览器；路径可采用 `/internal/inventories`，风格对齐 `product-service/src/main/java/com/minimall/product/web/InternalProductController.java`），提供 `POST /internal/inventories/deduct` 与 `POST /internal/inventories/release`；请求 DTO（record）包含 `orderNo`、`productId`、`quantity`；响应可返回 `ApiResponse<Void>` 或返回当前库存快照（但对外契约以 `ApiResponse` 包裹为准）；2）Service 层实现事务：先做幂等占位（优先插入 `InventoryRecord(orderNo, changeType, productId, quantity, SUCCESS)`；若命中唯一约束冲突则直接视为已处理并返回幂等成功），再执行库存条件更新；扣减使用条件更新确保不出现负库存（例如 `available_stock >= quantity` 才允许 `available_stock -= quantity; locked_stock += quantity`）；释放相反方向更新（例如 `locked_stock >= quantity` 才允许 `locked_stock -= quantity; available_stock += quantity`）；3）库存不足/非法释放抛 `BusinessException`（复用 `ErrorCode.BAD_REQUEST` 或 `ErrorCode.CONFLICT`，保证由 `GlobalExceptionHandler` 输出 `ApiResponse.failure`）；4）流水必须完整：每次成功扣减/释放都落一条 `inventory_records`，幂等重复请求不得新增重复流水、不得重复更新库存；5）补齐测试：在 `inventory-service` 新增 Service/Controller 层集成测试用例，覆盖并发扣减（可用多线程/循环调用）后 `availableStock` 不为负；同一 `orderNo` 重复扣减/释放库存值不变且流水数量不增加；库存不足返回业务错误码与稳定 message。",
+            "status": "done",
+            "testStrategy": "在 `inventory-service` 增加 `@SpringBootTest`（可复用 H2 配置）：1）扣减成功后断言库存字段变化与 `inventory_records` 新增；2）库存不足断言 HTTP 400/409 + `ApiResponse` 失败结构；3）同一 `orderNo+changeType` 重放两次断言库存与流水仅变更一次；4）并发扣减（多线程对同一 productId 扣减）结束后断言 `availableStock>=0` 且总扣减量不超过初始库存。",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-06T12:59:08.552Z"
+          }
+        ],
+        "updatedAt": "2026-05-06T12:59:08.552Z"
+      },
+      {
+        "id": "9",
+        "title": "实现 order-service 基础：订单模型、状态机、查询接口",
+        "description": "建立订单服务基础模型、状态机和查询能力。",
+        "details": "基于 orders 表实现订单实体、OrderStatus、OrderStateMachine、订单详情查询和我的订单列表。所有状态变更必须通过状态机入口。\n<info added on 2026-05-03T08:05:45.614Z>\n补充前端可直接接入的验收标准（面向用户页面的稳定 DTO）：\n\n1) 订单详情与“我的订单列表”接口必须返回稳定 DTO（不要直接暴露 JPA Entity/数据库字段），响应外层统一为 `ApiResponse`（参见 `common-core/src/main/java/com/minimall/common/core/response/ApiResponse.java`），错误通过 `BusinessException` + `ErrorCode` 映射（参见 `common-core/src/main/java/com/minimall/common/core/exception/BusinessException.java`、`common-core/src/main/java/com/minimall/common/core/exception/ErrorCode.java`、`common-core/src/main/java/com/minimall/common/core/exception/GlobalExceptionHandler.java`）。\n\n2) DTO 字段要求（对齐 `docs/sql/migrations/V1__initial_schema.sql` 中 `orders` 表可用字段）：\n- 必须包含：`orderNo`（对应 `orders.order_no`）、`status`（返回 `OrderStatus` 枚举值字符串）、`amount` 或 `totalAmount`（对应 `orders.total_amount`）。\n- 必须包含商品摘要：建议使用 `items`（list，当前可只有 1 条）或明确的 `item` 摘要对象，字段至少包括 `productId`、`productName`、`quantity`、`unitPrice`（对应 `orders.product_id/product_name/quantity/unit_price`）。\n- 时间字段在有值时返回：`createdAt`、`updatedAt`、`expireAt`，以及可选的 `paidAt`、`closedAt`（对应 `orders.created_at/updated_at/expire_at/paid_at/closed_at`）。\n\n3) 严禁泄漏内部实现字段到用户 API DTO：不得返回 `orders.id`（自增主键）、`userId`、`username`、`idempotencyKey` 等仅用于内部/风控/幂等的字段；用户 API 以 `orderNo` 作为唯一外部标识。\n\n4) 我的订单列表必须支持分页：采用 Spring `Pageable` 入参并返回统一分页结构，分页返回结构建议与 `product-service/src/main/java/com/minimall/product/dto/PageResponse.java` 保持一致（`content/page/size/totalElements/totalPages`），外层仍包 `ApiResponse.success(...)`。\n\n5) 关键状态下的 `ApiResponse`/错误码形状需在测试中覆盖并对前端稳定：\n- 空列表：返回 HTTP 200，`ApiResponse.success`，`data.content` 为空数组且分页字段完整（不得用 404/错误码表示“没有订单”）。\n- 未登录/无用户上下文：返回 HTTP 401，`success=false`、`code=40100`、`message` 为 Unauthorized（参考 `user-service/src/main/java/com/minimall/user/web/UserAuthController.java` 获取用户上下文的处理方式）。\n- 订单不存在：返回 HTTP 404，`success=false`、`code=40400`，`message` 明确为 “Order not found/订单不存在”。\n- 订单不属于当前用户：对前端表现必须稳定，优先按“不可见”处理并返回与不存在一致的 404（避免暴露资源是否存在）。\n</info added on 2026-05-03T08:05:45.614Z>",
+        "testStrategy": "订单模型映射正确；查询接口返回 ApiResponse；状态机允许 PENDING_PAYMENT->PAID/CANCELLED、PAID->CLOSED/REFUNDED 等合法流转；非法流转返回业务异常。",
+        "priority": "high",
+        "dependencies": [
+          "1",
+          "3",
+          "4",
+          "5"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "为 order-service 增加持久化能力并实现订单实体/仓储",
+            "description": "在 order-service 内建立与 orders 表一致的 JPA 模型与仓储访问层，为后续状态机与查询接口提供基础数据结构与读写能力。",
+            "dependencies": [],
+            "details": "1) 更新 `order-service/pom.xml` 引入 `spring-boot-starter-data-jpa`、`spring-boot-starter-validation`、`mysql-connector-j`(runtime)、`h2`(test)、`spring-boot-starter-test`；对齐 `product-service/pom.xml` 的依赖风格。\n2) 更新 `order-service/src/main/resources/application.yml` 增加 datasource/jpa 配置（url/username/password 通过环境变量注入，`ddl-auto: none`，`open-in-view: false`，dialect 使用 MySQLDialect），端口保持现有 `8104`。\n3) 新增领域模型：`com.minimall.order.domain.Order`（映射 `docs/sql/migrations/V1__initial_schema.sql` 的 `orders` 字段），时间字段使用 `LocalDateTime`，状态字段使用 `@Enumerated(EnumType.STRING)`。\n4) 新增枚举：`com.minimall.order.domain.OrderStatus`（至少覆盖 `PENDING_PAYMENT/PAID/CANCELLED/CLOSED/REFUNDED`，以满足当前任务与后续任务 11/14 的状态流转）。\n5) 新增仓储：`com.minimall.order.repository.OrderRepository extends JpaRepository<Order, Long>`，提供 `findByOrderNoAndUserId`、`findByUserId(Pageable)` 等查询方法。\n6) 增加最小化仓储测试（H2 + create-drop），验证：可持久化/读取订单、`status` 枚举可正确序列化为字符串。",
+            "status": "done",
+            "testStrategy": "新增 `OrderRepositoryTest`：使用 H2 运行，保存一条订单后按 `orderNo` 查询并断言字段一致（尤其是 `totalAmount`、`status`、`createdAt/updatedAt` 不为空或符合预期）。",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-07T11:50:07.559Z"
+          },
+          {
+            "id": 2,
+            "title": "实现 OrderStateMachine 并封装所有订单状态变更入口",
+            "description": "实现订单状态机，集中校验合法流转并统一更新时间字段，确保业务代码不能绕过状态机直接改状态。",
+            "dependencies": [
+              1
+            ],
+            "details": "1) 新增 `com.minimall.order.domain.OrderStateMachine`（或 `service` 包下，但建议与领域模型同层），定义允许的状态流转集合：例如 `PENDING_PAYMENT -> PAID/CANCELLED`，`PAID -> CLOSED/REFUNDED` 等；非法流转抛出 `BusinessException`。\n2) 设计状态变更 API：如 `transition(Order order, OrderStatus targetStatus, LocalDateTime now)`；内部先校验 `canTransition(from,to)`，再更新 `order.status`，并按目标状态设置时间字段：`PAID` 写 `paidAt`，`CANCELLED/CLOSED` 写 `closedAt`（若字段允许），`updatedAt` 由 JPA `@PreUpdate` 或显式更新保持一致。\n3) 限制直接改状态：`Order` 不对外暴露 public 的 `setStatus`；提供包内可见/受控方法供状态机调用，保证“所有状态变更必须通过状态机入口”。\n4) 统一错误码与消息：非法流转使用 `BusinessException(ErrorCode.BAD_REQUEST, ... )`，保证前端可稳定识别。",
+            "status": "done",
+            "testStrategy": "新增 `OrderStateMachineTest`：覆盖合法流转（PENDING_PAYMENT->PAID/CANCELLED、PAID->CLOSED/REFUNDED）与非法流转（如 CANCELLED->PAID），断言非法时抛 `BusinessException` 且 `errorCode=BAD_REQUEST`。",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-07T12:06:33.552Z"
+          },
+          {
+            "id": 3,
+            "title": "实现订单详情与我的订单列表查询接口（稳定 DTO + 分页 + 错误形状测试）",
+            "description": "提供面向用户页面的订单查询能力：订单详情与我的订单列表，返回稳定 DTO（不泄漏内部字段），并用测试锁定关键错误码/响应形状。",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "1) 新增 DTO（record）而非暴露 Entity：\n- `OrderItemSummary`：`productId/productName/quantity/unitPrice`。\n- `OrderDetailResponse`：包含 `orderNo/status/totalAmount(或 amount)`、`items`（当前可仅 1 条）、以及 `createdAt/updatedAt/expireAt/paidAt/closedAt`（有值才返回）。\n- `OrderSummaryResponse`（列表用）：同样包含 `orderNo/status/totalAmount` + 商品摘要 + 时间字段（按需要选择）。\n- `PageResponse<T>`：字段结构与 `product-service/src/main/java/com/minimall/product/dto/PageResponse.java` 保持一致（`content/page/size/totalElements/totalPages`）。\n2) 新增查询服务：`OrderQueryService`，实现：\n- `detail(orderNo, userContext)`：按 `orderNo + userId` 查询，查不到则抛 `BusinessException(ErrorCode.NOT_FOUND, \"Order not found\")`（订单不存在与不属于本人统一 404）。\n- `myOrders(userContext, pageable)`：按 `userId` 分页查询并映射为 `PageResponse<OrderSummaryResponse>`；空列表必须返回 200 + success，且分页字段完整。\n3) 新增 Controller：\n- `GET /api/orders/{orderNo}` 返回 `ApiResponse.success(OrderDetailResponse)`。\n- `GET /api/orders/my`（或按现有风格命名）入参 `Pageable`，返回 `ApiResponse.success(PageResponse<OrderSummaryResponse>)`。\n4) 鉴权与错误码稳定：使用 `UserContextHolder.get().orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED, \"Unauthorized\"))`（对齐 `user-service/src/main/java/com/minimall/user/web/UserAuthController.java`）；确保未登录返回 HTTP 401，body 为 `ApiResponse.failure`（`code=40100`、`message=Unauthorized`）。\n5) MockMvc 集成测试覆盖验收标准：\n- 未登录 401（不传 `X-User-Id/X-Username`）。\n- 空列表 200，`data.content=[]` 且分页字段齐全。\n- 订单不存在 404（message 为 \"Order not found\" 或中文“订单不存在”，二选一但必须固定）。\n- 订单不属于当前用户：返回与不存在一致的 404（避免信息泄露）。\n6) DTO 字段审计：测试中断言响应不包含 `id/userId/username/idempotencyKey` 等内部字段，只暴露 `orderNo` 作为外部标识。",
+            "status": "done",
+            "testStrategy": "新增 `OrderControllerTest`（MockMvc + H2）：分别断言 401/404/200 场景的 HTTP 状态与 `ApiResponse` 字段（success/code/message/data），并对列表分页结构与 DTO 字段不泄漏做 JSONPath 断言。",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-07T12:18:06.186Z"
+          }
+        ],
+        "updatedAt": "2026-05-07T12:18:06.186Z"
+      },
+      {
+        "id": "10",
+        "title": "实现 order-service 下单链路：商品校验、库存扣减、防重复提交",
+        "description": "实现创建订单的核心链路。",
+        "details": "POST /api/orders 从 UserContext 获取用户，使用 Redis SETNX 防重复提交，调用 product-service 校验商品上架，调用 inventory-service 扣减库存，创建 PENDING_PAYMENT 订单并设置过期时间。\n<info added on 2026-05-03T08:10:18.010Z>\n补充前端可直接对接的验收标准（面向页面提交的稳定 DTO 与可重试幂等语义）：\n\n1) 创建订单接口必须提供清晰的请求 DTO，禁止让前端依赖内部字段/上下文推断。参考 product-service 的 record DTO 风格（例如 `product-service/src/main/java/com/minimall/product/dto/CreateProductRequest.java`），为 POST /api/orders 定义 `CreateOrderRequest`（record + `@Valid`），至少包含：productId（`@NotBlank`、`@Size(max=64)`）、quantity（`@NotNull`、`@Min(1)`）、idempotencyKey（`@NotBlank`、`@Size(max=128)`，由前端每次点击生成并在重试时复用）。userId/username 必须从 `common-auth/src/main/java/com/minimall/common/auth/context/UserContextHolder.java` 获取，不允许前端传入。\n\n2) 校验/错误返回必须对前端稳定且可预测：所有响应外层统一为 `ApiResponse`（`common-core/src/main/java/com/minimall/common/core/response/ApiResponse.java`）。参数校验失败必须走全局校验错误格式（`common-core/src/main/java/com/minimall/common/core/exception/GlobalExceptionHandler.java`），返回 code=40001（`ErrorCode.VALIDATION_ERROR`），message 由字段错误拼接（field: message; ...），因此请求 DTO 上的校验 message 必须固定、可读且与字段名一致。业务校验失败必须抛 `BusinessException`（`common-core/src/main/java/com/minimall/common/core/exception/BusinessException.java`），并使用 `ErrorCode`（`common-core/src/main/java/com/minimall/common/core/exception/ErrorCode.java`）保证 code 稳定；建议映射：商品不存在用 NOT_FOUND(40400)，商品下架/不可售用 BAD_REQUEST(40000)，库存不足/扣减冲突用 CONFLICT(40900)，并保持 message 为稳定常量以便前端做文案/分支处理。\n\n3) 幂等与重复提交行为必须对 UI “可安全重试”：同一用户在短时间内使用相同 idempotencyKey 重复调用时，服务端不得创建新订单；应返回与首次成功创建相同的成功响应（ApiResponse.success，包含相同 orderNo 等字段），使前端可无脑重试/网络抖动重放。Redis SETNX 仅作为并发窗口的快速拦截，但最终幂等应落到订单表的 `idempotency_key` 唯一约束（`docs/sql/migrations/V1__initial_schema.sql` 中 `uk_orders_idempotency_key`）保证；当检测到重复但订单尚未落库时，返回明确的 CONFLICT(40900) 且 message 固定（例如“订单创建中，请重试”），前端可按该错误码继续重试。\n\n4) 创建成功的响应必须包含前端跳转订单详情/支付流程所需信息，不依赖内部知识：为 POST /api/orders 定义 `CreateOrderResponse`（稳定 DTO，不直接暴露 Entity），至少包含 orderNo、status（枚举，PENDING_PAYMENT）、expireAt（用于倒计时/超时提示）、totalAmount（用于支付页展示）、productId、quantity。前端仅需基于 orderNo 即可跳转订单详情页或进入支付发起流程，无需理解内部表结构或服务间调用细节。\n</info added on 2026-05-03T08:10:18.010Z>",
+        "testStrategy": "上架商品且库存充足时创建订单成功；商品不存在/下架/库存不足时失败且不创建订单；短时间重复提交只创建一笔订单；创建成功后库存扣减并锁定。",
+        "priority": "high",
+        "dependencies": [
+          "7",
+          "8",
+          "9"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "定义 CreateOrderRequest/CreateOrderResponse 并新增 POST /api/orders 接口骨架",
+            "description": "在 order-service 中补齐面向前端的稳定下单 DTO，并提供统一 ApiResponse 的创建订单接口入口，严格遵循校验与用户上下文获取约束。",
+            "dependencies": [],
+            "details": "参考 `product-service/src/main/java/com/minimall/product/dto/CreateProductRequest.java` 的 record + 校验 message 风格，新增 `order-service/src/main/java/com/minimall/order/dto/CreateOrderRequest.java`（字段：productId、quantity、idempotencyKey；使用 @Valid/@NotBlank/@Size/@NotNull/@Min，并提供稳定可读 message）。新增 `order-service/src/main/java/com/minimall/order/dto/CreateOrderResponse.java`（字段：orderNo、status、expireAt、totalAmount、productId、quantity；status 使用 `com.minimall.order.domain.OrderStatus`）。在 `order-service/src/main/java/com/minimall/order/web/OrderController.java` 中新增 `@PostMapping` 创建订单方法（或新增独立 Command Controller 但保持 /api/orders 路径不变），从 `UserContextHolder.get()` 获取 userId/username，返回 `ApiResponse.success(CreateOrderResponse)`；暂时只完成入参校验、用户鉴权失败 UNAUTHORIZED、以及调用 CommandService 的占位。为后续过期时间计算预留配置项（例如 `minimall.order.payment-expire-seconds`，默认值可在实现时确定）。",
+            "status": "done",
+            "testStrategy": "新增/调整 `order-service` 的 MockMvc 测试：请求缺失字段触发 `GlobalExceptionHandler`，断言 HTTP 400、code=40001、message 形如 `field: xxx`；未携带认证头时断言 UNAUTHORIZED。执行 `mvn -pl order-service -am test`。",
+            "updatedAt": "2026-05-08T13:23:05.710Z",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Product validation client for order creation",
+            "description": "Add order-service client contract for product-service internal product lookup and map product validation failures to stable BusinessException errors.",
+            "details": "Implement only product lookup/validation plumbing needed by order creation. Cover product not found and off-shelf/not-sellable mapping. Do not deduct inventory or create orders in this subtask.",
+            "status": "done",
+            "dependencies": [
+              1
+            ],
+            "parentTaskId": 10,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-08T13:53:20.439Z"
+          },
+          {
+            "id": 3,
+            "title": "Inventory deduct client for order creation",
+            "description": "Add order-service client contract for inventory-service deduct API and map insufficient stock or downstream failures to stable order-service errors.",
+            "details": "Implement only the inventory deduct client/request/response contract and tests. Reuse the inventory-service internal deduct route from Task 8.3. Do not create the public order API orchestration in this subtask.",
+            "status": "done",
+            "dependencies": [
+              2
+            ],
+            "parentTaskId": 10,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-09T10:55:23.199Z"
+          },
+          {
+            "id": 4,
+            "title": "Create order orchestration and persistence",
+            "description": "Wire POST /api/orders to UserContext, product validation, inventory deduct, pending order persistence, and CreateOrderResponse.",
+            "details": "Implement the service/controller orchestration for one successful create-order path and stable business failures. Persist PENDING_PAYMENT orders with expireAt and totalAmount. Return ApiResponse.success(CreateOrderResponse). Keep Redis duplicate-submit handling for the next subtask.",
+            "status": "done",
+            "dependencies": [
+              3
+            ],
+            "parentTaskId": 10,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-09T11:14:01.590Z"
+          },
+          {
+            "id": 5,
+            "title": "Duplicate submit idempotency for create order",
+            "description": "Add Redis SETNX duplicate-submit guard and database unique-key replay handling for create-order idempotency.",
+            "details": "Use idempotencyKey scoped to the current user. Replays after a successful insert must return the existing CreateOrderResponse without creating a new order or deducting stock again. In-flight duplicates should return BusinessException(ErrorCode.CONFLICT) with a stable retryable message. Cover DB unique-key fallback behavior.",
+            "status": "done",
+            "dependencies": [
+              4
+            ],
+            "parentTaskId": 10,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-09T11:36:43.464Z"
+          },
+          {
+            "id": 6,
+            "title": "Create order regression verification",
+            "description": "Run and document Task 10 create-order regression coverage across DTO validation, product failures, inventory failures, success, and duplicate submission.",
+            "details": "Add or tighten tests only if previous subtasks left coverage gaps. Run mvn -pl order-service -am test and mvn clean package -DskipTests. Mark Task 10 done only after all subtasks pass and dev-log is updated.",
+            "status": "done",
+            "dependencies": [
+              5
+            ],
+            "parentTaskId": 10,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-10T11:27:13.429Z"
+          }
+        ],
+        "updatedAt": "2026-05-10T11:27:13.429Z"
+      },
+      {
+        "id": "11",
+        "title": "实现 order-service 取消链路：手动取消、库存释放、取消幂等",
+        "description": "实现待支付订单的手动取消和库存释放。",
+        "details": "POST /api/orders/{orderNo}/cancel 仅允许 PENDING_PAYMENT 订单取消。取消成功后调用 inventory-service release。已取消订单重复取消直接成功或返回幂等结果，不重复释放库存。\n<info added on 2026-05-03T08:14:03.288Z>\n补充前端可直接接入的验收标准（取消接口稳定返回、UI 幂等渲染、错误信息安全）：\n\n1) 取消接口必须始终返回统一外层结构 ApiResponse（参见 common-core/src/main/java/com/minimall/common/core/response/ApiResponse.java），前端只依赖 success/code/message/data 四个字段判断与渲染，不依赖 HTTP body 的其他扩展字段。\n\n2) POST /api/orders/{orderNo}/cancel 成功取消与重复取消（幂等命中）都必须返回 ApiResponse.success(data)，且 data 必须包含当前订单状态（例如 status=OrderStatus.CANCELLED），保证前端在一次或多次点击“取消订单”后都能用同一套渲染逻辑刷新按钮态/文案，不需要额外再查一次订单状态。\n\n3) 对于“不可取消”的状态（例如已支付、已关闭、已退款等），必须抛出 BusinessException 并通过 ErrorCode 映射为明确的 HTTP 状态码与稳定错误码（参见 common-core/src/main/java/com/minimall/common/core/exception/BusinessException.java、common-core/src/main/java/com/minimall/common/core/exception/ErrorCode.java、common-core/src/main/java/com/minimall/common/core/exception/GlobalExceptionHandler.java），建议：\n- 规则不满足/状态不允许：ErrorCode.BAD_REQUEST（HTTP 400，code=40000）或 ErrorCode.CONFLICT（HTTP 409，code=40900），message 使用前端可直接展示的业务文案（例如“订单当前状态不可取消/订单已支付不可取消”），且必须包含当前订单状态供前端定位（通过 data.status 返回；若采用异常返回则 message 中不得包含下游细节）。\n- 订单不存在：ErrorCode.NOT_FOUND（HTTP 404，code=40400）。\n\n4) 取消链路涉及 inventory-service release 调用时，任何下游异常/错误响应都不得透传 inventory-service 的内部信息（例如下游服务名、URL、堆栈、超时/连接细节、库存流水/锁表等实现细节）到 ApiResponse.message；对外仅返回前端安全的通用失败文案（例如“取消失败，请稍后重试”）或使用 ErrorCode.INTERNAL_ERROR 的默认 message。异常泄露防线需与全局异常处理保持一致（参考 common-core/src/test/java/com/minimall/common/core/exception/GlobalExceptionHandlerTest.java 中 unexpectedExceptionMapsToInternalErrorWithoutLeakingMessage 用例的预期）。\n</info added on 2026-05-03T08:14:03.288Z>",
+        "testStrategy": "待支付订单可取消并释放库存；已支付订单不可取消；重复取消不重复释放库存；订单状态和库存流水一致。",
+        "priority": "high",
+        "dependencies": [
+          "8",
+          "9"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "扩展 order-service 的 InventoryClient：新增 release 调用与安全错误封装",
+            "description": "在 order-service 侧为库存释放补齐客户端能力，提供可复用的 release 方法，并确保下游异常不会以 message 形式对外泄露。",
+            "dependencies": [],
+            "details": "基于现有 `order-service/src/main/java/com/minimall/order/client/inventory/InventoryClient.java` 的 RestTemplate 调用模式，新增 `INVENTORY_RELEASE_PATH = \"/internal/inventories/release\"` 与 `public InventorySnapshot release(...)` 方法；请求体可复用 `InventoryDeductRequest` 或新增 `InventoryReleaseRequest`（同字段：orderNo/productId/quantity）。对 `RestClientResponseException`、`ResourceAccessException` 等统一转换为 `BusinessException(ErrorCode.INTERNAL_ERROR, \"取消失败，请稍后重试\", cause)`，避免 message 包含 inventory-service 服务名/URL/堆栈等细节。",
+            "status": "done",
+            "testStrategy": "为 InventoryClient 新增单测（可用 MockRestServiceServer）或在后续 controller 测试中通过 @MockBean 验证 release 被调用与异常封装的 message。",
+            "updatedAt": "2026-05-10T12:27:20.914Z",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "在 OrderCommandService 实现取消命令：状态校验、幂等返回、库存释放",
+            "description": "实现核心取消逻辑：仅允许 PENDING_PAYMENT 取消；已取消重复调用幂等成功返回；取消成功触发库存释放；不可取消状态抛 BusinessException。",
+            "dependencies": [
+              1
+            ],
+            "details": "在 `order-service/src/main/java/com/minimall/order/service/OrderCommandService.java` 新增 `cancel(String orderNo, UserContext userContext)`：\n- 通过 `OrderRepository#findByOrderNoAndUserId` 获取订单，不存在则 `BusinessException(ErrorCode.NOT_FOUND, \"Order not found\")`；\n- 若 `order.getStatus()==OrderStatus.CANCELLED`：直接返回幂等成功 DTO（不调用 release）；\n- 若非 `PENDING_PAYMENT`：抛 `BusinessException(ErrorCode.CONFLICT 或 ErrorCode.BAD_REQUEST, \"订单当前状态不可取消: \" + status)`；\n- 若为 `PENDING_PAYMENT`：先调用 `InventoryClient.release(...)` 释放锁定库存（失败则抛安全 BusinessException，事务回滚），再通过 `new OrderStateMachine().transition(order, OrderStatus.CANCELLED, now)` 更新状态并 `orderRepository.saveAndFlush(order)`；\n- 新增返回 DTO：`order-service/src/main/java/com/minimall/order/dto/CancelOrderResponse.java`，至少包含 `orderNo`、`status`，确保前端幂等渲染可直接使用 `data.status`。",
+            "status": "done",
+            "testStrategy": "新增/更新单元测试或集成测试：PENDING_PAYMENT 取消后订单状态变为 CANCELLED；CANCELLED 重复取消不触发 release；PAID/其他状态取消返回 400/409 的 BusinessException 映射。",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-10T12:56:46.392Z"
+          },
+          {
+            "id": 3,
+            "title": "新增取消接口 POST /api/orders/{orderNo}/cancel：统一 ApiResponse 返回",
+            "description": "对外暴露稳定的取消接口，成功取消与重复取消均返回 ApiResponse.success(data)，并确保错误走全局异常处理。",
+            "dependencies": [
+              2
+            ],
+            "details": "修改 `order-service/src/main/java/com/minimall/order/web/OrderController.java`：新增 `@PostMapping(\"/{orderNo}/cancel\")` 方法，调用 `orderCommandService.cancel(orderNo, currentUser())` 并返回 `ApiResponse.success(...)`；保持与现有 create/detail/myOrders 一致的 UserContext 获取方式（`UserContextHolder`），确保所有响应外层结构稳定为 `ApiResponse`。不可取消/不存在等错误使用 `BusinessException + ErrorCode`，由 `common-core` 的 `GlobalExceptionHandler` 映射 HTTP 400/404/409。",
+            "status": "done",
+            "testStrategy": "通过 MockMvc 校验：成功与重复取消均 HTTP 200 且 `$.success=true`、`$.data.status=CANCELLED`；不可取消状态返回 400/409 且 `$.success=false`、`$.code` 稳定。",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-10T13:13:07.404Z"
+          },
+          {
+            "id": 4,
+            "title": "补齐 order-service 取消链路测试：幂等、库存释放一次、错误不泄露",
+            "description": "为取消接口增加可回归测试，覆盖幂等与库存释放一致性，并验证对外错误信息安全。",
+            "dependencies": [
+              3
+            ],
+            "details": "在 `order-service/src/test/java` 新增 SpringBootTest + MockMvc 测试（参考 `inventory-service/src/test/java/.../InternalInventoryControllerTest.java` 的风格）：\n- 使用 H2（TestPropertySource）初始化 orders 表（`spring.jpa.hibernate.ddl-auto=create-drop`）；\n- 通过 `OrderRepository` 写入 PENDING_PAYMENT/PAID/CANCELLED 订单（PAID/CANCELLED 可用 `OrderStateMachine#transition`）；\n- `@MockBean InventoryClient`：成功路径 verify `release(...)` 仅调用一次；幂等路径 verify 不调用；\n- 模拟 `InventoryClient.release` 抛异常时，断言对外 `$.message` 为安全文案（如“取消失败，请稍后重试”或 INTERNAL_ERROR 默认文案），且不包含 URL/服务名等敏感信息（对齐 `common-core` 的泄露防线思路）。",
+            "status": "done",
+            "testStrategy": "运行 order-service 测试模块（例如 `mvn -pl order-service test`），覆盖：待支付可取消+释放库存、已支付不可取消、重复取消不重复释放、下游异常不泄露。",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-10T13:31:21.206Z"
+          }
+        ],
+        "updatedAt": "2026-05-10T13:31:21.206Z"
+      },
+      {
+        "id": "12",
+        "title": "定义 RabbitMQ 拓扑与事件契约",
+        "description": "定义支付成功事件的消息拓扑、路由和 JSON 契约。",
+        "details": "声明 exchange、routing key、order/payment/notification 相关队列与绑定。定义 PaymentSuccessEvent 字段：eventId、orderNo、paymentNo、amount、paidAt。提供序列化配置和事件版本约定。",
+        "testStrategy": "RabbitMQ exchange/queue/binding 可自动声明；PaymentSuccessEvent JSON 序列化和反序列化测试通过；事件必须包含 eventId；契约文档清晰。",
+        "priority": "high",
+        "dependencies": [
+          "2",
+          "4",
+          "9"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Define shared payment success event contract",
+            "description": "Add shared RabbitMQ naming constants and PaymentSuccessEvent JSON DTO with version and required eventId fields.",
+            "details": "Implement in a shared backend module so payment publisher, order consumer, and notification consumer can depend on one stable contract. Include serialization/deserialization tests.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 12,
+            "updatedAt": "2026-05-11T13:32:56.359Z",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Declare RabbitMQ topology auto-configuration",
+            "description": "Declare payment exchange, routing keys, queues, and bindings for order and notification consumers.",
+            "details": "Add Spring AMQP topology beans and tests proving exchange, queue, and binding declarations are present and durable.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 12,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-11T13:44:47.661Z"
+          },
+          {
+            "id": 3,
+            "title": "Document payment event contract and topology",
+            "description": "Document exchange, queues, routing keys, PaymentSuccessEvent JSON fields, versioning, and idempotency expectations.",
+            "details": "Add contract docs for payment-service publishers and order/notification consumers, then verify the full RabbitMQ contract task.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 12,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-11T13:56:54.533Z"
+          }
+        ],
+        "updatedAt": "2026-05-11T13:56:54.533Z"
+      },
+      {
+        "id": "13",
+        "title": "实现 payment-service：支付单、幂等支付、发布 PaymentSuccessEvent",
+        "description": "实现模拟支付成功能力和支付成功事件发布。",
+        "details": "基于 payments 表提供 POST /api/payments/{orderNo}/pay 和支付单查询。支付前查询订单状态，已取消订单拒绝支付，重复支付保持幂等。支付成功后发布 PaymentSuccessEvent。\n<info added on 2026-05-03T08:19:28.099Z>\n补充前端可直接接入的验收标准（支付接口稳定 DTO、UI 展示字段、浏览器重试幂等与可区分业务错误码）：\n\n1）支付发起与支付状态查询必须对前端暴露稳定 DTO，禁止直接返回 JPA Entity 或让前端依赖数据库字段。参考 product-service/src/main/java/com/minimall/product/dto/CreateProductRequest.java、user-service/src/main/java/com/minimall/user/dto/LoginResponse.java 的 record DTO 风格，在 payment-service 定义用于“发起支付/查询支付”的请求与响应 DTO（建议放在 com.minimall.payment.dto 包下）。\n\n2）无论是发起支付还是查询支付状态，成功响应必须统一用 ApiResponse.success(data) 包裹（参见 common-core/src/main/java/com/minimall/common/core/response/ApiResponse.java），且 data 至少包含前端可直接展示的字段：paymentNo、orderNo、status、amount。status 必须使用枚举类型（例如 PaymentStatus，风格参考 product-service/src/main/java/com/minimall/product/domain/ProductStatus.java），序列化为稳定的枚举名字符串；amount 使用 BigDecimal，并与表结构 DECIMAL(12,2) 保持一致（参见 docs/sql/migrations/V1__initial_schema.sql 的 payments.amount）。\n\n3）POST /api/payments/{orderNo}/pay 的重复点击/浏览器重试必须幂等：同一 orderNo 重复调用不得重复生成支付单（利用 docs/sql/migrations/V1__initial_schema.sql 中 uk_payments_order_no/uk_payments_idempotency_key 的唯一约束作为最终防线），不得重复发布 PaymentSuccessEvent；响应必须稳定且可预测（要么返回首次创建的同一 paymentNo 的成功结果，要么返回可识别的“已成功支付”业务码，见第 4 点），确保前端可以安全重放请求而不引发重复扣款/重复跳转。\n\n4）错误返回必须让前端能区分业务分支，不能把“业务不可支付”混为同一 code：所有业务错误必须抛 BusinessException 并通过 ApiResponse 返回稳定 code（参见 common-core/src/main/java/com/minimall/common/core/exception/BusinessException.java、common-core/src/main/java/com/minimall/common/core/exception/ErrorCode.java、common-core/src/main/java/com/minimall/common/core/exception/GlobalExceptionHandler.java）。为满足前端区分要求，需要在 ErrorCode 中新增并固定以下业务码（并在 GlobalExceptionHandler.statusFor() 中映射到合理 HTTP 状态）：\n（1）订单已取消不可支付：ORDER_CANCELLED（建议 HTTP 400 或 409，code 独立于 40000/40900）\n（2）订单状态非法不可支付（非 PENDING_PAYMENT 且非已取消的其他状态）：ORDER_INVALID_STATE（建议 HTTP 409，code 独立）\n（3）重复支付且已成功（幂等命中）：PAYMENT_ALREADY_SUCCESS（建议 HTTP 409，code 独立），用于前端明确提示“订单已支付/无需重复支付”，同时保证不会重复创建支付单与重复发布事件\n</info added on 2026-05-03T08:19:28.099Z>",
+        "testStrategy": "待支付订单支付成功并生成 payment；同一 orderNo 重复支付不重复生成支付单；已取消订单支付失败；支付成功后只发布一次 PaymentSuccessEvent。",
+        "priority": "high",
+        "dependencies": [
+          "10",
+          "12"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "扩展 common-core：新增支付相关业务错误码并映射 HTTP 状态",
+            "description": "在 common-core 中新增前端可区分的业务错误码，并在全局异常处理器中映射到合适的 HTTP 状态码，确保 payment-service 可直接抛 BusinessException 返回稳定 code。",
+            "dependencies": [],
+            "details": "修改 `common-core/src/main/java/com/minimall/common/core/exception/ErrorCode.java`：新增 `ORDER_CANCELLED`、`ORDER_INVALID_STATE`、`PAYMENT_ALREADY_SUCCESS`（code 字符串需与现有 40000/40900 区分，且固定不可变）。修改 `common-core/src/main/java/com/minimall/common/core/exception/GlobalExceptionHandler.java` 的 `statusFor()`：为上述错误码分别映射到建议的 `400`/`409`。如项目已有针对错误码/异常映射的测试惯例，可在 `common-core/src/test` 补充覆盖，验证 code 与 HTTP 状态保持稳定。",
+            "status": "done",
+            "testStrategy": "运行 `mvn -pl common-core test`，验证新增错误码与异常映射测试通过。",
+            "updatedAt": "2026-05-12T12:30:50.455Z",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "完善 payment-service 基础能力：引入 JPA/Validation/AMQP 依赖并补齐配置",
+            "description": "为 payment-service 增加实现支付单与事件发布所需的 Spring 依赖与配置项，保持与 order-service 等模块一致的配置风格（使用环境变量覆盖，避免硬编码）。",
+            "dependencies": [
+              1
+            ],
+            "details": "修改 `payment-service/pom.xml`：新增 `spring-boot-starter-data-jpa`、`spring-boot-starter-validation`、`spring-boot-starter-amqp`、`mysql-connector-j`（runtime）、`h2`（test）、`spring-boot-starter-test`（test）、必要的测试插件（参考 `order-service/pom.xml` 的 surefire 版本）。修改 `payment-service/src/main/resources/application.yml`：补齐 `spring.datasource`/`spring.jpa`（对齐 `order-service/src/main/resources/application.yml` 的 env 变量写法与 open-in-view=false），并增加 `spring.rabbitmq.*` 的可配置项（host/port/username/password/virtual-host 等，全部可由环境变量覆盖）。",
+            "status": "done",
+            "testStrategy": "运行 `mvn -pl payment-service test`（可先无测试但确保能启动测试上下文），再运行 `mvn -pl payment-service -DskipTests clean package` 确认依赖与打包正常。",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-12T12:47:30.986Z"
+          },
+          {
+            "id": 3,
+            "title": "实现 payment-service 持久层：Payment 领域模型、枚举与 Repository",
+            "description": "基于 `payments` 表实现 Payment 聚合的 JPA Entity、状态枚举与数据访问层，为幂等支付与查询接口提供稳定的数据模型。",
+            "dependencies": [
+              2
+            ],
+            "details": "在 `payment-service/src/main/java/com/minimall/payment/domain` 新增：`Payment` 实体（字段覆盖 payment_no/order_no/amount/channel/status/idempotency_key/paid_at/created_at/updated_at，DECIMAL(12,2) 用 BigDecimal precision/scale 映射；status/channel 用 `@Enumerated(EnumType.STRING)`；@Table 增加 uk_payments_payment_no/uk_payments_order_no/uk_payments_idempotency_key 与 idx_payments_status 对齐 `docs/sql/migrations/V1__initial_schema.sql`）。新增 `PaymentStatus` 枚举（至少包含 `PENDING`、`SUCCESS`，名称字符串需稳定序列化给前端）。如需要持久化 channel，新增 `PaymentChannel` 枚举（如 `MOCK`）。在 `payment-service/src/main/java/com/minimall/payment/repository` 新增 `PaymentRepository extends JpaRepository`，提供 `findByOrderNo`/`findByPaymentNo` 等查询方法。为支付前订单状态校验，新增最小化的订单读取方式：在 payment-service 内新增 `OrderStatus` 枚举（至少 `PENDING_PAYMENT`/`CANCELLED`/`PAID` 等）与 `OrderRepository`（仅用于读取 orders 表的 orderNo、userId、status、totalAmount），避免依赖 order-service 模块。",
+            "status": "done",
+            "testStrategy": null,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-12T13:07:17.199Z"
+          },
+          {
+            "id": 4,
+            "title": "实现支付 API：稳定 DTO、支付单查询与“模拟支付成功”写库",
+            "description": "在 payment-service 暴露前端可直接接入的支付发起与支付状态查询接口，严格使用 ApiResponse 包裹并返回稳定 DTO（不暴露 Entity）。",
+            "dependencies": [
+              3
+            ],
+            "details": "在 `payment-service/src/main/java/com/minimall/payment/dto` 新增 record DTO：`PayPaymentRequest`（可包含 `channel`、可选 `idempotencyKey` 或从 Header 读取）、`PaymentResponse`（必须包含 `paymentNo`、`orderNo`、`status`、`amount`，status 为枚举）。在 `payment-service/src/main/java/com/minimall/payment/web` 新增 `PaymentController`：实现 `POST /api/payments/{orderNo}/pay` 与 `GET /api/payments/{orderNo}`（或按既有风格增加 `GET /api/payments/payment-no/{paymentNo}` 但需保持浏览器接口稳定、路径复数）。Controller 必须返回 `ApiResponse.success(data)`。新增 `PaymentQueryService/PaymentCommandService`：查询直接按 orderNo 返回 PaymentResponse；支付发起时先读取订单（userId 可用 `UserContextHolder.require()` 获取，沿用 `order-service` 的鉴权模式），若订单不存在抛 `BusinessException(ErrorCode.NOT_FOUND, ...)`，若订单状态为取消/非法状态先不支付（具体错误码在下一子任务落地）。初版可先完成“创建或返回支付单 + 写入 SUCCESS/paidAt”的基础流程，幂等与事件发布在下一子任务补齐。",
+            "status": "done",
+            "testStrategy": "用 MockMvc 新增基础接口测试：成功返回 `ApiResponse.success` 且 data 字段包含 `paymentNo/orderNo/status/amount`，并验证不返回 Entity 字段（如 `id`）。",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-12T13:25:27.528Z"
+          },
+          {
+            "id": 5,
+            "title": "补齐幂等支付与 PaymentSuccessEvent 发布：防重复创建/防重复发事件并完善测试",
+            "description": "实现同一 orderNo 的重复支付幂等与“只发布一次 PaymentSuccessEvent”，并按验收标准返回可区分的业务错误码与 HTTP 状态。",
+            "dependencies": [
+              4
+            ],
+            "details": "在支付发起流程中实现严格校验与幂等：1）支付前读取订单状态：若 `CANCELLED` 抛 `BusinessException(ErrorCode.ORDER_CANCELLED, ...)`；若非 `PENDING_PAYMENT` 且非取消，抛 `BusinessException(ErrorCode.ORDER_INVALID_STATE, ...)`。2）幂等创建：`PaymentRepository.findByOrderNo(orderNo)` 已存在则复用同一 paymentNo；若已 `SUCCESS`，不得重复发布事件，按验收标准抛 `BusinessException(ErrorCode.PAYMENT_ALREADY_SUCCESS, ...)`（HTTP 409），或选择返回首次成功 DTO（若采用返回成功 DTO，则仍需保证不会再发事件）。3）并发/最终防线：利用 `uk_payments_order_no`/`uk_payments_idempotency_key` 处理 DataIntegrityViolationException 回放读取同一记录。4）事件发布：引入 `RabbitTemplate`（配置 JSON message converter，如 `Jackson2JsonMessageConverter`）向 `PaymentEventNames.PAYMENT_EXCHANGE` 发送 `PaymentSuccessEvent`，routingKey 使用 `PaymentEventNames.PAYMENT_SUCCESS_ROUTING_KEY`；事件体使用 `common-core` 的 `PaymentSuccessEvent`（eventId 可用 UUID，paidAt 用 Instant，amount 精度保持 2 位）。5）防重复发事件：仅当数据库内状态从非 SUCCESS 迁移到 SUCCESS 时发布（可用“条件更新 + 行级锁/乐观锁”或在事务内对 payment 记录加锁并判断旧状态）。最后在 `payment-service/src/test` 新增 MockMvc/Service 测试：待支付订单支付成功生成 payment；同一 orderNo 重复支付不重复生成支付单且事件只发一次；已取消订单支付失败返回 ORDER_CANCELLED；订单状态非法返回 ORDER_INVALID_STATE；幂等命中已成功返回 PAYMENT_ALREADY_SUCCESS（code/HTTP 状态可断言）。",
+            "status": "done",
+            "testStrategy": "运行 `mvn -pl payment-service test`：覆盖支付成功/重复支付幂等/取消订单拒绝/事件只发布一次；必要时对 RabbitTemplate 使用 @MockBean 并断言发送次数。",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-12T13:37:29.116Z"
+          }
+        ],
+        "updatedAt": "2026-05-12T13:37:29.116Z"
+      },
+      {
+        "id": "14",
+        "title": "实现 order-service 支付成功消费者：订单 PAID 流转、eventId 幂等",
+        "description": "实现订单服务消费支付成功事件并更新订单状态。",
+        "details": "order-service 监听 PaymentSuccessEvent，基于 order_events.event_id 唯一约束保证消费幂等。待支付订单流转为 PAID，其他状态记录 ignored 或失败原因。",
+        "testStrategy": "支付成功事件可将 PENDING_PAYMENT 订单变为 PAID；重复 eventId 不重复处理；已取消订单收到事件不会变为 PAID；order_events 记录处理结果。",
+        "priority": "high",
+        "dependencies": [
+          "9",
+          "12",
+          "13"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "新增 order_events 持久层：OrderEvent 实体/枚举/Repository（eventId 唯一幂等）",
+            "description": "在 order-service 内新增 order_events 的 JPA 映射与访问层，为后续消费者基于 event_id 唯一约束实现幂等提供基础能力。",
+            "dependencies": [],
+            "details": "对齐现有表结构 `docs/sql/migrations/V1__initial_schema.sql` 的 `order_events`：新增 `order-service/src/main/java/com/minimall/order/domain/OrderEvent.java`（字段：eventId、orderNo、eventType、fromStatus、toStatus、payload、createdAt），其中 `fromStatus/toStatus` 使用现有 `OrderStatus` 枚举；新增 `order-service/src/main/java/com/minimall/order/domain/OrderEventType.java`（至少包含 PAYMENT_SUCCESS）；新增 `order-service/src/main/java/com/minimall/order/repository/OrderEventRepository.java`（JpaRepository）。payload 建议用 `String` 存 JSON（包含原始 PaymentSuccessEvent + handleResult/ignoredReason/errorMessage），避免引入额外 JSON 类型依赖并兼容当前 H2 测试方式。",
+            "status": "done",
+            "testStrategy": "新增 `order-service/src/test/java/com/minimall/order/repository/OrderEventRepositoryTest.java`（@DataJpaTest）验证：1）保存一条 order_event 成功；2）同一 eventId 重复插入触发唯一约束（DataIntegrityViolationException），用于后续幂等判定。",
+            "updatedAt": "2026-05-13T12:18:45.294Z",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "实现支付成功事件消费者：监听 PaymentSuccessEvent 并驱动订单 PENDING_PAYMENT->PAID",
+            "description": "在 order-service 中引入 Spring AMQP 消费 `PaymentSuccessEvent`，基于 order_events.event_id 唯一约束实现幂等消费，并通过 OrderStateMachine 完成订单状态流转。",
+            "dependencies": [
+              1
+            ],
+            "details": "在 `order-service/pom.xml` 增加 `spring-boot-starter-amqp`，让 `common-core` 的 `PaymentRabbitTopologyAutoConfiguration` 自动声明 exchange/queue/binding；在 `order-service/src/main/resources/application.yml` 增加 `spring.rabbitmq.*` 环境变量配置（参考 `payment-service/src/main/resources/application.yml`）。新增 `order-service/src/main/java/com/minimall/order/config/OrderRabbitConfig.java` 提供 `Jackson2JsonMessageConverter`。新增消费者类（例如 `order-service/src/main/java/com/minimall/order/messaging/PaymentSuccessEventConsumer.java`），使用 `@RabbitListener(queues = PaymentEventNames.ORDER_PAYMENT_SUCCESS_QUEUE)` 接收 `PaymentSuccessEvent`。在 `@Transactional` 内先尝试插入 `OrderEvent(eventId=..., eventType=PAYMENT_SUCCESS, payload=...)`：若因唯一键冲突则视为重复消息直接 no-op；若插入成功则查询 `OrderRepository.findByOrderNo(event.getOrderNo())` 并按规则处理：1）订单为 `PENDING_PAYMENT` 时调用现有 `OrderStateMachine` 流转到 `PAID`（时间可用 event.paidAt 转换为 LocalDateTime 或用 now，并在 order_events 记录 from/to）；2）订单为其他状态（如 `CANCELLED/PAID/CLOSED/...`）不做流转，在 order_events.payload 记录 `ignored` 与原因；3）订单不存在则记录 `failed` 与原因。消费者需避免抛出业务异常导致无限重试（已处理的 ignored/failed 应能正常 ack）。",
+            "status": "done",
+            "testStrategy": "新增或调整测试用配置确保不依赖真实 RabbitMQ（例如在相关 SpringBootTest 中设置 `spring.rabbitmq.listener.simple.auto-startup=false`），并通过直接调用 consumer 方法或 Spring 容器注入 bean 的方式验证：PENDING_PAYMENT 订单收到事件后变为 PAID；CANCELLED 订单不变且被记录为 ignored；重复 eventId 不重复变更订单。",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-13T12:56:22.246Z"
+          },
+          {
+            "id": 3,
+            "title": "补齐订单支付成功消费测试：覆盖幂等、ignored、order_events 落库结果",
+            "description": "为 Task 14 的核心验收点补齐自动化测试，确保状态流转与 order_events 幂等记录在回归中稳定。",
+            "dependencies": [
+              2
+            ],
+            "details": "新增 `order-service/src/test/java/com/minimall/order/messaging/PaymentSuccessEventConsumerTest.java`（建议 @SpringBootTest + H2，复用现有测试风格，必要时关闭 listener auto-startup）或拆出可单测的 handler/service 并做纯单测。用例至少覆盖：1）创建一笔 `PENDING_PAYMENT` 订单，构造 `PaymentSuccessEvent(eventId=E1, orderNo=...)` 调用处理逻辑后订单状态为 `PAID` 且写入一条 order_events（from=PENDING_PAYMENT,to=PAID,eventType=PAYMENT_SUCCESS）；2）再次用同一 eventId=E1 调用，订单不重复更新且 order_events 条数不增加；3）创建一笔 `CANCELLED` 订单收到事件，状态保持 CANCELLED，order_events 写入 ignored（payload 含原因）；4）可选：订单不存在时记录 failed（payload 含原因）。",
+            "status": "done",
+            "testStrategy": "运行 `mvn -pl order-service test`，断言订单状态、order_events 条数与 payload/result 字段；必要时补充针对重复 eventId 的断言（unique constraint + 数据行数）。",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-13T13:12:15.930Z"
+          }
+        ],
+        "updatedAt": "2026-05-13T13:12:15.930Z"
+      },
+      {
+        "id": "15",
+        "title": "实现 notification-service：通知日志、支付成功消费者、eventId 幂等",
+        "description": "实现通知服务消费支付成功事件并记录通知日志。",
+        "details": "建立 notification-service，基于 notification_logs.event_id 唯一约束记录通知处理。消费 PaymentSuccessEvent 后写入通知日志，重复事件直接忽略。",
+        "testStrategy": "notification-service 可启动并连接 RabbitMQ；收到 PaymentSuccessEvent 后写入一条通知日志；重复 eventId 不重复写入；异常消息不会导致服务崩溃。",
+        "priority": "high",
+        "dependencies": [
+          "1",
+          "3",
+          "4",
+          "12"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "补齐 notification-service 的依赖、配置与 Rabbit JSON 转换器",
+            "description": "为 notification-service 增加消费 RabbitMQ 与写入 MySQL 所需的基础依赖与配置，确保服务可启动、可连接 RabbitMQ/数据库并能反序列化 PaymentSuccessEvent。",
+            "dependencies": [],
+            "details": "参考 `order-service/pom.xml` 增加依赖：`spring-boot-starter-amqp`、`spring-boot-starter-data-jpa`、`mysql-connector-j`（runtime）、`h2`（test）、`spring-boot-starter-test`（test），并按需补齐 surefire 插件版本对齐。参考 `order-service/src/main/resources/application.yml`，在 `notification-service/src/main/resources/application.yml` 增加 `spring.datasource.*`、`spring.jpa.*`、`spring.rabbitmq.*` 的环境变量配置（禁止硬编码密码/主机/端口，沿用 `${SPRING_DATASOURCE_PASSWORD:change-me}` 等形式）。新增 `notification-service/src/main/java/com/minimall/notification/config/NotificationRabbitConfig.java`，提供 `Jackson2JsonMessageConverter`（模式参考 `order-service/src/main/java/com/minimall/order/config/OrderRabbitConfig.java`），以确保 `PaymentSuccessEvent` 能被正确反序列化；并确保 `common-core` 中的 `PaymentRabbitTopologyAutoConfiguration`（已声明 `NOTIFICATION_PAYMENT_SUCCESS_QUEUE`）可随 AMQP 依赖自动生效。",
+            "status": "done",
+            "testStrategy": "运行 `mvn -pl notification-service -DskipTests clean package`，并本地启动 `notification-service` 验证不因缺少配置/Bean 报错；确认应用能加载 Rabbit 相关配置（无需真实消费消息）。",
+            "updatedAt": "2026-05-14T12:10:59.014Z",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "实现通知日志领域模型与幂等写入：notification_logs(event_id) 唯一约束",
+            "description": "在 notification-service 中落地 notification_logs 的 JPA 实体、枚举与仓储接口，确保基于 event_id 唯一约束可实现幂等写入通知处理日志。",
+            "dependencies": [
+              1
+            ],
+            "details": "新增 `NotificationLog` JPA 实体映射 `notification_logs`，字段覆盖至少：`eventId`（唯一约束，长度 64）、`notificationType`（枚举，映射 `notification_type`）、`recipient`（必填，映射 `recipient`）、`status`（枚举，映射 `status`）、`payload`（字符串保存 JSON，映射 `payload`）、`errorMessage`、`sentAt`、`createdAt/updatedAt`（用 `@PrePersist/@PreUpdate` 维护，风格参考 `payment-service/src/main/java/com/minimall/payment/domain/Payment.java`）。新增 `NotificationLogStatus` 枚举（至少包含与表默认值一致的 `PENDING`，可扩展 `SENT/FAILED`），新增 `NotificationType` 枚举（至少包含 `PAYMENT_SUCCESS`）。新增 `NotificationLogRepository extends JpaRepository`，提供 `findByEventId`、`existsByEventId` 方法（模式参考 `order-service/src/main/java/com/minimall/order/repository/OrderEventRepository.java`）。确保实体层面声明 `@UniqueConstraint(name = \"uk_notification_logs_event_id\", columnNames = \"event_id\")` 与必要索引（参考 `order-service/src/main/java/com/minimall/order/domain/OrderEvent.java` 的写法）。",
+            "status": "done",
+            "testStrategy": "新增一个基于 H2 的 `@SpringBootTest`（`spring.jpa.hibernate.ddl-auto=create-drop`）验证实体可建表并通过 `NotificationLogRepository.saveAndFlush()` 正常插入；再验证相同 `eventId` 的二次插入触发唯一约束（或在 repository 层用 existsByEventId 提前拦截）。",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-14T13:11:56.488Z"
+          },
+          {
+            "id": 3,
+            "title": "实现 PaymentSuccessEvent 消费者：写入通知日志并保证重复 eventId 忽略",
+            "description": "实现 notification-service 消费 PaymentSuccessEvent 的 RabbitMQ 消费者，收到事件后写入 notification_logs，重复 eventId 直接忽略，并确保异常不会导致服务崩溃或无限重试。",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "新增消费者类，例如 `notification-service/src/main/java/com/minimall/notification/messaging/PaymentSuccessEventConsumer.java`，使用 `@RabbitListener(queues = PaymentEventNames.NOTIFICATION_PAYMENT_SUCCESS_QUEUE)` 接收 `PaymentSuccessEvent`（常量位于 `common-core/src/main/java/com/minimall/common/core/event/payment/PaymentEventNames.java`）。在 `@Transactional` 内按幂等流程处理：1）优先 `notificationLogRepository.existsByEventId(event.getEventId())` 命中则记录日志并直接返回；2）构造 `NotificationLog(eventId=..., notificationType=PAYMENT_SUCCESS, recipient=...)` 并 `saveAndFlush`，若捕获 `DataIntegrityViolationException`（唯一约束并发冲突）也视为重复消息直接返回（模式参考 `order-service/src/main/java/com/minimall/order/messaging/PaymentSuccessEventConsumer.java`）；3）payload 建议记录 event 的关键字段（eventId/orderNo/paymentNo/amount/paidAt/version）并序列化为 JSON 字符串，序列化失败时使用降级 payload，避免抛出异常；4）整体处理用 try/catch 包裹，出现非幂等相关异常时更新日志为 FAILED（或至少记录 error_message）并吞掉异常，保证消息可 ack、服务不中断（满足“异常消息不会导致服务崩溃”验收点）。为消费者新增测试：仿照 `order-service/src/test/java/com/minimall/order/messaging/PaymentSuccessEventConsumerTest.java` 的风格，在 `notification-service` 增加 `@SpringBootTest + H2` 测试类，设置 `spring.rabbitmq.listener.simple.auto-startup=false`，通过直接调用 `consumer.handle(event)` 验证：首次写入 1 条通知日志；重复 eventId 不新增；（可选）mock/spy ObjectMapper 让序列化抛异常时，consumer 不抛出且仍能落库/记录错误信息。",
+            "status": "done",
+            "testStrategy": "运行 `mvn -pl notification-service test`；（集成验证可选）在本地 RabbitMQ 启动后运行服务并向 `minimall.payment.exchange` 发送 `payment.success` 消息，验证 `notification_logs` 仅插入一条且重复 eventId 不重复写入。",
+            "parentId": "undefined",
+            "updatedAt": "2026-05-14T13:17:32.936Z"
+          }
+        ],
+        "updatedAt": "2026-05-14T13:17:32.936Z"
+      },
+      {
+        "id": "16",
+        "title": "实现 api-gateway：路由、JWT 鉴权、透传、CORS、日志、限流",
+        "description": "实现统一 API 网关能力。",
+        "details": "配置 user/product/inventory/order/payment 等服务路由。注册和登录放行，其余接口校验 JWT，并向下游透传 X-User-Id/X-Username。实现 CORS、请求日志和基于 Redis 的 IP 或用户限流。\n<info added on 2026-05-03T08:23:17.824Z>\n前端验收补充（以 api-gateway 为浏览器唯一入口）：所有浏览器请求必须统一走网关端口（api-gateway，默认 8080），并且对外只暴露统一前缀路径 `/api/**`；网关需要将 `/api/{service}/**`（如 `/api/user/**`、`/api/product/**`、`/api/inventory/**`、`/api/order/**`、`/api/payment/**`）一致性路由到对应下游服务，并通过 `StripPrefix/RewritePath` 保持下游路径规则稳定（避免前端直接访问各服务端口）。\n\nJWT 与透传规则强化：网关必须从浏览器请求头 `Authorization: Bearer <token>` 读取并校验 JWT（可复用 `common-auth/src/main/java/com/minimall/common/auth/jwt/JwtUtils.java` 的解析逻辑与错误语义，JWT 配置沿用 `minimall.auth.jwt.*` 约定）；仅在 JWT 校验通过后，才允许向下游请求追加 `X-User-Id`、`X-Username`（常量见 `common-auth/src/main/java/com/minimall/common/auth/constants/AuthHeaders.java`）。来自浏览器的同名请求头必须被忽略/移除，防止客户端伪造（注意 `common-auth/src/main/java/com/minimall/common/auth/web/UserContextFilter.java` 当前支持从请求头解析 `X-User-Id/X-Username`，网关侧需确保这些头只能由网关注入而非外部传入）。\n\nCORS（前端本地开发友好）：网关需支持可配置的 CORS 白名单（建议配置项如 allowedOrigins/allowedOriginPatterns，包含本地前端常见源 `http://localhost:*` 等，但必须可通过配置覆盖），并确保预检 OPTIONS 请求对 `/api/**` 生效，返回正确的 `Access-Control-Allow-Origin/Methods/Headers`，同时不应对预检请求做 JWT 拦截或限流误伤。\n\n统一错误响应（ApiResponse 兼容）：网关对外返回的 401/403/429 必须使用 `common-core/src/main/java/com/minimall/common/core/response/ApiResponse.java` 结构；401/403 的业务错误码与语义需对齐 `common-core/src/main/java/com/minimall/common/core/exception/ErrorCode.java`（`UNAUTHORIZED`/`FORBIDDEN`），429（限流）也必须返回 ApiResponse.failure（可通过扩展 ErrorCode 增加 TOO_MANY_REQUESTS，或使用约定的自定义 code，但响应结构必须一致），并确保 HTTP 状态码分别为 401/403/429。\n\n测试补充：在 api-gateway 增加自动化测试覆盖两类关键场景：1）对 `/api/**` 的预检 OPTIONS（携带 Origin/Access-Control-Request-Method/Headers）验证 CORS 头与放行行为；2）通过网关访问受保护接口时，未携带或携带非法 JWT 返回 ApiResponse 结构的 401/403；携带合法 JWT 时可成功转发，并验证网关会在转发请求中注入 `X-User-Id/X-Username`（且客户端伪造同名头不会透传到下游）。\n</info added on 2026-05-03T08:23:17.824Z>",
+        "testStrategy": "通过网关可访问下游服务；未登录访问受保护接口返回统一未授权错误；登录后用户信息正确透传；CORS 生效；高频请求触发 429 且响应结构统一。",
+        "priority": "high",
+        "dependencies": [
+          "1",
+          "2",
+          "5",
+          "6"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Gateway routing foundation and service URL configuration",
+            "description": "Add api-gateway route configuration and environment-driven downstream service URLs without authentication logic yet.",
+            "details": "Update api-gateway dependencies/config as needed for tests. Configure routes for user, product, inventory, order, and payment services under frontend-facing /api/{service}/** prefixes using RewritePath or equivalent so downstream controllers keep their existing /api/** paths. Use environment-variable service URLs and do not hardcode hosts or ports beyond local defaults. Add focused gateway route tests proving route predicates and rewrite behavior for the configured services.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 16,
+            "updatedAt": "2026-05-14T13:39:01.662Z",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Gateway JWT authentication and trusted user header propagation",
+            "description": "Validate Authorization Bearer JWT for protected gateway APIs and inject trusted user headers for downstream services.",
+            "details": "Use common-auth JwtUtils and AuthHeaders. Public login/register paths and OPTIONS preflight must bypass JWT. Remove any incoming X-User-Id/X-Username headers from browser requests before forwarding, and inject only values parsed from a valid JWT. Return ApiResponse-shaped 401/403 responses for auth failures. Add WebTestClient coverage for missing/invalid/valid JWT and spoofed header stripping.",
+            "status": "done",
+            "dependencies": [
+              1
+            ],
+            "parentTaskId": 16,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-15T07:08:34.188Z"
+          },
+          {
+            "id": 3,
+            "title": "Gateway CORS and ApiResponse error handling",
+            "description": "Add configurable browser CORS support and gateway-owned ApiResponse error serialization.",
+            "details": "Configure CORS for /api/** with configurable allowed origins/origin patterns, methods, and headers. Ensure OPTIONS preflight is not blocked by authentication or rate limiting. Add centralized gateway response helpers for 401/403/429 ApiResponse bodies with stable codes/messages. Add tests for preflight behavior and error response shape.",
+            "status": "done",
+            "dependencies": [
+              1,
+              2
+            ],
+            "parentTaskId": 16,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-15T07:38:48.072Z"
+          },
+          {
+            "id": 4,
+            "title": "Gateway request logging and Redis-backed rate limiting",
+            "description": "Add gateway request logging and configurable Redis-backed request rate limiting.",
+            "details": "Add a lightweight global request log filter that records method/path/status/duration without sensitive headers. Add Redis-backed rate limiting by IP or authenticated user key with configurable replenish/burst values. Ensure 429 responses use ApiResponse structure and preflight requests are not incorrectly limited. Add tests for rate-limit configuration and response shape.",
+            "status": "done",
+            "dependencies": [
+              1,
+              2,
+              3
+            ],
+            "parentTaskId": 16,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-15T08:18:20.232Z"
+          },
+          {
+            "id": 5,
+            "title": "Gateway integration regression verification",
+            "description": "Add final gateway regression tests and documentation notes after route/auth/CORS/rate-limit pieces are complete.",
+            "details": "Verify the browser-facing /api/{service}/** route contract across user/product/inventory/order/payment, public auth bypass, protected auth, trusted header propagation, CORS preflight, request logging presence, and 429 ApiResponse behavior. Run api-gateway focused tests and full reactor package. Mark parent Task 16 done only when all subtasks pass.",
+            "status": "done",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "parentTaskId": 16,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-15T09:09:46.116Z"
+          }
+        ],
+        "updatedAt": "2026-05-15T09:09:46.116Z"
+      },
+      {
+        "id": "17",
+        "title": "实现订单超时取消 scheduler",
+        "description": "实现待支付订单超时自动取消并释放库存。",
+        "details": "order-service 使用 Spring Scheduler 定期扫描 expire_at 早于当前时间且状态为 PENDING_PAYMENT 的订单。通过条件更新取消订单，只有更新成功才调用库存释放，保证重复扫描幂等。",
+        "testStrategy": "过期待支付订单被自动取消并释放库存；未过期订单不受影响；已支付订单不被取消；重复调度不重复释放库存。",
+        "priority": "medium",
+        "dependencies": [
+          "10",
+          "11"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Order timeout cancellation service foundation",
+            "description": "Add order-service support for finding expired pending-payment orders and cancelling them with an idempotent conditional update.",
+            "details": "Create the repository/service methods needed to select orders whose expireAt is before now and status is PENDING_PAYMENT, transition only still-pending orders to CANCELLED, and call inventory release only after a successful state change. Cover expired, non-expired, paid, and repeated execution behavior at the service level.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 17,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-16T02:30:33.812Z"
+          },
+          {
+            "id": 2,
+            "title": "Order timeout scheduler wiring",
+            "description": "Wire the timeout cancellation service to Spring Scheduler with environment-driven scheduling settings.",
+            "details": "Enable scheduling for order-service, add configurable scheduler enabled/fixed-delay/batch-size settings, and make the scheduled job invoke the timeout cancellation service without requiring external infrastructure.",
+            "status": "done",
+            "dependencies": [
+              1
+            ],
+            "parentTaskId": 17,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-16T02:46:00.279Z"
+          },
+          {
+            "id": 3,
+            "title": "Order timeout scheduler regression coverage",
+            "description": "Add final regression coverage for the full timeout scheduler behavior and document verification.",
+            "details": "Cover the scheduler-facing flow for expired pending orders, non-expired orders, paid orders, and repeated scans that must not release inventory twice. Verify order-service tests and full reactor packaging before marking Task 17 complete.",
+            "status": "done",
+            "dependencies": [
+              1,
+              2
+            ],
+            "parentTaskId": 17,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-16T02:54:57.326Z"
+          }
+        ],
+        "updatedAt": "2026-05-16T02:54:57.326Z"
+      },
+      {
+        "id": "18",
+        "title": "接入基础可观测性：Actuator、Prometheus、Grafana",
+        "description": "为服务接入基础健康检查、指标和可视化能力。",
+        "details": "启用 Actuator health/info/metrics/prometheus，添加 Prometheus registry，提供 Prometheus/Grafana compose 扩展与基础 dashboard 配置。保留链路追踪配置入口。",
+        "testStrategy": "各服务 actuator endpoint 可访问；Prometheus 能 scrape 服务指标；Grafana 可打开并展示基础 HTTP 指标；配置文档可复现。",
+        "priority": "medium",
+        "dependencies": [
+          "1",
+          "2",
+          "16"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Actuator Prometheus endpoint foundation",
+            "description": "Add Prometheus registry dependencies and expose health info metrics and prometheus actuator endpoints for all Spring Boot services.",
+            "details": "Update service Maven dependencies and application.yml management exposure so each service publishes health info metrics and prometheus endpoints. Add focused verification for representative service actuator configuration.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 18,
+            "updatedAt": "2026-05-16T03:18:35.694Z",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Prometheus and Grafana compose wiring",
+            "description": "Add Prometheus and Grafana Docker Compose observability services with Prometheus scrape configuration.",
+            "details": "Provide Compose services for Prometheus and Grafana using environment variables and mounted configuration. Add Prometheus scrape targets for the service actuator prometheus endpoints without hardcoded secrets.",
+            "status": "done",
+            "dependencies": [
+              1
+            ],
+            "parentTaskId": 18,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-16T13:46:35.481Z"
+          },
+          {
+            "id": 3,
+            "title": "Grafana provisioning and observability docs",
+            "description": "Add Grafana provisioning dashboard files and documentation for reproducing observability checks.",
+            "details": "Provide datasource and dashboard provisioning, a basic HTTP and JVM metrics dashboard, and docs for validating actuator endpoints Prometheus scraping and Grafana startup.",
+            "status": "done",
+            "dependencies": [
+              1,
+              2
+            ],
+            "parentTaskId": 18,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-16T14:09:41.699Z"
+          }
+        ],
+        "updatedAt": "2026-05-16T14:09:41.699Z"
+      },
+      {
+        "id": "19",
+        "title": "编写 k6/JMeter 压测脚本与压测文档",
+        "description": "提供商品详情和下单链路的压测脚本及使用文档。",
+        "details": "创建 pressure/ 目录，提供 k6 或 JMeter 脚本，覆盖登录、商品详情、创建订单等路径。文档说明参数、并发、运行方式和指标解释。\n<info added on 2026-05-03T08:27:58.946Z>\n前端验收补充（脚本必须模拟真实前端调用方式）：\n1) 所有压测流量必须以 api-gateway 作为唯一入口（BASE_URL 指向网关，例如 http://localhost:8080），禁止直接打到各微服务端口（如 8101/8102）。\n2) 压测脚本覆盖的 URL 必须与前端一致，至少包含：登录、商品列表/详情、创建订单、取消订单/订单详情、支付相关链路（如支付创建/查询/回调等，按当前 payment-service 对外 API 实际实现为准）。\n3) 已有接口路径参考（用于脚本落地与断言）：\n- 登录/用户信息：user-service/src/main/java/com/minimall/user/web/UserAuthController.java 中 @RequestMapping(\"/api/users\")，包含 POST /api/users/login、GET /api/users/me。\n- 商品列表/详情：product-service/src/main/java/com/minimall/product/web/ProductController.java 中 @RequestMapping(\"/api/products\")，包含 GET /api/products（支持 status=ON_SHELF/OFF_SHELF 及 Spring Data Pageable 的 page/size/sort 参数）、GET /api/products/{productId}。\n如网关对外统一采用 /api/{service}/**（例如 /api/user/**、/api/product/**），文档需明确网关外部路径与下游实际 Controller 路径（如 /api/users、/api/products）之间的 StripPrefix/RewritePath 对应关系，确保脚本请求的就是前端最终会用的网关路径。\n4) 环境变量与参数文档必须写清（脚本内不得硬编码地址/账号等敏感信息）：至少包含 BASE_URL（网关）、USERNAME、PASSWORD；如需指定压测商品/订单，补充 PRODUCT_ID/PRODUCT_STATUS/page/size 等可配置项。\n5) Token 处理要求：脚本需先调用登录接口获取 ApiResponse.data.token 与 tokenType（当前实现为 \"Bearer\"，见 user-service/src/main/java/com/minimall/user/service/UserAuthService.java），并在后续请求统一携带 Authorization: Bearer <token>；需说明 token 的获取/缓存策略（每 VU 登录一次或共享 token）、401/过期时的重登处理。\n6) ApiResponse 断言要求：脚本需对成功与失败响应做结构校验，至少断言 success/code/message 字段存在且符合约定。参考 common-core/src/main/java/com/minimall/common/core/response/ApiResponse.java 与 common-core/src/main/java/com/minimall/common/core/exception/ErrorCode.java：\n- 成功：success=true 且 code=\"0\"（message=\"success\"）。\n- 典型错误（示例）：未授权 code=\"40100\"；参数校验失败 code=\"40001\"；冲突 code=\"40900\"。脚本与文档需说明各链路预期的成功/失败断言与错误率统计口径。\n</info added on 2026-05-03T08:27:58.946Z>\n<info added on 2026-05-16T14:21:32.000Z>\n压测运行前提与观测限制：Task 19 只负责压测脚本和文档，不实现 Java 服务容器化。压测脚本默认以 api-gateway 为唯一入口，BASE_URL 指向网关。文档必须说明本地压测前需要先启动依赖服务和被压测的 Java 服务；如果服务以 WSL 手动 jar 方式运行而 Prometheus/Grafana 运行在 Docker Desktop 中，Prometheus 使用 host.docker.internal 抓取 WSL 服务可能显示 target down，这是 Docker Desktop 与 WSL 网络拓扑限制，不应误判为业务接口或压测脚本失败。Task 19 文档需说明压测结果以 k6/JMeter 请求结果为准，观测面板仅作为辅助；如需要 Prometheus 同步观测 WSL 内服务，可临时使用当前 WSL IP 做本地验证但不得提交硬编码 IP。长期稳定解决方案归入 Task 20 的完整 Compose runtime 交付。\n</info added on 2026-05-16T14:21:32.000Z>",
+        "testStrategy": "压测脚本可运行；输出 QPS、平均响应时间、P95、错误率；高并发下库存不为负；文档包含一次示例结果和瓶颈观察点。",
+        "priority": "medium",
+        "dependencies": [
+          "6",
+          "7",
+          "8",
+          "10",
+          "11",
+          "13",
+          "14",
+          "15",
+          "16",
+          "17"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create k6 gateway load script",
+            "description": "Add a k6 script under pressure/ that uses api-gateway as BASE_URL and covers login, product list/detail, order, cancel/detail, and payment-facing flows using current backend API contracts.",
+            "details": "Use environment variables for BASE_URL, USERNAME, PASSWORD, PRODUCT_ID, PRODUCT_STATUS, page/size, VUs, duration, quantity, and payment callback inputs. Implement per-VU login token handling, Authorization header reuse, ApiResponse success/error structure assertions, custom thresholds for latency and error rate, and summary output with QPS, average latency, P95, and error rate. Do not hardcode service ports, hostnames, credentials, or secrets.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 19,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-17T11:23:30.633Z"
+          },
+          {
+            "id": 2,
+            "title": "Document pressure test usage and observations",
+            "description": "Document how to run the k6 pressure test through api-gateway, required startup prerequisites, parameters, token strategy, gateway route mapping, metrics, and sample output.",
+            "details": "Add pressure documentation with BASE_URL and credential parameters, frontend-facing route expectations, ApiResponse assertion rules, local dependency/service startup notes, Docker Desktop and WSL Prometheus limitation notes, example command lines, sample result fields, and bottleneck observation checklist.",
+            "status": "done",
+            "dependencies": [
+              "19.1"
+            ],
+            "parentTaskId": 19,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-17T11:36:43.794Z"
+          },
+          {
+            "id": 3,
+            "title": "Verify pressure assets and complete Task 19",
+            "description": "Run available script checks, record an example pressure-test result when services are available, verify inventory non-negative observation guidance, and close Task 19.",
+            "details": "Run the script validation command available in the local environment, run the pressure test if k6 and services are available, document pass/fail or environment blocker, confirm output includes QPS, average latency, P95, and error rate, and update TaskMaster and dev log only after verification.",
+            "status": "done",
+            "dependencies": [
+              "19.1",
+              "19.2"
+            ],
+            "parentTaskId": 19,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-17T16:05:50.897Z"
+          }
+        ],
+        "updatedAt": "2026-05-17T16:05:50.897Z"
+      },
+      {
+        "id": "20",
+        "title": "完善 README、部署文档、架构文档、最终验收",
+        "description": "完成项目交付文档和最终端到端验收。",
+        "details": "完善 README、架构说明、模块说明、数据库说明、事件契约说明、API 文档入口、部署步骤、压测说明和验收流程。记录从零启动基础设施和服务的完整步骤。\n<info added on 2026-05-16T14:21:32.000Z>\n完整本地 Compose runtime 交付要求：Task 20 负责长期稳定解决 Docker Desktop + WSL 下 Prometheus 无法通过 host.docker.internal 抓取 WSL 内 Java 服务的问题。交付时应评估并实现服务容器化方案：为各 Java 服务提供 Dockerfile 或统一镜像构建方式，将 api-gateway、user-service、product-service、inventory-service、order-service、payment-service、notification-service 纳入同一个 Docker Compose network，使用服务名和容器端口配置服务间调用和 Prometheus scrape targets，例如 api-gateway:8080、inventory-service:8103。部署文档需覆盖从零启动完整栈、环境变量映射、数据库/Redis/RabbitMQ/Prometheus/Grafana/Java 服务的启动顺序和健康检查，并说明 host.docker.internal 仅作为非容器化本地服务的临时方案，禁止提交动态 WSL IP。最终验收应包含 Prometheus 对至少一个容器化 Java 服务 up=1、Grafana MiniMall Observability dashboard 可看到对应服务指标，以及完整注册/登录、查商品、下单、支付、订单 PAID、通知日志链路。\n</info added on 2026-05-16T14:21:32.000Z>",
+        "testStrategy": "按 README 可从零启动依赖和服务；完成注册/登录、查商品、下单、支付、订单变 PAID、通知日志生成的完整链路；文档覆盖部署、架构、接口、事件和压测。",
+        "priority": "medium",
+        "dependencies": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10",
+          "11",
+          "12",
+          "13",
+          "14",
+          "15",
+          "16",
+          "17",
+          "18",
+          "19"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Frontend integration guide and readiness acceptance checklist",
+            "description": "Add frontend-facing delivery documentation and acceptance checklist after backend tasks are complete.",
+            "details": "Document API base URL, gateway routing table, CORS configuration, auth token flow, ApiResponse and ErrorCode contract, user-facing API examples, local frontend environment variables, and admin/backoffice gaps if not implemented. Include a checklist that marks each backend endpoint as ready for frontend UI, admin UI, internal-only, or not yet exposed. The final acceptance must prove a browser frontend can use api-gateway as the single API entrypoint without calling service-internal URLs.",
+            "status": "done",
+            "dependencies": [
+              16,
+              19
+            ],
+            "parentTaskId": 20,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-18T11:49:16.075Z"
+          },
+          {
+            "id": 2,
+            "title": "Containerize Java services for Compose runtime",
+            "description": "Add Docker/Compose runtime support for api-gateway and Java services.",
+            "details": "Provide Dockerfile or shared image build approach for api-gateway, user-service, product-service, inventory-service, order-service, payment-service, and notification-service. Wire them into the Compose network with service-name URLs, container ports, environment variables, health checks, and Prometheus scrape targets that do not rely on dynamic WSL IPs.",
+            "status": "done",
+            "dependencies": [
+              "20.1"
+            ],
+            "parentTaskId": 20,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-18T12:06:59.574Z"
+          },
+          {
+            "id": 3,
+            "title": "Document deployment architecture and operations",
+            "description": "Complete delivery documentation for architecture, modules, database, events, APIs, deployment, observability, and pressure-test usage.",
+            "details": "Update or add README/deployment/architecture documentation so a developer can start dependencies and services from zero, understand environment-variable mapping, service startup order, health checks, database migration, RabbitMQ events, Prometheus/Grafana usage, and pressure-test entrypoints.",
+            "status": "done",
+            "dependencies": [
+              "20.2"
+            ],
+            "parentTaskId": 20,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-18T12:19:16.971Z"
+          },
+          {
+            "id": 4,
+            "title": "Run final end-to-end acceptance",
+            "description": "Execute and record the final delivery acceptance flow through the gateway and containerized runtime.",
+            "details": "Verify from-zero startup, Prometheus up=1 for at least one containerized Java service, Grafana MiniMall Observability dashboard metrics, and the full register/login, product, order, payment, order PAID, and notification-log chain. Record results and blockers in project documentation.",
+            "status": "done",
+            "dependencies": [
+              "20.3"
+            ],
+            "parentTaskId": 20,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-18T12:38:03.893Z"
+          }
+        ],
+        "updatedAt": "2026-05-18T12:38:03.893Z"
+      }
+    ],
+    "metadata": {
+      "version": "1.0.0",
+      "lastModified": "2026-05-18T12:38:03.898Z",
+      "taskCount": 20,
+      "completedCount": 20,
+      "tags": [
+        "master"
+      ]
+    }
+  }
+}

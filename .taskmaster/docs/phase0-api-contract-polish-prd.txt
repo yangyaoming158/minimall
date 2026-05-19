@@ -1,0 +1,700 @@
+Phase 0 PRD：MiniMall API Contract Polish
+
+文件建议位置：
+.taskmaster/docs/phase0-api-contract-polish-prd.txt
+
+版本：
+v1.0
+
+目标阶段：
+Phase 0 - API Contract Polish
+
+适用项目：
+MiniMall Order 微服务电商后端项目
+
+
+一、背景
+
+MiniMall Order 后端 MVP 已完成第一轮 20 个 TaskMaster 顶层任务，并通过本地后端验收。当前系统已经具备：
+
+1. Java 17 + Spring Boot 3 + Spring Cloud Maven 多模块工程。
+2. api-gateway 统一浏览器入口。
+3. user-service、product-service、inventory-service、order-service、payment-service、notification-service 等微服务。
+4. MySQL、Redis、RabbitMQ、Prometheus、Grafana 本地运行环境。
+5. 注册、登录、当前用户、商品查询、库存查询、创建订单、取消订单、模拟支付、支付成功事件消费、通知日志等核心链路。
+6. 统一 ApiResponse 响应结构。
+7. BusinessException + ErrorCode 统一业务错误处理。
+8. JWT 鉴权和用户上下文透传。
+9. RabbitMQ 支付成功事件。
+10. k6 压测脚本和最终验收文档。
+
+当前项目已经可以被视为“本地后端 MVP”，但交付范围仍是 backend only，不包含用户前端页面、管理员后台、RBAC、退款、对账、库存管理操作、通知管理 API、生产 CI/CD 等能力。
+
+在进入用户前端和管理员后台开发之前，需要先完成一次 API Contract Polish，避免后续前端绑定到不够稳定、不够清晰或带有临时痕迹的 API 路径和 DTO 字段上。
+
+
+二、当前主要问题
+
+2.1 Gateway 外部路径不够清爽
+
+当前浏览器入口通过 api-gateway 暴露的路径类似：
+
+- POST /api/user/users/register
+- POST /api/user/users/login
+- GET /api/product/products
+- GET /api/order/orders/{orderNo}
+- POST /api/payment/payments/{orderNo}/pay
+
+这些路径功能可用，但存在双层资源名：
+
+- /api/user/users
+- /api/product/products
+- /api/order/orders
+- /api/payment/payments
+
+对未来前端而言，这类路径不够直观。更适合前端接入的 canonical API 应为：
+
+- /api/users
+- /api/products
+- /api/inventories
+- /api/orders
+- /api/payments
+
+
+2.2 Product admin endpoints 已存在，但没有 RBAC
+
+当前商品创建、更新、上下架接口已经存在，但没有管理员角色和权限控制。因此这些接口不能被视为真正的“管理员后台 API”。
+
+Phase 0 不实现 RBAC，也不实现管理员后台，但需要避免在用户前端文档中误导性地把商品写操作当作普通用户 API。
+
+
+2.3 /internal/** 必须继续对浏览器不可见
+
+当前后端已有服务间内部接口，例如商品内部查询、库存扣减、库存释放等。Phase 0 必须继续确保：
+
+1. 浏览器不能访问 /internal/**。
+2. api-gateway 不转发 /internal/**。
+3. 前端文档不出现 /internal/** 作为可调用接口。
+4. 压测脚本不直接调用 /internal/**。
+
+
+2.4 API 文档、压测脚本、前端接入文档需要统一
+
+现有后端已经有：
+
+- docs/frontend-integration.md
+- docs/api-gateway-contract.md
+- docs/api-contract-review.md
+- pressure/README.md
+- pressure/task19-live-result.md
+
+Phase 0 需要将这些文档中的外部 API 路径统一到最终规范，避免用户前端 PRD 和后续管理员后台 PRD 继续沿用旧路径。
+
+
+2.5 Product status mutation 风格需要固定
+
+当前商品上下架接口为：
+
+- POST /api/product/products/{productId}/on-shelf
+- POST /api/product/products/{productId}/off-shelf
+
+未来管理员后台更适合使用统一状态更新接口，例如：
+
+- PUT /api/admin/products/{productId}/status
+
+Phase 0 不必实现完整后台权限，但应明确未来商品状态接口采用哪种设计，以免管理员后台开发时出现双口径。
+
+
+2.6 PageResponse<T> 可能需要共享
+
+当前分页响应如果只在 product-service 内部使用，可以暂不迁移；但订单列表、后台商品列表、库存列表、通知日志列表都需要分页时，应统一到 common-core，避免各服务复制不同分页结构。
+
+
+三、目标
+
+Phase 0 的目标是：
+
+1. 明确 MiniMall 对外浏览器 API 的最终路径规范。
+2. 让用户前端只依赖清晰、稳定、复数资源风格的 /api/** 路径。
+3. 保持 /internal/** 不暴露给浏览器。
+4. 避免前端误用服务内部 API、数据库主键或旧 gateway prefix。
+5. 修正或标记 DTO 命名、分页结构、商品状态接口风格等契约问题。
+6. 更新文档、压测脚本和 E2E 验收脚本，使它们使用新的 canonical API。
+7. 不引入前端 UI。
+8. 不实现管理员后台。
+9. 不实现 RBAC。
+10. 不扩展支付、订单、通知等业务生命周期。
+
+
+四、非目标
+
+Phase 0 明确不做以下事情：
+
+1. 不开发用户前端页面。
+2. 不开发管理员后台页面。
+3. 不实现 RBAC、角色、权限、管理员账号体系。
+4. 不实现库存管理后台 API。
+5. 不实现退款、对账、支付回调、支付渠道抽象。
+6. 不实现订单发货、履约、售后、退款状态。
+7. 不实现通知模板、重发、失败告警。
+8. 不做高并发架构改造。
+9. 不做 Kubernetes、CI/CD、镜像发布、Secrets 管理。
+10. 不重构已有核心业务逻辑。
+11. 不修改已经通过验收的业务语义。
+
+
+五、用户与使用方
+
+5.1 未来用户前端
+
+用户前端将使用以下能力：
+
+1. 注册。
+2. 登录。
+3. 查看当前用户。
+4. 商品列表。
+5. 商品详情。
+6. 库存展示。
+7. 创建订单。
+8. 我的订单。
+9. 订单详情。
+10. 取消订单。
+11. 模拟支付。
+12. 查询支付结果。
+
+
+5.2 未来管理员后台
+
+管理员后台暂时只作为 Phase 2 的预留使用方。
+
+Phase 0 只需要记录哪些接口仍不是 admin-safe，不实现后台权限。
+
+
+5.3 后端服务间调用
+
+后端服务间调用继续使用 /internal/**，不作为浏览器公开 API。
+
+
+5.4 测试与压测脚本
+
+所有模拟浏览器行为的脚本必须调用 api-gateway 的 canonical API，不直接调用微服务端口。
+
+
+六、目标 API 路径规范
+
+6.1 Public Customer API
+
+用户相关：
+
+1. POST /api/users/register
+   说明：用户注册。
+
+2. POST /api/users/login
+   说明：用户登录。
+
+3. GET /api/users/me
+   说明：当前用户。
+
+商品相关：
+
+1. GET /api/products
+   说明：商品列表。
+
+2. GET /api/products/{productId}
+   说明：商品详情。
+
+库存相关：
+
+1. GET /api/inventories/{productId}
+   说明：商品库存快照。
+
+订单相关：
+
+1. POST /api/orders
+   说明：创建订单。
+
+2. GET /api/orders/my
+   说明：我的订单。
+
+3. GET /api/orders/{orderNo}
+   说明：订单详情。
+
+4. POST /api/orders/{orderNo}/cancel
+   说明：取消订单。
+
+支付相关：
+
+1. POST /api/payments/{orderNo}/pay
+   说明：模拟支付。
+
+2. GET /api/payments/{orderNo}
+   说明：查询支付单。
+
+
+6.2 Internal API
+
+内部 API 继续使用：
+
+1. /internal/products/**
+   使用方：order-service。
+
+2. /internal/inventories/**
+   使用方：order-service。
+
+3. /internal/orders/**
+   使用方：payment-service，如已有或后续需要。
+
+要求：
+
+1. api-gateway 不暴露 /internal/**。
+2. 前端文档不出现 /internal/**。
+3. 压测脚本不调用 /internal/**。
+4. internal DTO 不作为前端 DTO 文档的一部分。
+
+
+6.3 Admin API 暂不正式定义
+
+Phase 0 不正式定义 /api/admin/** 的完整接口。
+
+但文档中必须标记：
+
+1. 当前商品写接口不是完整 admin-safe API。
+2. 后续 Phase 2 应定义 /api/admin/products/**。
+3. 后续 Phase 2 应实现 RBAC 后再暴露库存调整、订单管理、通知日志管理等后台功能。
+
+
+七、Gateway 路由要求
+
+7.1 Canonical 路由
+
+api-gateway 必须支持 canonical paths，并重写到下游服务现有 Controller。
+
+建议路由映射：
+
+1. /api/users/**
+   下游：user-service /api/users/**。
+
+2. /api/products/**
+   下游：product-service /api/products/**。
+
+3. /api/inventories/**
+   下游：inventory-service /api/inventories/**。
+
+4. /api/orders/**
+   下游：order-service /api/orders/**。
+
+5. /api/payments/**
+   下游：payment-service /api/payments/**。
+
+如果下游 Controller 已经使用相同路径，则尽量减少 RewritePath 复杂度。
+
+
+7.2 Legacy 路由策略
+
+当前旧路径包括：
+
+1. /api/user/users/**
+2. /api/product/products/**
+3. /api/inventory/inventories/**
+4. /api/order/orders/**
+5. /api/payment/payments/**
+
+Phase 0 必须二选一：
+
+方案 A：直接废弃 legacy 路由
+
+1. Gateway 不再暴露旧路径。
+2. 文档、压测、验收全部改成 canonical paths。
+3. 本地 MVP 没有真实前端依赖旧路径，因此可以接受。
+
+方案 B：短期保留 legacy alias
+
+1. Legacy paths 继续可用。
+2. 文档标记 deprecated。
+3. 所有新文档、压测、前端示例只使用 canonical paths。
+4. 后续 Phase 1 前端禁止使用 legacy paths。
+
+优先推荐方案 A。若改动风险过大，可以选择方案 B，但必须在文档中明确 deprecated。
+
+
+7.3 Gateway 安全要求
+
+Gateway 必须继续满足：
+
+1. 浏览器请求必须通过 Authorization: Bearer <jwt> 访问受保护接口。
+2. 注册、登录、CORS preflight 可放行。
+3. 浏览器传入的 X-User-Id、X-Username 必须被移除。
+4. JWT 校验通过后由 Gateway 注入可信 X-User-Id、X-Username。
+5. /internal/** 不得被 Gateway 转发。
+6. Gateway 产生的 401、403、404、429、500 错误必须返回 ApiResponse。
+
+
+八、DTO 与响应规范
+
+8.1 统一响应
+
+所有 public API 成功响应必须使用：
+
+{
+  "success": true,
+  "code": "0",
+  "message": "success",
+  "data": {}
+}
+
+所有 public API 失败响应必须使用：
+
+{
+  "success": false,
+  "code": "40100",
+  "message": "Unauthorized",
+  "data": null
+}
+
+具体 code 和 message 根据 ErrorCode 决定。
+
+
+8.2 外部 ID 规则
+
+前端稳定标识必须使用业务 ID：
+
+1. 用户：userId。
+2. 商品：productId。
+3. 订单：orderNo。
+4. 支付：paymentNo。
+5. 事件：eventId，仅内部或文档需要。
+
+禁止在 public frontend DTO 中暴露裸 id 数据库主键。
+
+
+8.3 分页结构
+
+如果 Phase 0 发现多个服务已需要分页，必须迁移或准备迁移：
+
+common-core/src/main/java/com/minimall/common/core/response/PageResponse.java
+
+统一结构：
+
+{
+  "content": [],
+  "page": 0,
+  "size": 10,
+  "totalElements": 100,
+  "totalPages": 10
+}
+
+如果当前只有 product-service 使用分页，可以将迁移作为 P1 或 P2，但必须在文档中记录后续 order/admin 分页需要复用该结构。
+
+
+8.4 Request / Response 命名
+
+规则：
+
+1. 请求 DTO：*Request。
+2. 响应 DTO：*Response。
+3. 分页包装：PageResponse<T>。
+4. 事件：*Event。
+5. 内部服务调用响应：可使用 Internal*Response 或 *Snapshot。
+
+禁止新增：
+
+1. *VO。
+2. *Result。
+3. *InfoDTO。
+4. *ViewObject。
+5. 与现有风格不一致的 DTO 命名。
+
+
+九、商品状态接口决策
+
+Phase 0 必须明确商品上下架未来接口风格。
+
+推荐方案：
+
+未来管理员后台使用统一状态更新接口：
+
+PUT /api/admin/products/{productId}/status
+
+请求体：
+
+{
+  "status": "ON_SHELF"
+}
+
+可选状态：
+
+1. ON_SHELF。
+2. OFF_SHELF。
+
+当前兼容：
+
+当前已有：
+
+1. POST /api/product/products/{productId}/on-shelf
+2. POST /api/product/products/{productId}/off-shelf
+
+Phase 0 不强制删除已有后端接口，但必须在文档中明确：
+
+1. 当前 on/off-shelf 是后端已有能力。
+2. 未来管理员后台优先使用统一 status mutation。
+3. 若 Phase 0 顺手改成统一接口，必须保证现有测试、文档、压测同步更新。
+4. 不得在没有 RBAC 的情况下把商品写操作作为 customer frontend API 暴露。
+
+
+十、文档要求
+
+10.1 docs/frontend-integration.md
+
+要求：
+
+1. 改用 canonical paths。
+2. 补充 API base URL。
+3. 补充 token 使用方式。
+4. 标记 /internal/** 不可访问。
+5. 标记商品写操作不是 customer frontend API。
+
+
+10.2 docs/api-gateway-contract.md
+
+要求：
+
+1. 记录 canonical route table。
+2. 记录 legacy route strategy。
+3. 记录 CORS、JWT、trusted headers、rate limit、error response。
+
+
+10.3 docs/api-contract-review.md
+
+要求：
+
+1. 记录 Phase 0 解决的问题。
+2. 记录未解决问题，例如 RBAC、admin-safe APIs、payment lifecycle。
+
+
+10.4 README.md
+
+要求：
+
+1. 快速启动和示例 API 更新为 canonical paths。
+2. 不再推荐旧路径。
+
+
+10.5 pressure/README.md
+
+要求：
+
+1. BASE_URL 说明。
+2. k6 示例路径更新。
+3. 明确压测脚本只通过 api-gateway。
+
+
+10.6 docs/phase0-acceptance.md
+
+要求：
+
+1. 记录 Phase 0 验收命令。
+2. 记录测试结果。
+3. 记录 canonical API E2E smoke 结果。
+4. 记录遗留问题。
+
+
+十一、测试要求
+
+11.1 Gateway route tests
+
+验证 canonical paths 可访问：
+
+1. POST /api/users/register
+2. POST /api/users/login
+3. GET /api/products
+4. GET /api/products/{productId}
+5. GET /api/inventories/{productId}
+6. POST /api/orders
+7. GET /api/orders/my
+8. GET /api/orders/{orderNo}
+9. POST /api/orders/{orderNo}/cancel
+10. POST /api/payments/{orderNo}/pay
+11. GET /api/payments/{orderNo}
+
+
+11.2 Gateway security tests
+
+验证：
+
+1. 未登录访问受保护接口返回 401 ApiResponse。
+2. CORS preflight 可通过。
+3. 浏览器伪造 X-User-Id、X-Username 不会透传到下游。
+4. /internal/** 返回 404 或 403，不转发到下游。
+5. 限流触发返回 429 ApiResponse。
+
+
+11.3 API contract tests
+
+验证：
+
+1. public DTO 不暴露裸 id。
+2. 返回字段使用 userId、productId、orderNo、paymentNo。
+3. 分页结构一致。
+4. 错误响应结构一致。
+5. 状态字段为枚举字符串。
+
+
+11.4 E2E smoke test
+
+通过 canonical paths 完成：
+
+1. 注册。
+2. 登录。
+3. 当前用户。
+4. 商品列表。
+5. 商品详情。
+6. 库存查询。
+7. 创建订单。
+8. 查询订单。
+9. 模拟支付。
+10. 查询支付。
+11. 查询订单变为 PAID。
+12. 通知日志消费仍正常，若已有验证脚本支持。
+
+
+11.5 压测脚本验证
+
+更新 k6 或 JMeter 脚本，使其只使用 canonical paths。
+
+最小验收：
+
+1. 5 VUs。
+2. 60 秒。
+3. 0 HTTP failure。
+4. 0 ApiResponse contract failure。
+5. 0 negative inventory observation。
+
+
+十二、验收标准
+
+Phase 0 完成后，必须满足：
+
+1. mvn test 在非受限本地环境通过。
+2. mvn clean package -DskipTests 通过。
+3. docker compose --env-file .env.example config --quiet 通过。
+4. docker compose --env-file .env.example --profile services config --quiet 通过。
+5. Gateway canonical paths 可完成完整用户购买链路。
+6. 文档中的前端 API 示例不再使用 /api/user/users、/api/product/products 等旧路径。
+7. 压测脚本不再使用旧路径。
+8. /internal/** 不经 Gateway 暴露。
+9. Gateway 错误继续返回 ApiResponse。
+10. 浏览器伪造用户头仍会被剥离。
+11. public frontend DTO 不暴露数据库裸 id。
+12. Phase 0 验收记录写入 docs/phase0-acceptance.md。
+13. TaskMaster phase0-api-polish tag 中的任务全部完成。
+
+
+十三、约束
+
+1. 不修改核心业务语义。
+2. 不引入前端项目。
+3. 不引入管理员后台。
+4. 不引入 RBAC。
+5. 不新增大规模抽象。
+6. 不直接删除已通过验收的业务逻辑。
+7. 如果需要保留 legacy path，必须标记 deprecated。
+8. 所有改动必须可通过测试和文档验证。
+9. 每个任务必须有明确的测试策略。
+10. 每个新增或修改的 API 路径必须在文档中体现。
+
+
+十四、推荐任务拆分方向
+
+TaskMaster 解析时建议生成 8 到 10 个任务：
+
+1. 审查当前 Gateway 路由与 API 文档，确定 canonical path 方案。
+2. 实现或调整 Gateway canonical route rewrite。
+3. 阻断 /internal/** 并验证 Gateway 安全行为。
+4. 清理 public DTO 的裸 id 和字段命名问题。
+5. 统一或规划 PageResponse<T> 复用。
+6. 固定商品状态 mutation 风格并更新文档。
+7. 更新 frontend integration、gateway contract、README、pressure docs。
+8. 更新 k6/E2E smoke 脚本为 canonical paths。
+9. 增加 Gateway/API contract 测试。
+10. 生成 Phase 0 验收报告。
+
+如果任务数量控制在 8 个左右，可以合并：
+
+1. 任务 4 和任务 5。
+2. 任务 6 和任务 7。
+3. 任务 8 和任务 9。
+
+
+十五、交付物
+
+Phase 0 结束时应产生：
+
+1. 更新后的 Gateway canonical route 配置。
+2. 更新后的 API contract 测试。
+3. 更新后的 E2E smoke 或 pressure 脚本。
+4. 更新后的 docs/frontend-integration.md。
+5. 更新后的 docs/api-gateway-contract.md。
+6. 更新后的 README.md。
+7. 新增 docs/phase0-acceptance.md。
+8. TaskMaster Phase 0 任务树全部完成。
+9. 明确的遗留问题清单，用于 Phase 1 前端 PRD 和 Phase 2 管理员后台 PRD。
+
+
+十六、TaskMaster 使用建议
+
+本 PRD 应作为新的独立任务树输入，不应追加到原 master 任务树。
+
+建议使用独立 tag：
+
+phase0-api-polish
+
+推荐命令：
+
+task-master add-tag phase0-api-polish --description="Phase 0 API contract polish before frontend/admin development"
+
+task-master use-tag phase0-api-polish
+
+task-master parse-prd .taskmaster/docs/phase0-api-contract-polish-prd.txt --num-tasks=8
+
+task-master list
+
+task-master validate-dependencies
+
+如果本地没有全局 task-master 命令，可使用：
+
+node node_modules/task-master-ai/dist/task-master.js add-tag phase0-api-polish --description="Phase 0 API contract polish before frontend/admin development"
+
+node node_modules/task-master-ai/dist/task-master.js use-tag phase0-api-polish
+
+node node_modules/task-master-ai/dist/task-master.js parse-prd .taskmaster/docs/phase0-api-contract-polish-prd.txt --num-tasks=8
+
+node node_modules/task-master-ai/dist/task-master.js list
+
+node node_modules/task-master-ai/dist/task-master.js validate-dependencies
+
+解析前建议备份：
+
+mkdir -p .taskmaster/backups
+
+cp .taskmaster/tasks/tasks.json .taskmaster/backups/tasks-before-phase0-api-polish.json
+
+如果存在 .taskmaster/state.json，也建议备份：
+
+cp .taskmaster/state.json .taskmaster/backups/state-before-phase0-api-polish.json
+
+注意：
+
+1. 不要覆盖旧的 .taskmaster/docs/prd.txt。
+2. 不要在 master tag 上 parse-prd。
+3. 不要手动编辑 .taskmaster/state.json。
+4. 不要用 update --from=1 之类命令把 Phase 0 塞进旧任务树。
+5. 解析完成后应分别检查 master 与 phase0-api-polish：
+
+task-master list --tag=master
+
+task-master list --tag=phase0-api-polish
+
+预期结果：
+
+1. master 仍然是原后端 MVP 的 20/20 done。
+2. phase0-api-polish 中出现新的 pending tasks。

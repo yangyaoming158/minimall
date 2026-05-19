@@ -824,3 +824,13 @@ Append one entry per implementation task so future sessions can recover project 
 - Test result: mvn -pl api-gateway -am test succeeded with common-core 22 tests, common-auth 26 tests, and api-gateway 25 tests passing. mvn clean package -DskipTests succeeded for the full 10-module reactor. Exact fixed-string checks found no legacy route predicates or `RewritePath` filters in api-gateway application.yml.
 - Issues: Netty printed an operation-not-permitted warning while enumerating network interfaces during gateway tests, but the test run completed successfully. An initial broad legacy-path grep pattern matched canonical paths such as `/api/users`; it was replaced by exact fixed-string checks.
 - Next: Phase 0 Task 3 - Verify gateway security boundaries.
+
+## Workflow update - Phase 0 split decision and checkpoint files
+- Date: 2026-05-19
+- Status: Done
+- Implemented: Updated AGENTS.md so every Phase 0 task start must explicitly state `是否拆分：是/否，原因：...` before implementation. Committed the previously uncommitted Phase 0 TaskMaster state, backup snapshots, and Phase 0 PRD file. Added a `.gitignore` rule for Windows `Zone.Identifier` download metadata so it is not committed as project content.
+- Changed files: AGENTS.md; .gitignore; .taskmaster/state.json; .taskmaster/backups/state-before-phase0-api-polish.json; .taskmaster/backups/tasks-before-phase0-api-polish.json; .taskmaster/docs/phase0-api-contract-polish-prd.txt; docs/dev-log.md
+- Commands run: git status --short; AGENTS.md/.gitignore/dev-log reads; backup and PRD checks; git diff --check.
+- Test result: git diff --check succeeded. No Maven command was run because this was a workflow/documentation and TaskMaster checkpoint commit with no Java source changes.
+- Issues: `.taskmaster/docs/phase0-api-contract-polish-prd.txt:Zone.Identifier` is Windows download metadata, so it was intentionally ignored rather than committed.
+- Next: Continue with Phase 0 Task 3 when requested.

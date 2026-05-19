@@ -7,11 +7,18 @@ MiniMall Order is a Java 17 + Spring Boot 3 + Spring Cloud microservice order sy
 Use TaskMaster as the source of truth.
 
 Before implementing:
-1. Run `task-master next`.
-2. Run `task-master show <id>`.
-3. If the task is large, run `task-master expand --id=<id> --num=<n>`.
-4. Explain the implementation plan.
-5. Wait for confirmation unless explicitly told to proceed.
+1. Confirm the active TaskMaster tag. For Phase 0 API Contract Polish work, use the `phase0-api-polish` tag explicitly and do not operate on `master`.
+2. Run `task-master next`, or `task-master next --tag=phase0-api-polish` for Phase 0 work.
+3. Run `task-master show <id>`, or `task-master show <id> --tag=phase0-api-polish` for Phase 0 work.
+4. Explicitly state whether the task will be split before implementation, using `是否拆分：是/否，原因：...`. If the task is large or spans unclear boundaries, run `task-master expand --id=<id> --num=<n>`, adding `--tag=phase0-api-polish` for Phase 0 work.
+5. Explain the implementation plan.
+6. Wait for confirmation unless explicitly told to proceed.
+
+For Phase 0 API Contract Polish:
+- Treat `phase0-api-polish` as a separate task tree from the completed backend MVP.
+- Use `--tag=phase0-api-polish` on TaskMaster read/write commands, or run `task-master use-tag phase0-api-polish` and verify with `task-master tags` before making status changes.
+- Never run `parse-prd`, `set-status`, `expand`, or implementation workflow commands against `master` for Phase 0 work.
+- Verify `master` remains the original 20/20 done backend MVP when changing the Phase 0 task tree.
 
 During implementation:
 - Implement only the current task or subtask.
@@ -19,7 +26,7 @@ During implementation:
 - Do not introduce components outside the current task.
 - Do not manually edit `.taskmaster/tasks/tasks.json` unless TaskMaster CLI/MCP is unavailable.
 - Use TaskMaster commands whenever possible.
-- If global task-master is unavailable, use the project-local CLI: node node_modules/task-master-ai/dist/task-master.js COMMAND, replacing COMMAND with next, show 15.2, set-status --id=15.2 --status=in-progress, etc.
+- In the current WSL Codex environment, if global `task-master` is unavailable, use the project-local CLI: `node node_modules/task-master-ai/dist/task-master.js COMMAND`, replacing `COMMAND` with `next --tag=phase0-api-polish`, `show 1 --tag=phase0-api-polish`, `set-status --id=1 --status=in-progress --tag=phase0-api-polish`, etc.
 
 After implementation:
 1. Run the task's testStrategy.
@@ -41,11 +48,12 @@ After implementation:
 - If the same error appears twice, stop and report the blocker.
 
 ## Command Reliability
-- The local workspace is reached through PowerShell into WSL. Prefer short, predictable commands and avoid clever shell composition.
-- Use this simple pattern for normal WSL commands: `wsl bash -lc "cd /home/oslab/projects/mini-mall-order && <command>"`.
-- For commands that need a quoted argument, keep quoting shallow. For example, use `wsl bash -lc "cd /home/oslab/projects/mini-mall-order && git commit -m 'message text'"`.
+- Current Codex sessions run inside WSL with project root `/home/oslab/projects/mini-mall-order`. Prefer direct commands from the project root, for example `node node_modules/task-master-ai/dist/task-master.js tags` and `mvn test`.
+- Do not wrap commands in `wsl bash -lc` when already inside WSL. Use the PowerShell-to-WSL pattern only when explicitly operating from Windows PowerShell outside this environment.
+- Prefer the WSL-local `node` command for TaskMaster. Do not use Windows Node paths such as `/mnt/d/nodejs/node.exe` unless WSL-local Node is missing.
+- Prefer short, predictable commands and avoid clever shell composition.
 - Do not use long inline `printf`/`echo` blocks to write files. Use `apply_patch` for source, docs, YAML, SQL, JSON, and dev-log edits.
-- Avoid pipelines, command substitution, nested quotes, heredocs, semicolon chains, and regex alternation through the PowerShell-to-WSL bridge. Split them into separate simple commands instead.
+- Avoid pipelines, command substitution, nested quotes, heredocs, semicolon chains, and regex alternation when a simpler command or separate tool call is enough.
 - Prefer `grep -R fixedText -n <paths>` or separate fixed-string searches over complex grep patterns containing `|`, quotes, or shell metacharacters.
 - Do not create temporary edit scripts for routine changes. If a temporary file is truly unavoidable, create it under the project root with a `.codex-` prefix, delete it before continuing, and verify it is gone.
 - If a command fails due shell parsing or quoting, do not keep retrying variants. Simplify the command shape or switch to `apply_patch`, then continue.
