@@ -1285,12 +1285,62 @@
         "description": "Review public request and response DTOs for database id leakage, business identifier naming, enum status exposure, and pagination consistency.",
         "details": "Public frontend DTOs must expose userId, productId, orderNo, paymentNo, and enum strings instead of naked database id fields. Decide whether PageResponse belongs in common-core now or remains documented as a follow-up. Verification: API contract tests or focused controller tests cover DTO shape, error envelope, and pagination fields.",
         "testStrategy": "",
-        "status": "pending",
+        "status": "in-progress",
         "dependencies": [
           "1"
         ],
         "priority": "high",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Audit public DTO identifier and pagination gaps",
+            "description": "Inspect public controllers and DTOs for database id leakage, business identifier naming, enum status exposure, and pagination consistency before making contract changes.",
+            "details": "Review user, product, inventory, order, and payment public endpoints. Record expected public fields such as userId, productId, orderNo, paymentNo, enum status strings, and ApiResponse pagination shape. Distinguish public DTOs from internal service-to-service DTOs and document the exact code/test follow-ups.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 4,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-19T11:31:12.771Z"
+          },
+          {
+            "id": 2,
+            "title": "Centralize pagination response contract",
+            "description": "Add a shared pagination response contract and migrate public paginated endpoints to the same response shape.",
+            "details": "Move the duplicated product and order PageResponse records into common-core when appropriate, update service/controller imports, and add focused serialization/controller tests covering content, page, size, totalElements, totalPages, and ApiResponse wrapping.",
+            "status": "pending",
+            "dependencies": [
+              "4.1"
+            ],
+            "parentTaskId": 4,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Polish user product and inventory public DTOs",
+            "description": "Ensure user, product, and inventory public DTO contracts expose business identifiers and enum status values without naked database id fields.",
+            "details": "Verify and update public user, product, and inventory response/request DTOs as needed. Preserve internal service-to-service DTO behavior. Add focused controller or serialization tests for userId, productId, status enum string output, ApiResponse envelope, and absence of raw id fields.",
+            "status": "pending",
+            "dependencies": [
+              "4.1"
+            ],
+            "parentTaskId": 4,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Polish order and payment public DTOs",
+            "description": "Ensure order and payment public DTO contracts expose orderNo, paymentNo, userId, productId, and enum status values without naked database id fields.",
+            "details": "Verify and update order and payment response/request DTOs as needed. Add focused controller or serialization tests for orderNo, paymentNo, userId, productId, status enum string output, ApiResponse envelope, pagination fields where applicable, and absence of raw id fields.",
+            "status": "pending",
+            "dependencies": [
+              "4.1",
+              "4.2"
+            ],
+            "parentTaskId": 4,
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2026-05-19T11:31:12.771Z"
       },
       {
         "id": 5,
@@ -1355,15 +1405,15 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-19T11:16:45.285Z",
+      "lastModified": "2026-05-19T11:31:12.772Z",
       "taskCount": 8,
       "completedCount": 3,
       "tags": [
         "phase0-api-polish"
       ],
-      "created": "2026-05-19T11:18:07.478Z",
+      "created": "2026-05-19T11:31:55.681Z",
       "description": "Tasks for phase0-api-polish context",
-      "updated": "2026-05-19T11:18:07.478Z"
+      "updated": "2026-05-19T11:31:55.681Z"
     }
   }
 }

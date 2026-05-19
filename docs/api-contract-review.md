@@ -40,9 +40,9 @@ See `docs/api-gateway-contract.md` for the stable gateway contract.
 
 | Priority | Issue | Recommended follow-up |
 | --- | --- | --- |
-| P1 | Gateway still implements legacy service-prefix paths such as `/api/user/users` and `/api/product/products`. | Implement canonical gateway routes in Phase 0 Task 2 and remove the legacy route aliases instead of documenting them for future frontend use. |
+| P1 | Public DTO and pagination contracts need a final Phase 0 pass after canonical gateway routing. | Use `docs/phase0-dto-pagination-audit.md` as the Task 4 source for pagination ownership, identifier exposure, enum status assertions, and focused controller tests. |
 | P1 | Final API documentation must choose one product status mutation style. Current implementation uses `/api/products/{productId}/on-shelf` and `/api/products/{productId}/off-shelf`. | Keep these paths or deliberately replace them with one stable status update endpoint before frontend integration. |
-| P2 | `PageResponse` currently lives in product-service only. | Leave as-is for now; migrate to `common-core` only when multiple services need the same pagination wrapper. |
+| P2 | `PageResponse` is duplicated in product-service and order-service. | Move the shared pagination wrapper to `common-core` in Phase 0 Task 4.2 and keep the JSON fields `content`, `page`, `size`, `totalElements`, and `totalPages`. |
 
 ## Current DTO exposure rule
 
