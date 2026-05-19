@@ -4,6 +4,20 @@
 
 This document tracks the remaining API contract issues after the P1 DTO naming cleanup.
 
+## Phase 0 canonical path decision
+
+Task 1 in the `phase0-api-polish` tree selected canonical browser paths as the target API contract before gateway implementation:
+
+| Area | Canonical browser prefix | Current legacy gateway prefix |
+| --- | --- | --- |
+| Users | `/api/users/**` | `/api/user/users/**` |
+| Products | `/api/products/**` | `/api/product/products/**` |
+| Inventories | `/api/inventories/**` | `/api/inventory/inventories/**` |
+| Orders | `/api/orders/**` | `/api/order/orders/**` |
+| Payments | `/api/payments/**` | `/api/payment/payments/**` |
+
+Legacy strategy: remove the current legacy gateway paths rather than keep deprecated aliases. See `docs/phase0-api-contract-scope.md` for the full route table, audited files, and internal API boundary.
+
 ## Resolved in current cleanup
 
 | Area | Before | After |
@@ -26,7 +40,7 @@ See `docs/api-gateway-contract.md` for the stable gateway contract.
 
 | Priority | Issue | Recommended follow-up |
 | --- | --- | --- |
-| P1 | Resource route naming must stay plural inside each gateway service namespace. Current implemented controllers use `/api/users` and `/api/products`; future services should use `/api/orders`, `/api/payments`, and `/api/inventories` after gateway rewrite. | Avoid adding downstream resource aliases such as `/api/user`, `/api/product`, `/api/order`, `/api/payment`, or `/api/inventory`; keep the Task 16 gateway namespaces documented in `docs/api-gateway-contract.md`. |
+| P1 | Gateway still implements legacy service-prefix paths such as `/api/user/users` and `/api/product/products`. | Implement canonical gateway routes in Phase 0 Task 2 and remove the legacy route aliases instead of documenting them for future frontend use. |
 | P1 | Final API documentation must choose one product status mutation style. Current implementation uses `/api/products/{productId}/on-shelf` and `/api/products/{productId}/off-shelf`. | Keep these paths or deliberately replace them with one stable status update endpoint before frontend integration. |
 | P2 | `PageResponse` currently lives in product-service only. | Leave as-is for now; migrate to `common-core` only when multiple services need the same pagination wrapper. |
 
