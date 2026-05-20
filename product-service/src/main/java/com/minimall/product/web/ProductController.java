@@ -1,9 +1,9 @@
 package com.minimall.product.web;
 
 import com.minimall.common.core.response.ApiResponse;
+import com.minimall.common.core.response.PageResponse;
 import com.minimall.product.domain.ProductStatus;
 import com.minimall.product.dto.CreateProductRequest;
-import com.minimall.product.dto.PageResponse;
 import com.minimall.product.dto.ProductResponse;
 import com.minimall.product.dto.UpdateProductRequest;
 import com.minimall.product.service.ProductService;

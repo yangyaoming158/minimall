@@ -1307,12 +1307,13 @@
             "title": "Centralize pagination response contract",
             "description": "Add a shared pagination response contract and migrate public paginated endpoints to the same response shape.",
             "details": "Move the duplicated product and order PageResponse records into common-core when appropriate, update service/controller imports, and add focused serialization/controller tests covering content, page, size, totalElements, totalPages, and ApiResponse wrapping.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "4.1"
             ],
             "parentTaskId": 4,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-20T11:10:19.942Z"
           },
           {
             "id": 3,
@@ -1340,7 +1341,7 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-05-19T11:31:12.771Z"
+        "updatedAt": "2026-05-20T11:10:19.942Z"
       },
       {
         "id": 5,
@@ -1405,15 +1406,15 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-19T11:31:12.772Z",
+      "lastModified": "2026-05-20T11:10:19.942Z",
       "taskCount": 8,
       "completedCount": 3,
       "tags": [
         "phase0-api-polish"
       ],
-      "created": "2026-05-19T11:31:55.681Z",
+      "created": "2026-05-20T11:11:12.693Z",
       "description": "Tasks for phase0-api-polish context",
-      "updated": "2026-05-19T11:31:55.681Z"
+      "updated": "2026-05-20T11:11:12.693Z"
     }
   }
 }

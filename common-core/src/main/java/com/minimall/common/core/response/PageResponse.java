@@ -1,4 +1,4 @@
-package com.minimall.product.dto;
+package com.minimall.common.core.response;
 
 import java.util.List;
 import org.springframework.data.domain.Page;

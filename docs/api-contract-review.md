@@ -36,13 +36,18 @@ Legacy strategy: remove the current legacy gateway paths rather than keep deprec
 
 See `docs/api-gateway-contract.md` for the stable gateway contract.
 
+## Resolved in Phase 0 Task 4.2
+
+| Area | Result |
+| --- | --- |
+| Pagination response contract | Product and order paginated APIs now use `common-core` `PageResponse` with stable JSON fields `content`, `page`, `size`, `totalElements`, and `totalPages`. |
+
 ## Remaining issues
 
 | Priority | Issue | Recommended follow-up |
 | --- | --- | --- |
 | P1 | Public DTO and pagination contracts need a final Phase 0 pass after canonical gateway routing. | Use `docs/phase0-dto-pagination-audit.md` as the Task 4 source for pagination ownership, identifier exposure, enum status assertions, and focused controller tests. |
 | P1 | Final API documentation must choose one product status mutation style. Current implementation uses `/api/products/{productId}/on-shelf` and `/api/products/{productId}/off-shelf`. | Keep these paths or deliberately replace them with one stable status update endpoint before frontend integration. |
-| P2 | `PageResponse` is duplicated in product-service and order-service. | Move the shared pagination wrapper to `common-core` in Phase 0 Task 4.2 and keep the JSON fields `content`, `page`, `size`, `totalElements`, and `totalPages`. |
 
 ## Current DTO exposure rule
 
