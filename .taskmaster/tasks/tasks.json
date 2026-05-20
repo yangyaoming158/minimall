@@ -1240,7 +1240,7 @@
   "phase0-api-polish": {
     "tasks": [
       {
-        "id": 1,
+        "id": "1",
         "title": "Audit canonical API contract scope",
         "description": "Review current gateway routes, public API docs, pressure scripts, and PRD requirements to lock the Phase 0 canonical path strategy.",
         "details": "Decide whether legacy gateway paths are removed or kept as deprecated aliases. Capture the canonical /api/users, /api/products, /api/inventories, /api/orders, and /api/payments route table before implementation. Verification: list affected source and documentation files and confirm no /internal route is part of the browser contract.",
@@ -1252,7 +1252,7 @@
         "updatedAt": "2026-05-19T10:54:08.849Z"
       },
       {
-        "id": 2,
+        "id": "2",
         "title": "Implement gateway canonical routes",
         "description": "Add or adjust api-gateway routes so canonical browser paths forward to existing downstream service controllers.",
         "details": "Support /api/users, /api/products, /api/inventories, /api/orders, and /api/payments through the gateway. Apply the selected legacy path strategy from task 1. Keep downstream controller paths stable unless the task explicitly proves a safer local change. Verification: gateway route tests cover canonical register, login, product, inventory, order, and payment paths.",
@@ -1266,7 +1266,7 @@
         "updatedAt": "2026-05-19T11:04:19.175Z"
       },
       {
-        "id": 3,
+        "id": "3",
         "title": "Verify gateway security boundaries",
         "description": "Keep gateway authentication, trusted header handling, rate limiting, and internal API blocking intact after canonical route changes.",
         "details": "Ensure protected canonical routes still require Bearer JWT, public register and login plus CORS preflight remain open, spoofed X-User-Id and X-Username are stripped, and /internal paths are not routed. Verification: gateway security tests assert 401, 403 or 404 for internal exposure, 429 ApiResponse for rate limit, and trusted header injection only after JWT validation.",
@@ -1280,7 +1280,7 @@
         "updatedAt": "2026-05-19T11:16:45.285Z"
       },
       {
-        "id": 4,
+        "id": "4",
         "title": "Polish public DTO and pagination contracts",
         "description": "Review public request and response DTOs for database id leakage, business identifier naming, enum status exposure, and pagination consistency.",
         "details": "Public frontend DTOs must expose userId, productId, orderNo, paymentNo, and enum strings instead of naked database id fields. Decide whether PageResponse belongs in common-core now or remains documented as a follow-up. Verification: API contract tests or focused controller tests cover DTO shape, error envelope, and pagination fields.",
@@ -1320,12 +1320,13 @@
             "title": "Polish user product and inventory public DTOs",
             "description": "Ensure user, product, and inventory public DTO contracts expose business identifiers and enum status values without naked database id fields.",
             "details": "Verify and update public user, product, and inventory response/request DTOs as needed. Preserve internal service-to-service DTO behavior. Add focused controller or serialization tests for userId, productId, status enum string output, ApiResponse envelope, and absence of raw id fields.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "4.1"
             ],
             "parentTaskId": 4,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-20T11:20:55.552Z"
           },
           {
             "id": 4,
@@ -1341,10 +1342,10 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-05-20T11:10:19.942Z"
+        "updatedAt": "2026-05-20T11:20:55.552Z"
       },
       {
-        "id": 5,
+        "id": "5",
         "title": "Record product status mutation policy",
         "description": "Document and, if chosen, implement the Phase 0 decision for product status mutation style without introducing admin RBAC.",
         "details": "Prefer future admin status mutation as PUT /api/admin/products/{productId}/status, while marking current product write endpoints as not customer frontend APIs and not admin safe until RBAC exists. If code changes are made, keep business semantics unchanged. Verification: docs clearly separate customer API from future admin API and tests remain green.",
@@ -1358,7 +1359,7 @@
         "subtasks": []
       },
       {
-        "id": 6,
+        "id": "6",
         "title": "Update API contract documentation",
         "description": "Update frontend, gateway, API review, README, and pressure documentation so public examples use canonical API paths only.",
         "details": "Update docs/frontend-integration.md, docs/api-gateway-contract.md, docs/api-contract-review.md, README.md, and pressure/README.md. Document legacy route strategy, internal API non-exposure, token usage, product write API boundaries, and remaining RBAC or admin gaps. Verification: fixed-string searches find no recommended frontend examples using legacy /api/user/users, /api/product/products, /api/order/orders, /api/payment/payments, or /api/inventory/inventories paths.",
@@ -1374,7 +1375,7 @@
         "subtasks": []
       },
       {
-        "id": 7,
+        "id": "7",
         "title": "Update smoke and pressure scripts",
         "description": "Move browser-like E2E smoke and k6 pressure paths to canonical gateway APIs.",
         "details": "Update pressure/mini-mall-gateway.js and related script documentation so all user, product, inventory, order, and payment calls go through api-gateway canonical paths. Do not call service ports or /internal paths. Verification: smoke run exercises register or login, product, inventory, order, cancel or pay flow, and pressure criteria remain 0 HTTP failures, 0 ApiResponse contract failures, and 0 negative inventory observations.",
@@ -1388,7 +1389,7 @@
         "subtasks": []
       },
       {
-        "id": 8,
+        "id": "8",
         "title": "Finalize Phase 0 tests and acceptance record",
         "description": "Run required verification for the canonical API polish and record the Phase 0 acceptance outcome.",
         "details": "Run focused gateway and contract tests, then mvn test, mvn clean package -DskipTests, docker compose config checks, and canonical E2E smoke when runtime is available. Create docs/phase0-acceptance.md with commands, results, legacy strategy, remaining risks, and follow-up items for Phase 1 frontend and Phase 2 admin. Verification: all Phase 0 acceptance criteria are recorded and TaskMaster phase0-api-polish tasks can be marked done only after checks pass.",
@@ -1406,15 +1407,12 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-20T11:10:19.942Z",
+      "lastModified": "2026-05-20T11:20:55.552Z",
       "taskCount": 8,
       "completedCount": 3,
       "tags": [
         "phase0-api-polish"
-      ],
-      "created": "2026-05-20T11:11:12.693Z",
-      "description": "Tasks for phase0-api-polish context",
-      "updated": "2026-05-20T11:11:12.693Z"
+      ]
     }
   }
 }

@@ -62,6 +62,8 @@ class InventoryControllerTest {
         mockMvc.perform(get("/api/inventories/SKU-INV-API-2"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.code").value(ErrorCode.SUCCESS.getCode()))
+                .andExpect(jsonPath("$.data.id").doesNotExist())
                 .andExpect(jsonPath("$.data.productId").value("SKU-INV-API-2"))
                 .andExpect(jsonPath("$.data.availableStock").value(0))
                 .andExpect(jsonPath("$.data.lockedStock").value(8))
@@ -77,6 +79,8 @@ class InventoryControllerTest {
         mockMvc.perform(get("/api/inventories/SKU-INV-API-3"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.code").value(ErrorCode.SUCCESS.getCode()))
+                .andExpect(jsonPath("$.data.id").doesNotExist())
                 .andExpect(jsonPath("$.data.productId").value("SKU-INV-API-3"))
                 .andExpect(jsonPath("$.data.stockState").value("INACTIVE"));
     }

@@ -73,7 +73,8 @@ class UserAuthControllerTest {
                 .andExpect(jsonPath("$.data.userId").exists())
                 .andExpect(jsonPath("$.data.id").doesNotExist())
                 .andExpect(jsonPath("$.data.username").value("alice"))
-                .andExpect(jsonPath("$.data.email").value("alice@example.com"));
+                .andExpect(jsonPath("$.data.email").value("alice@example.com"))
+                .andExpect(jsonPath("$.data.status").value("ACTIVE"));
 
         User user = userRepository.findByUsername("alice").orElseThrow();
         assertThat(user.getPasswordHash()).isNotEqualTo("password123");
@@ -104,8 +105,11 @@ class UserAuthControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.code").value(ErrorCode.SUCCESS.getCode()))
                 .andExpect(jsonPath("$.data.token", not(blankOrNullString())))
                 .andExpect(jsonPath("$.data.tokenType").value("Bearer"))
+                .andExpect(jsonPath("$.data.id").doesNotExist())
+                .andExpect(jsonPath("$.data.userId").exists())
                 .andExpect(jsonPath("$.data.username").value("alice"));
     }
 
@@ -125,6 +129,7 @@ class UserAuthControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.code").value(ErrorCode.SUCCESS.getCode()))
+                .andExpect(jsonPath("$.data.id").doesNotExist())
                 .andExpect(jsonPath("$.data.userId").value(42))
                 .andExpect(jsonPath("$.data.username").value("alice"));
 
@@ -140,6 +145,7 @@ class UserAuthControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.code").value(ErrorCode.SUCCESS.getCode()))
+                .andExpect(jsonPath("$.data.id").doesNotExist())
                 .andExpect(jsonPath("$.data.userId").value(43))
                 .andExpect(jsonPath("$.data.username").value("bob"));
 

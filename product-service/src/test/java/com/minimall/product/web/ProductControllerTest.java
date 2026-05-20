@@ -128,6 +128,9 @@ class ProductControllerTest {
         mockMvc.perform(get("/api/products/SKU-2003"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.code").value(ErrorCode.SUCCESS.getCode()))
+                .andExpect(jsonPath("$.data.id").doesNotExist())
+                .andExpect(jsonPath("$.data.productId").value("SKU-2003"))
                 .andExpect(jsonPath("$.data.name").value("New Name"))
                 .andExpect(jsonPath("$.data.status").value("ON_SHELF"));
 
@@ -164,6 +167,8 @@ class ProductControllerTest {
         mockMvc.perform(post("/api/products/SKU-2004/off-shelf"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.id").doesNotExist())
+                .andExpect(jsonPath("$.data.productId").value("SKU-2004"))
                 .andExpect(jsonPath("$.data.status").value("OFF_SHELF"));
 
         mockMvc.perform(post("/api/products/SKU-2004/off-shelf"))
@@ -175,6 +180,8 @@ class ProductControllerTest {
         mockMvc.perform(post("/api/products/SKU-2004/on-shelf"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.id").doesNotExist())
+                .andExpect(jsonPath("$.data.productId").value("SKU-2004"))
                 .andExpect(jsonPath("$.data.status").value("ON_SHELF"));
     }
 
@@ -210,12 +217,16 @@ class ProductControllerTest {
         mockMvc.perform(get("/api/products/SKU-2006"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.id").doesNotExist())
+                .andExpect(jsonPath("$.data.productId").value("SKU-2006"))
                 .andExpect(jsonPath("$.data.name").value("Headphones"))
                 .andExpect(jsonPath("$.data.status").value("ON_SHELF"));
 
         mockMvc.perform(get("/api/products/SKU-2006"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.id").doesNotExist())
+                .andExpect(jsonPath("$.data.productId").value("SKU-2006"))
                 .andExpect(jsonPath("$.data.name").value("Cached Headphones"))
                 .andExpect(jsonPath("$.data.price").value(188.00))
                 .andExpect(jsonPath("$.data.status").value("OFF_SHELF"));

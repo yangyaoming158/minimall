@@ -42,11 +42,19 @@ See `docs/api-gateway-contract.md` for the stable gateway contract.
 | --- | --- |
 | Pagination response contract | Product and order paginated APIs now use `common-core` `PageResponse` with stable JSON fields `content`, `page`, `size`, `totalElements`, and `totalPages`. |
 
+## Resolved in Phase 0 Task 4.3
+
+| Area | Result |
+| --- | --- |
+| User public DTO contract | Register, login, and current-user responses expose `userId`, avoid naked `id`, and keep user status as enum-string output where present. |
+| Product public DTO contract | Product public responses expose `productId`, avoid naked `id`, and keep `status` as enum-string output. |
+| Inventory public DTO contract | Inventory public responses expose `productId`, avoid naked `id`, and keep `stockState` as enum-string output. |
+
 ## Remaining issues
 
 | Priority | Issue | Recommended follow-up |
 | --- | --- | --- |
-| P1 | Public DTO and pagination contracts need a final Phase 0 pass after canonical gateway routing. | Use `docs/phase0-dto-pagination-audit.md` as the Task 4 source for pagination ownership, identifier exposure, enum status assertions, and focused controller tests. |
+| P1 | Order and payment public DTO contracts still need the final Phase 0 pass. | Complete Task 4.4 using `docs/phase0-dto-pagination-audit.md` as the source for order/payment identifier exposure, enum status assertions, and focused controller tests. |
 | P1 | Final API documentation must choose one product status mutation style. Current implementation uses `/api/products/{productId}/on-shelf` and `/api/products/{productId}/off-shelf`. | Keep these paths or deliberately replace them with one stable status update endpoint before frontend integration. |
 
 ## Current DTO exposure rule
