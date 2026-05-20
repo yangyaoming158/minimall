@@ -86,10 +86,11 @@ class PaymentControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.code").value(ErrorCode.SUCCESS.getCode()))
                 .andExpect(jsonPath("$.data.id").doesNotExist())
-                .andExpect(jsonPath("$.data.userId").doesNotExist())
                 .andExpect(jsonPath("$.data.idempotencyKey").doesNotExist())
                 .andExpect(jsonPath("$.data.paymentNo", startsWith("PAY")))
                 .andExpect(jsonPath("$.data.orderNo").value("ORD-PAY-API-1001"))
+                .andExpect(jsonPath("$.data.userId").value(501))
+                .andExpect(jsonPath("$.data.productId").value("SKU-ORD-PAY-API-1001"))
                 .andExpect(jsonPath("$.data.status").value("SUCCESS"))
                 .andExpect(jsonPath("$.data.amount").value(39.80))
                 .andExpect(jsonPath("$.data.channel").value("MOCK"))
@@ -172,6 +173,8 @@ class PaymentControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.paymentNo").value("PAY-PENDING-1007"))
+                .andExpect(jsonPath("$.data.userId").value(508))
+                .andExpect(jsonPath("$.data.productId").value("SKU-ORD-PAY-API-1007"))
                 .andExpect(jsonPath("$.data.status").value("SUCCESS"));
 
         assertThat(paymentRepository.findAll()).hasSize(1);
@@ -208,6 +211,8 @@ class PaymentControllerTest {
                 .andExpect(jsonPath("$.data.id").doesNotExist())
                 .andExpect(jsonPath("$.data.paymentNo").value("PAY-QUERY-1003"))
                 .andExpect(jsonPath("$.data.orderNo").value("ORD-PAY-API-1003"))
+                .andExpect(jsonPath("$.data.userId").value(503))
+                .andExpect(jsonPath("$.data.productId").value("SKU-ORD-PAY-API-1003"))
                 .andExpect(jsonPath("$.data.status").value("SUCCESS"))
                 .andExpect(jsonPath("$.data.amount").value(9.99));
     }
@@ -294,6 +299,6 @@ class PaymentControllerTest {
     }
 
     private Order order(String orderNo, Long userId, OrderStatus status, String totalAmount) {
-        return new Order(orderNo, userId, status, new BigDecimal(totalAmount));
+        return new Order(orderNo, userId, "SKU-" + orderNo, status, new BigDecimal(totalAmount));
     }
 }

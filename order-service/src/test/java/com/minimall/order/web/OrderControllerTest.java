@@ -109,7 +109,7 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.code").value(ErrorCode.SUCCESS.getCode()))
                 .andExpect(jsonPath("$.data.id").doesNotExist())
-                .andExpect(jsonPath("$.data.userId").doesNotExist())
+                .andExpect(jsonPath("$.data.userId").value(201))
                 .andExpect(jsonPath("$.data.username").doesNotExist())
                 .andExpect(jsonPath("$.data.idempotencyKey").doesNotExist())
                 .andExpect(jsonPath("$.data.orderNo", startsWith("ORD")))
@@ -318,9 +318,10 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.code").value(ErrorCode.SUCCESS.getCode()))
                 .andExpect(jsonPath("$.data.orderNo").value("ORD-CANCEL-API-1001"))
+                .andExpect(jsonPath("$.data.userId").value(301))
+                .andExpect(jsonPath("$.data.productId").value("SKU-API-1001"))
                 .andExpect(jsonPath("$.data.status").value("CANCELLED"))
-                .andExpect(jsonPath("$.data.id").doesNotExist())
-                .andExpect(jsonPath("$.data.userId").doesNotExist());
+                .andExpect(jsonPath("$.data.id").doesNotExist());
 
         Order saved = orderRepository.findByOrderNo("ORD-CANCEL-API-1001").orElseThrow();
         assertThat(saved.getStatus()).isEqualTo(OrderStatus.CANCELLED);
@@ -450,7 +451,7 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.code").value(ErrorCode.SUCCESS.getCode()))
                 .andExpect(jsonPath("$.data.id").doesNotExist())
-                .andExpect(jsonPath("$.data.userId").doesNotExist())
+                .andExpect(jsonPath("$.data.userId").value(101))
                 .andExpect(jsonPath("$.data.username").doesNotExist())
                 .andExpect(jsonPath("$.data.idempotencyKey").doesNotExist())
                 .andExpect(jsonPath("$.data.orderNo").value("ORD-API-1001"))
@@ -482,7 +483,7 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.data.totalElements").value(1))
                 .andExpect(jsonPath("$.data.totalPages").value(1))
                 .andExpect(jsonPath("$.data.content[0].id").doesNotExist())
-                .andExpect(jsonPath("$.data.content[0].userId").doesNotExist())
+                .andExpect(jsonPath("$.data.content[0].userId").value(102))
                 .andExpect(jsonPath("$.data.content[0].username").doesNotExist())
                 .andExpect(jsonPath("$.data.content[0].idempotencyKey").doesNotExist())
                 .andExpect(jsonPath("$.data.content[0].orderNo").value("ORD-API-1002"))

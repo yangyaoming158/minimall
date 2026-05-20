@@ -33,6 +33,6 @@ public class PaymentQueryService {
         if (!order.getUserId().equals(userContext.getUserId())) {
             throw new BusinessException(ErrorCode.NOT_FOUND, PAYMENT_NOT_FOUND_MESSAGE);
         }
-        return PaymentResponse.from(payment);
+        return PaymentResponse.from(payment, order);
     }
 }

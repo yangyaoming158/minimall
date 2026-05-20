@@ -39,6 +39,7 @@ public class OrderQueryService {
     private OrderDetailResponse toDetailResponse(Order order) {
         return new OrderDetailResponse(
                 order.getOrderNo(),
+                order.getUserId(),
                 order.getStatus(),
                 order.getTotalAmount(),
                 items(order),
@@ -52,6 +53,7 @@ public class OrderQueryService {
     private OrderSummaryResponse toSummaryResponse(Order order) {
         return new OrderSummaryResponse(
                 order.getOrderNo(),
+                order.getUserId(),
                 order.getStatus(),
                 order.getTotalAmount(),
                 items(order),

@@ -50,7 +50,7 @@ public class PaymentCommandService {
 
         Optional<Payment> existingPayment = paymentRepository.findByOrderNo(orderNo);
         if (existingPayment.isPresent()) {
-            return PaymentResponse.from(completeExistingPayment(existingPayment.get()));
+            return PaymentResponse.from(completeExistingPayment(existingPayment.get()), order);
         }
 
         try {
@@ -63,11 +63,11 @@ public class PaymentCommandService {
             payment.markSuccess(LocalDateTime.now());
             Payment saved = paymentRepository.saveAndFlush(payment);
             paymentEventPublisher.publishSuccess(saved);
-            return PaymentResponse.from(saved);
+            return PaymentResponse.from(saved, order);
         } catch (DataIntegrityViolationException exception) {
             return paymentRepository.findByOrderNo(orderNo)
                     .map(this::completeExistingPayment)
-                    .map(PaymentResponse::from)
+                    .map(payment -> PaymentResponse.from(payment, order))
                     .orElseThrow(() -> exception);
         }
     }

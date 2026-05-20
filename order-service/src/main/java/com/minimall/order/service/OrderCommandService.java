@@ -161,6 +161,7 @@ public class OrderCommandService {
     private CreateOrderResponse toCreateOrderResponse(Order order) {
         return new CreateOrderResponse(
                 order.getOrderNo(),
+                order.getUserId(),
                 order.getStatus(),
                 order.getExpireAt(),
                 order.getTotalAmount(),
@@ -169,7 +170,7 @@ public class OrderCommandService {
     }
 
     private CancelOrderResponse toCancelOrderResponse(Order order) {
-        return new CancelOrderResponse(order.getOrderNo(), order.getStatus());
+        return new CancelOrderResponse(order.getOrderNo(), order.getUserId(), order.getProductId(), order.getStatus());
     }
 
     private String idempotencyLockKey(Long userId, String idempotencyKey) {

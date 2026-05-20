@@ -27,6 +27,7 @@ class OrderRepositoryTest {
         orderRepository.saveAndFlush(new Order(
                 "ORD-READ-1001",
                 101L,
+                "SKU-READ-1001",
                 OrderStatus.PENDING_PAYMENT,
                 new BigDecimal("39.80")));
 
@@ -35,6 +36,7 @@ class OrderRepositoryTest {
                 .get()
                 .satisfies(order -> {
                     assertThat(order.getUserId()).isEqualTo(101L);
+                    assertThat(order.getProductId()).isEqualTo("SKU-READ-1001");
                     assertThat(order.getStatus()).isEqualTo(OrderStatus.PENDING_PAYMENT);
                     assertThat(order.getTotalAmount()).isEqualByComparingTo("39.80");
                 });
@@ -45,6 +47,7 @@ class OrderRepositoryTest {
         orderRepository.saveAndFlush(new Order(
                 "ORD-READ-1002",
                 102L,
+                "SKU-READ-1002",
                 OrderStatus.CANCELLED,
                 new BigDecimal("9.99")));
 

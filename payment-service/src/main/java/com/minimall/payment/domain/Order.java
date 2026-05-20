@@ -32,6 +32,9 @@ public class Order {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
+    @Column(name = "product_id", nullable = false, length = 64)
+    private String productId;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32)
     private OrderStatus status;
@@ -42,9 +45,10 @@ public class Order {
     protected Order() {
     }
 
-    public Order(String orderNo, Long userId, OrderStatus status, BigDecimal totalAmount) {
+    public Order(String orderNo, Long userId, String productId, OrderStatus status, BigDecimal totalAmount) {
         this.orderNo = orderNo;
         this.userId = userId;
+        this.productId = productId;
         this.status = status;
         this.totalAmount = totalAmount;
     }
@@ -59,6 +63,10 @@ public class Order {
 
     public Long getUserId() {
         return userId;
+    }
+
+    public String getProductId() {
+        return productId;
     }
 
     public OrderStatus getStatus() {

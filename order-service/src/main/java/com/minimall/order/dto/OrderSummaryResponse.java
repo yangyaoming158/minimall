@@ -9,6 +9,7 @@ import java.util.List;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record OrderSummaryResponse(
         String orderNo,
+        Long userId,
         OrderStatus status,
         BigDecimal totalAmount,
         List<OrderItemSummary> items,
