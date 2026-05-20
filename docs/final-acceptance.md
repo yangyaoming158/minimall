@@ -46,18 +46,21 @@ Created runtime records:
 
 All public API calls used `http://127.0.0.1:8080` through `api-gateway`.
 
+Phase 0 API contract polish later moved browser-facing examples to canonical
+gateway paths. The accepted runtime behavior is unchanged; current examples are:
+
 | Step | Endpoint | Result |
 | --- | --- | --- |
-| Register | `POST /api/user/users/register` | `ApiResponse success`, user created. |
-| Login | `POST /api/user/users/login` | `ApiResponse success`, Bearer JWT returned. |
-| Current user | `GET /api/user/users/me` | `ApiResponse success`, user ID `3`. |
-| Product detail | `GET /api/product/products/TASK20-E2E-20260518203053` | `ApiResponse success`, product `ON_SHELF`. |
-| Product list | `GET /api/product/products?status=ON_SHELF&page=0&size=5` | `ApiResponse success`, seeded product present. |
-| Inventory detail | `GET /api/inventory/inventories/TASK20-E2E-20260518203053` | `ApiResponse success`, stock initially available. |
-| Create order | `POST /api/order/orders` | `ApiResponse success`, order `PENDING_PAYMENT`. |
-| Pay order | `POST /api/payment/payments/{orderNo}/pay` | `ApiResponse success`, payment `SUCCESS`. |
-| Order detail | `GET /api/order/orders/{orderNo}` | `ApiResponse success`, order `PAID`. |
-| Payment detail | `GET /api/payment/payments/{orderNo}` | `ApiResponse success`, payment `SUCCESS`. |
+| Register | `POST /api/users/register` | `ApiResponse success`, user created. |
+| Login | `POST /api/users/login` | `ApiResponse success`, Bearer JWT returned. |
+| Current user | `GET /api/users/me` | `ApiResponse success`, user ID `3`. |
+| Product detail | `GET /api/products/TASK20-E2E-20260518203053` | `ApiResponse success`, product `ON_SHELF`. |
+| Product list | `GET /api/products?status=ON_SHELF&page=0&size=5` | `ApiResponse success`, seeded product present. |
+| Inventory detail | `GET /api/inventories/TASK20-E2E-20260518203053` | `ApiResponse success`, stock initially available. |
+| Create order | `POST /api/orders` | `ApiResponse success`, order `PENDING_PAYMENT`. |
+| Pay order | `POST /api/payments/{orderNo}/pay` | `ApiResponse success`, payment `SUCCESS`. |
+| Order detail | `GET /api/orders/{orderNo}` | `ApiResponse success`, order `PAID`. |
+| Payment detail | `GET /api/payments/{orderNo}` | `ApiResponse success`, payment `SUCCESS`. |
 
 ## Database And Event Verification
 

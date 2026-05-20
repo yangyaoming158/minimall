@@ -204,7 +204,7 @@ BASE_URL=http://127.0.0.1:8080 USERNAME=load-user PASSWORD=local-password PRODUC
 
 Before a real run, seed or create:
 
-- A user that can log in through `POST /api/user/users/login`
+- A user that can log in through `POST /api/users/login`
 - At least one `ON_SHELF` product
 - Inventory for the selected product
 

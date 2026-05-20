@@ -48,16 +48,16 @@ are only for service-to-service calls inside the backend network.
 
 ## Request Flow
 
-Browser-facing routes use service namespaces at the gateway and are rewritten to
-the downstream `/api/**` controller paths:
+Browser-facing routes use canonical gateway prefixes and are forwarded to the
+matching downstream `/api/**` controller paths:
 
 | Gateway prefix | Downstream service |
 | --- | --- |
-| `/api/user/**` | `user-service` |
-| `/api/product/**` | `product-service` |
-| `/api/inventory/**` | `inventory-service` |
-| `/api/order/**` | `order-service` |
-| `/api/payment/**` | `payment-service` |
+| `/api/users/**` | `user-service` |
+| `/api/products/**` | `product-service` |
+| `/api/inventories/**` | `inventory-service` |
+| `/api/orders/**` | `order-service` |
+| `/api/payments/**` | `payment-service` |
 
 All REST APIs return the shared `ApiResponse` envelope. Business errors should
 be represented with `BusinessException` and stable `ErrorCode` values. See

@@ -1366,7 +1366,7 @@
         "description": "Update frontend, gateway, API review, README, and pressure documentation so public examples use canonical API paths only.",
         "details": "Update docs/frontend-integration.md, docs/api-gateway-contract.md, docs/api-contract-review.md, README.md, and pressure/README.md. Document legacy route strategy, internal API non-exposure, token usage, product write API boundaries, and remaining RBAC or admin gaps. Verification: fixed-string searches find no recommended frontend examples using legacy /api/user/users, /api/product/products, /api/order/orders, /api/payment/payments, or /api/inventory/inventories paths.",
         "testStrategy": "",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           "2",
           "3",
@@ -1374,7 +1374,8 @@
           "5"
         ],
         "priority": "high",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-05-20T12:03:59.808Z"
       },
       {
         "id": 7,
@@ -1409,15 +1410,15 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-20T11:50:56.418Z",
+      "lastModified": "2026-05-20T12:03:59.809Z",
       "taskCount": 8,
-      "completedCount": 5,
+      "completedCount": 6,
       "tags": [
         "phase0-api-polish"
       ],
-      "created": "2026-05-20T11:52:07.560Z",
+      "created": "2026-05-20T12:04:12.140Z",
       "description": "Tasks for phase0-api-polish context",
-      "updated": "2026-05-20T11:52:07.560Z"
+      "updated": "2026-05-20T12:04:12.140Z"
     }
   }
 }

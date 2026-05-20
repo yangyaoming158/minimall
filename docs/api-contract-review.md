@@ -6,17 +6,22 @@ This document tracks the remaining API contract issues after the P1 DTO naming c
 
 ## Phase 0 canonical path decision
 
-Task 1 in the `phase0-api-polish` tree selected canonical browser paths as the target API contract before gateway implementation:
+Task 1 in the `phase0-api-polish` tree selected canonical browser paths as the
+target API contract before gateway implementation. Task 2 implemented these
+paths in api-gateway.
 
-| Area | Canonical browser prefix | Current legacy gateway prefix |
+| Area | Canonical browser prefix | Removed legacy gateway shape |
 | --- | --- | --- |
-| Users | `/api/users/**` | `/api/user/users/**` |
-| Products | `/api/products/**` | `/api/product/products/**` |
-| Inventories | `/api/inventories/**` | `/api/inventory/inventories/**` |
-| Orders | `/api/orders/**` | `/api/order/orders/**` |
-| Payments | `/api/payments/**` | `/api/payment/payments/**` |
+| Users | `/api/users/**` | Service-prefix alias |
+| Products | `/api/products/**` | Service-prefix alias |
+| Inventories | `/api/inventories/**` | Service-prefix alias |
+| Orders | `/api/orders/**` | Service-prefix alias |
+| Payments | `/api/payments/**` | Service-prefix alias |
 
-Legacy strategy: remove the current legacy gateway paths rather than keep deprecated aliases. See `docs/phase0-api-contract-scope.md` for the full route table, audited files, and internal API boundary.
+Legacy strategy: remove the legacy gateway paths rather than keep deprecated
+aliases. Recommended frontend examples must use only the canonical browser
+paths. See `docs/phase0-api-contract-scope.md` for the full route table,
+audited files, and internal API boundary.
 
 ## Resolved in current cleanup
 
@@ -29,7 +34,7 @@ Legacy strategy: remove the current legacy gateway paths rather than keep deprec
 
 | Area | Result |
 | --- | --- |
-| Gateway frontend entry point | `/api/user/**`, `/api/product/**`, `/api/inventory/**`, `/api/order/**`, and `/api/payment/**` are configured in api-gateway with environment-driven downstream URLs. |
+| Gateway frontend entry point | `/api/users/**`, `/api/products/**`, `/api/inventories/**`, `/api/orders/**`, and `/api/payments/**` are configured in api-gateway with environment-driven downstream URLs. |
 | Gateway authentication | Browser-facing `/api/**` requests require JWT except login, register, and preflight requests; trusted user headers are injected by the gateway. |
 | Gateway browser support | CORS, `ApiResponse` gateway errors, request logging, and Redis-backed rate limiting are implemented and covered by gateway regression tests. |
 | Internal path exposure | No `/internal/**` route is configured at the gateway. |
@@ -63,11 +68,17 @@ See `docs/api-gateway-contract.md` for the stable gateway contract.
 | --- | --- |
 | Product status mutation policy | Customer product APIs are read-only. Existing product write endpoints are not customer frontend APIs and are not admin-safe until RBAC exists. Future admin status mutation should prefer `PUT /api/admin/products/{productId}/status`. |
 
+## Resolved in Phase 0 Task 6
+
+| Area | Result |
+| --- | --- |
+| API contract documentation | Frontend, gateway, README, deployment, architecture, acceptance summary, and pressure documentation now recommend canonical gateway paths only. Documentation records that legacy service-prefix routes were removed, `/internal/**` remains non-browser, tokens use `Authorization: Bearer <jwt>`, product write APIs are not customer/admin-safe, and real admin APIs require future RBAC. |
+
 ## Remaining issues
 
 | Priority | Issue | Recommended follow-up |
 | --- | --- | --- |
-| P1 | Final API documentation and browser-like scripts still contain legacy service-prefix examples. | Complete Task 6 and Task 7 so docs and scripts recommend canonical gateway paths only. |
+| P1 | Browser-like smoke and k6 script defaults still need canonical gateway paths. | Complete Task 7 so executable scripts use the same canonical path contract documented here. |
 | P2 | Real admin APIs still need RBAC, administrator identity, permissions, and audit policy. | Define Phase 2 admin PRD before exposing `/api/admin/**` endpoints to an admin UI. |
 
 ## Current DTO exposure rule

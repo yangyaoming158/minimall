@@ -65,7 +65,7 @@ The project is a Java 17, Spring Boot 3.2.x, Spring Cloud, Maven multi-module ba
 | --- | --- |
 | `common-core` | Shared `ApiResponse`, `ErrorCode`, `BusinessException`, global exception handler, payment event DTO, and RabbitMQ topology declaration. |
 | `common-auth` | JWT utility, JWT properties, user context holder, trusted propagation headers, and reusable request filter. |
-| `api-gateway` | Browser-facing entrypoint, route rewrite, JWT validation, trusted user header injection, CORS, Redis-backed rate limiting, and request logging. |
+| `api-gateway` | Browser-facing entrypoint, canonical route forwarding, JWT validation, trusted user header injection, CORS, Redis-backed rate limiting, and request logging. |
 | `user-service` | Registration, login, current-user lookup, password hashing, user persistence. |
 | `product-service` | Product create/update/list/detail, on/off shelf operations, Redis cache-aside product detail cache, internal product detail API. |
 | `inventory-service` | Public stock query, internal deduct/release APIs, inventory records, idempotent stock operations. |
@@ -77,20 +77,21 @@ Runtime dependencies are MySQL, Redis, RabbitMQ, Prometheus, and Grafana. The in
 
 ## Stable Gateway Contracts
 
-Browser-facing routes are routed through the gateway and rewritten to downstream `/api/**` controllers:
+Browser-facing routes are routed through the gateway with canonical prefixes and
+forwarded to downstream `/api/**` controllers:
 
 | Gateway prefix | Downstream service |
 | --- | --- |
-| `/api/user/**` | `user-service` |
-| `/api/product/**` | `product-service` |
-| `/api/inventory/**` | `inventory-service` |
-| `/api/order/**` | `order-service` |
-| `/api/payment/**` | `payment-service` |
+| `/api/users/**` | `user-service` |
+| `/api/products/**` | `product-service` |
+| `/api/inventories/**` | `inventory-service` |
+| `/api/orders/**` | `order-service` |
+| `/api/payments/**` | `payment-service` |
 
 Public unauthenticated routes:
 
-- `POST /api/user/users/register`
-- `POST /api/user/users/login`
+- `POST /api/users/register`
+- `POST /api/users/login`
 - CORS preflight `OPTIONS` requests
 
 Authenticated browser routes require `Authorization: Bearer <jwt>`.
@@ -99,25 +100,26 @@ Frontend-ready APIs:
 
 | Area | Endpoint |
 | --- | --- |
-| User | `POST /api/user/users/register` |
-| User | `POST /api/user/users/login` |
-| User | `GET /api/user/users/me` |
-| Product | `GET /api/product/products` |
-| Product | `GET /api/product/products/{productId}` |
-| Inventory | `GET /api/inventory/inventories/{productId}` |
-| Order | `POST /api/order/orders` |
-| Order | `GET /api/order/orders/my` |
-| Order | `GET /api/order/orders/{orderNo}` |
-| Order | `POST /api/order/orders/{orderNo}/cancel` |
-| Payment | `POST /api/payment/payments/{orderNo}/pay` |
-| Payment | `GET /api/payment/payments/{orderNo}` |
+| User | `POST /api/users/register` |
+| User | `POST /api/users/login` |
+| User | `GET /api/users/me` |
+| Product | `GET /api/products` |
+| Product | `GET /api/products/{productId}` |
+| Inventory | `GET /api/inventories/{productId}` |
+| Order | `POST /api/orders` |
+| Order | `GET /api/orders/my` |
+| Order | `GET /api/orders/{orderNo}` |
+| Order | `POST /api/orders/{orderNo}/cancel` |
+| Payment | `POST /api/payments/{orderNo}/pay` |
+| Payment | `GET /api/payments/{orderNo}` |
 
-Product admin contract-ready endpoints exist but do not yet have RBAC:
+Product write endpoints exist but are not customer frontend APIs and are not
+admin-safe until RBAC exists:
 
-- `POST /api/product/products`
-- `PUT /api/product/products/{productId}`
-- `POST /api/product/products/{productId}/on-shelf`
-- `POST /api/product/products/{productId}/off-shelf`
+- `POST /api/products`
+- `PUT /api/products/{productId}`
+- `POST /api/products/{productId}/on-shelf`
+- `POST /api/products/{productId}/off-shelf`
 
 Gateway security behavior:
 

@@ -1,26 +1,28 @@
 # API Gateway Contract
 
-Task 16 establishes the browser-facing gateway contract for MiniMall backend services.
+Phase 0 establishes the browser-facing gateway contract for MiniMall backend services.
 
 ## Routes
 
-The gateway exposes these frontend prefixes and forwards each request to the matching downstream service while preserving downstream `/api/**` controller paths:
+The gateway exposes these canonical frontend prefixes and forwards each request
+to the matching downstream service while preserving the request path:
 
 | Frontend prefix | Downstream service |
 | --- | --- |
-| `/api/user/**` | user-service |
-| `/api/product/**` | product-service |
-| `/api/inventory/**` | inventory-service |
-| `/api/order/**` | order-service |
-| `/api/payment/**` | payment-service |
+| `/api/users/**` | user-service |
+| `/api/products/**` | product-service |
+| `/api/inventories/**` | inventory-service |
+| `/api/orders/**` | order-service |
+| `/api/payments/**` | payment-service |
 
 Downstream service base URLs are configured with `USER_SERVICE_BASE_URL`, `PRODUCT_SERVICE_BASE_URL`, `INVENTORY_SERVICE_BASE_URL`, `ORDER_SERVICE_BASE_URL`, and `PAYMENT_SERVICE_BASE_URL`. Local defaults are development-only values.
 
+Legacy service-prefix routes are removed rather than kept as deprecated aliases.
 No `/internal/**` route is configured at the gateway.
 
 ## Authentication
 
-The gateway authenticates browser-facing `/api/**` requests with an `Authorization: Bearer <jwt>` header. `POST /api/user/users/login`, `POST /api/user/users/register`, and CORS preflight `OPTIONS` requests bypass JWT validation.
+The gateway authenticates browser-facing `/api/**` requests with an `Authorization: Bearer <jwt>` header. `POST /api/users/login`, `POST /api/users/register`, and CORS preflight `OPTIONS` requests bypass JWT validation.
 
 Incoming browser-supplied `X-User-Id` and `X-Username` headers are always removed. For authenticated requests, the gateway injects trusted `X-User-Id` and `X-Username` values parsed from the JWT before forwarding downstream.
 

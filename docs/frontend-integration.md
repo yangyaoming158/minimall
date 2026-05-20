@@ -1,6 +1,6 @@
 # Frontend Integration Guide
 
-Task 20.1 records the browser-facing backend contract for a future MiniMall
+Phase 0 records the browser-facing backend contract for a future MiniMall
 frontend or admin console. The frontend must use `api-gateway` as the only API
 entrypoint and must not call individual service ports such as `8101`, `8102`,
 `8103`, `8104`, or `8105`.
@@ -33,16 +33,18 @@ or `SPRING_DATASOURCE_URL` to browser code.
 
 ## Gateway Routes
 
-The gateway keeps browser-facing service namespaces stable and rewrites them to
-the downstream service controller paths.
+The gateway exposes canonical browser paths and forwards them to downstream
+services without service-prefix rewrites.
 
-| Browser prefix | Downstream service | Rewrite result |
-| --- | --- | --- |
-| `/api/user/**` | `user-service` | `/api/**` |
-| `/api/product/**` | `product-service` | `/api/**` |
-| `/api/inventory/**` | `inventory-service` | `/api/**` |
-| `/api/order/**` | `order-service` | `/api/**` |
-| `/api/payment/**` | `payment-service` | `/api/**` |
+| Browser prefix | Downstream service |
+| --- | --- |
+| `/api/users/**` | `user-service` |
+| `/api/products/**` | `product-service` |
+| `/api/inventories/**` | `inventory-service` |
+| `/api/orders/**` | `order-service` |
+| `/api/payments/**` | `payment-service` |
+
+Legacy service-prefix aliases are not part of the Phase 0 browser contract.
 
 No `/internal/**` route is configured at the gateway. Internal product,
 inventory, message, and consumer contracts are service-to-service only.
@@ -66,8 +68,8 @@ Preflight `OPTIONS` requests bypass authentication and rate limiting.
 
 Public browser endpoints:
 
-- `POST /api/user/users/register`
-- `POST /api/user/users/login`
+- `POST /api/users/register`
+- `POST /api/users/login`
 
 All other `/api/**` endpoints require:
 
@@ -119,7 +121,7 @@ Validation errors currently return a single `message` string, often with
 ### Register
 
 ```http
-POST /api/user/users/register
+POST /api/users/register
 Content-Type: application/json
 
 {
@@ -145,7 +147,7 @@ Response `data` fields:
 ### Login
 
 ```http
-POST /api/user/users/login
+POST /api/users/login
 Content-Type: application/json
 
 {
@@ -168,7 +170,7 @@ Response `data` fields:
 ### Current User
 
 ```http
-GET /api/user/users/me
+GET /api/users/me
 Authorization: Bearer <jwt>
 ```
 
@@ -184,7 +186,7 @@ Response `data` fields:
 ### Product List And Detail
 
 ```http
-GET /api/product/products?status=ON_SHELF&page=0&size=10
+GET /api/products?status=ON_SHELF&page=0&size=10
 Authorization: Bearer <jwt>
 ```
 
@@ -203,7 +205,7 @@ Page response fields:
 ```
 
 ```http
-GET /api/product/products/{productId}
+GET /api/products/{productId}
 Authorization: Bearer <jwt>
 ```
 
@@ -224,7 +226,7 @@ Product `data` fields:
 ### Inventory Detail
 
 ```http
-GET /api/inventory/inventories/{productId}
+GET /api/inventories/{productId}
 Authorization: Bearer <jwt>
 ```
 
@@ -244,7 +246,7 @@ Response `data` fields:
 ### Order Flow
 
 ```http
-POST /api/order/orders
+POST /api/orders
 Authorization: Bearer <jwt>
 Content-Type: application/json
 
@@ -260,6 +262,7 @@ Response `data` fields:
 ```json
 {
   "orderNo": "ORD20260518000001",
+  "userId": 1,
   "status": "PENDING_PAYMENT",
   "expireAt": "2026-05-18T10:15:00",
   "totalAmount": 199.90,
@@ -269,17 +272,17 @@ Response `data` fields:
 ```
 
 ```http
-GET /api/order/orders/my?page=0&size=10
+GET /api/orders/my?page=0&size=10
 Authorization: Bearer <jwt>
 ```
 
 ```http
-GET /api/order/orders/{orderNo}
+GET /api/orders/{orderNo}
 Authorization: Bearer <jwt>
 ```
 
 ```http
-POST /api/order/orders/{orderNo}/cancel
+POST /api/orders/{orderNo}/cancel
 Authorization: Bearer <jwt>
 ```
 
@@ -289,7 +292,7 @@ Order `status` values: `PENDING_PAYMENT`, `PAID`, `CANCELLED`, `CLOSED`,
 ### Payment Flow
 
 ```http
-POST /api/payment/payments/{orderNo}/pay
+POST /api/payments/{orderNo}/pay
 Authorization: Bearer <jwt>
 Content-Type: application/json
 
@@ -302,7 +305,7 @@ Content-Type: application/json
 `channel` currently supports `MOCK`.
 
 ```http
-GET /api/payment/payments/{orderNo}
+GET /api/payments/{orderNo}
 Authorization: Bearer <jwt>
 ```
 
@@ -312,6 +315,8 @@ Payment `data` fields:
 {
   "paymentNo": "PAY20260518000001",
   "orderNo": "ORD20260518000001",
+  "userId": 1,
+  "productId": "SKU-001",
   "status": "SUCCESS",
   "amount": 199.90,
   "channel": "MOCK",
@@ -367,18 +372,18 @@ Not yet exposed for admin/backoffice UI:
 
 | Area | Endpoint or contract | Status | Notes |
 | --- | --- | --- | --- |
-| User frontend | `POST /api/user/users/register` | Frontend UI ready | Public endpoint. |
-| User frontend | `POST /api/user/users/login` | Frontend UI ready | Public endpoint; returns JWT. |
-| User frontend | `GET /api/user/users/me` | Frontend UI ready | Requires gateway JWT auth. |
-| Product frontend | `GET /api/product/products` | Frontend UI ready | Supports `status`, `page`, and `size`. |
-| Product frontend | `GET /api/product/products/{productId}` | Frontend UI ready | Uses Redis cache-aside internally. |
-| Inventory frontend | `GET /api/inventory/inventories/{productId}` | Frontend UI ready | Read-only stock snapshot. |
-| Order frontend | `POST /api/order/orders` | Frontend UI ready | Requires `idempotencyKey`. |
-| Order frontend | `GET /api/order/orders/my` | Frontend UI ready | Current user's order page. |
-| Order frontend | `GET /api/order/orders/{orderNo}` | Frontend UI ready | Current user's order detail. |
-| Order frontend | `POST /api/order/orders/{orderNo}/cancel` | Frontend UI ready | Current user's cancellable order. |
-| Payment frontend | `POST /api/payment/payments/{orderNo}/pay` | Frontend UI ready | Requires idempotency for repeat clicks. |
-| Payment frontend | `GET /api/payment/payments/{orderNo}` | Frontend UI ready | Current user's payment detail. |
+| User frontend | `POST /api/users/register` | Frontend UI ready | Public endpoint. |
+| User frontend | `POST /api/users/login` | Frontend UI ready | Public endpoint; returns JWT. |
+| User frontend | `GET /api/users/me` | Frontend UI ready | Requires gateway JWT auth. |
+| Product frontend | `GET /api/products` | Frontend UI ready | Supports `status`, `page`, and `size`. |
+| Product frontend | `GET /api/products/{productId}` | Frontend UI ready | Uses Redis cache-aside internally. |
+| Inventory frontend | `GET /api/inventories/{productId}` | Frontend UI ready | Read-only stock snapshot. |
+| Order frontend | `POST /api/orders` | Frontend UI ready | Requires `idempotencyKey`. |
+| Order frontend | `GET /api/orders/my` | Frontend UI ready | Current user's order page. |
+| Order frontend | `GET /api/orders/{orderNo}` | Frontend UI ready | Current user's order detail. |
+| Order frontend | `POST /api/orders/{orderNo}/cancel` | Frontend UI ready | Current user's cancellable order. |
+| Payment frontend | `POST /api/payments/{orderNo}/pay` | Frontend UI ready | Requires idempotency for repeat clicks. |
+| Payment frontend | `GET /api/payments/{orderNo}` | Frontend UI ready | Current user's payment detail. |
 | Product admin | `POST /api/products` | Not admin-safe | Existing backend write capability; do not use from a customer frontend or real admin UI until RBAC exists. |
 | Product admin | `PUT /api/products/{productId}` | Not admin-safe | Existing backend write capability; future admin UI should define RBAC first. |
 | Product admin | `POST /api/products/{productId}/on-shelf` | Not admin-safe | Existing split status mutation; future admin direction is `PUT /api/admin/products/{productId}/status`. |
@@ -409,5 +414,6 @@ Before a frontend PR claims backend readiness, verify:
 10. All success and error handling reads `success`, `code`, `message`, and
     `data` from the `ApiResponse` envelope.
 
-The existing k6 gateway script in `pressure/mini-mall-gateway.js` is the closest
-backend-side smoke check for the browser-facing contract.
+The k6 gateway script in `pressure/mini-mall-gateway.js` is the backend-side
+smoke target for this contract. Phase 0 Task 7 updates its executable defaults
+to the canonical paths listed here.

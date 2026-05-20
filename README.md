@@ -10,7 +10,7 @@ RabbitMQ, Prometheus, Grafana, and seven Spring Boot service containers.
 | --- | --- |
 | `common-core` | Shared `ApiResponse`, business exceptions, payment event DTOs, and RabbitMQ topology. |
 | `common-auth` | JWT utilities, trusted user context, and servlet auth propagation support. |
-| `api-gateway` | Browser-facing API entrypoint, route rewrites, JWT validation, CORS, and rate limiting. |
+| `api-gateway` | Browser-facing API entrypoint, canonical route forwarding, JWT validation, CORS, and rate limiting. |
 | `user-service` | Registration, login, current-user lookup, and user persistence. |
 | `product-service` | Product management APIs and Redis-backed product detail cache. |
 | `inventory-service` | Inventory query, stock lock, release, deduct, and idempotent inventory records. |
@@ -74,6 +74,18 @@ curl --noproxy '*' -fsS http://127.0.0.1:8080/actuator/health
 
 The browser-facing API must use the gateway only. Future frontend or admin
 clients should not call service ports such as `8101` through `8106` directly.
+
+Canonical public API prefixes:
+
+| Area | Gateway prefix |
+| --- | --- |
+| Users | `/api/users/**` |
+| Products | `/api/products/**` |
+| Inventories | `/api/inventories/**` |
+| Orders | `/api/orders/**` |
+| Payments | `/api/payments/**` |
+
+Legacy service-prefix aliases are not frontend contracts.
 
 ## Documentation Map
 

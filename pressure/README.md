@@ -22,21 +22,23 @@ so the script does not call a callback path.
 
 ## Gateway Routes
 
-The script uses frontend-facing gateway paths. Gateway route rewrites preserve
-the downstream `/api/**` controller paths after the service prefix.
+The pressure flow targets canonical frontend-facing gateway paths. Gateway route
+handling preserves these paths when forwarding to downstream `/api/**`
+controllers. Task 7 owns the JavaScript script default path update; this
+document records the target contract the script must use.
 
-| Script path | Downstream controller path |
+| Flow | Canonical gateway path |
 | --- | --- |
-| `POST /api/user/users/login` | `POST /api/users/login` |
-| `GET /api/user/users/me` | `GET /api/users/me` |
-| `GET /api/product/products` | `GET /api/products` |
-| `GET /api/product/products/{productId}` | `GET /api/products/{productId}` |
-| `GET /api/inventory/inventories/{productId}` | `GET /api/inventories/{productId}` |
-| `POST /api/order/orders` | `POST /api/orders` |
-| `GET /api/order/orders/{orderNo}` | `GET /api/orders/{orderNo}` |
-| `POST /api/order/orders/{orderNo}/cancel` | `POST /api/orders/{orderNo}/cancel` |
-| `POST /api/payment/payments/{orderNo}/pay` | `POST /api/payments/{orderNo}/pay` |
-| `GET /api/payment/payments/{orderNo}` | `GET /api/payments/{orderNo}` |
+| Login | `POST /api/users/login` |
+| Current user | `GET /api/users/me` |
+| Product list | `GET /api/products` |
+| Product detail | `GET /api/products/{productId}` |
+| Inventory detail | `GET /api/inventories/{productId}` |
+| Create order | `POST /api/orders` |
+| Order detail | `GET /api/orders/{orderNo}` |
+| Cancel order | `POST /api/orders/{orderNo}/cancel` |
+| Pay order | `POST /api/payments/{orderNo}/pay` |
+| Payment detail | `GET /api/payments/{orderNo}` |
 
 These paths match `docs/api-gateway-contract.md`.
 
@@ -106,8 +108,9 @@ failures such as `40400` or order-state conflict codes.
 
 ## Path Overrides
 
-The defaults follow the current gateway contract. Override these only when the
-gateway contract changes:
+Task 7 updates the executable defaults to follow the current gateway contract.
+Until that script update is complete, these overrides can point a run at the
+canonical paths listed above:
 
 - `LOGIN_PATH`
 - `ME_PATH`
