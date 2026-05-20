@@ -80,4 +80,4 @@ Task 3 should verify protected canonical routes, trusted header stripping/inject
 
 Task 6 and Task 7 should update documentation and browser-like scripts so recommended examples use only canonical paths.
 
-Task 5 should keep product write endpoints out of the customer frontend contract and record the future admin status mutation direction separately.
+Task 5 records the product status mutation policy: customer product APIs remain read-only, current product write endpoints are not admin-safe without RBAC, and the future admin direction is `PUT /api/admin/products/{productId}/status`.

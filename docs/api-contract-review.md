@@ -50,12 +50,25 @@ See `docs/api-gateway-contract.md` for the stable gateway contract.
 | Product public DTO contract | Product public responses expose `productId`, avoid naked `id`, and keep `status` as enum-string output. |
 | Inventory public DTO contract | Inventory public responses expose `productId`, avoid naked `id`, and keep `stockState` as enum-string output. |
 
+## Resolved in Phase 0 Task 4.4
+
+| Area | Result |
+| --- | --- |
+| Order public DTO contract | Create, cancel, detail, and current-user order page responses expose `orderNo`, `userId`, product identifiers, enum status strings, and no naked database `id`. |
+| Payment public DTO contract | Pay and payment detail responses expose `paymentNo`, `orderNo`, `userId`, `productId`, enum status/channel strings, and no naked database `id`. |
+
+## Resolved in Phase 0 Task 5
+
+| Area | Result |
+| --- | --- |
+| Product status mutation policy | Customer product APIs are read-only. Existing product write endpoints are not customer frontend APIs and are not admin-safe until RBAC exists. Future admin status mutation should prefer `PUT /api/admin/products/{productId}/status`. |
+
 ## Remaining issues
 
 | Priority | Issue | Recommended follow-up |
 | --- | --- | --- |
-| P1 | Order and payment public DTO contracts still need the final Phase 0 pass. | Complete Task 4.4 using `docs/phase0-dto-pagination-audit.md` as the source for order/payment identifier exposure, enum status assertions, and focused controller tests. |
-| P1 | Final API documentation must choose one product status mutation style. Current implementation uses `/api/products/{productId}/on-shelf` and `/api/products/{productId}/off-shelf`. | Keep these paths or deliberately replace them with one stable status update endpoint before frontend integration. |
+| P1 | Final API documentation and browser-like scripts still contain legacy service-prefix examples. | Complete Task 6 and Task 7 so docs and scripts recommend canonical gateway paths only. |
+| P2 | Real admin APIs still need RBAC, administrator identity, permissions, and audit policy. | Define Phase 2 admin PRD before exposing `/api/admin/**` endpoints to an admin UI. |
 
 ## Current DTO exposure rule
 

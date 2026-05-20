@@ -1351,13 +1351,14 @@
         "description": "Document and, if chosen, implement the Phase 0 decision for product status mutation style without introducing admin RBAC.",
         "details": "Prefer future admin status mutation as PUT /api/admin/products/{productId}/status, while marking current product write endpoints as not customer frontend APIs and not admin safe until RBAC exists. If code changes are made, keep business semantics unchanged. Verification: docs clearly separate customer API from future admin API and tests remain green.",
         "testStrategy": "",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           "1",
           "4"
         ],
         "priority": "medium",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-05-20T11:50:56.418Z"
       },
       {
         "id": 6,
@@ -1408,15 +1409,15 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-20T11:33:57.255Z",
+      "lastModified": "2026-05-20T11:50:56.418Z",
       "taskCount": 8,
-      "completedCount": 4,
+      "completedCount": 5,
       "tags": [
         "phase0-api-polish"
       ],
-      "created": "2026-05-20T11:34:09.154Z",
+      "created": "2026-05-20T11:52:07.560Z",
       "description": "Tasks for phase0-api-polish context",
-      "updated": "2026-05-20T11:34:09.154Z"
+      "updated": "2026-05-20T11:52:07.560Z"
     }
   }
 }

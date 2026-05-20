@@ -323,17 +323,37 @@ Payment `status` values: `PENDING`, `SUCCESS`, `FAILED`.
 
 ## Admin And Backoffice Contracts
 
-The following product management endpoints are reachable through the gateway and
-are contract-ready for a future admin UI, but role-based admin authorization is
-not implemented yet. Any real admin frontend must wait for an explicit RBAC
-backend task or isolate access operationally.
+The customer frontend product contract is read-only:
+
+- `GET /api/products`
+- `GET /api/products/{productId}`
+
+The existing product write endpoints remain backend capabilities for local
+operations and seeded data management. They are not customer frontend APIs and
+are not admin-safe until a future RBAC task defines administrator identity,
+permissions, audit requirements, and gateway authorization policy.
 
 | Purpose | Gateway endpoint |
 | --- | --- |
-| Create product | `POST /api/product/products` |
-| Update product | `PUT /api/product/products/{productId}` |
-| Put product on shelf | `POST /api/product/products/{productId}/on-shelf` |
-| Take product off shelf | `POST /api/product/products/{productId}/off-shelf` |
+| Create product | `POST /api/products` |
+| Update product | `PUT /api/products/{productId}` |
+| Put product on shelf | `POST /api/products/{productId}/on-shelf` |
+| Take product off shelf | `POST /api/products/{productId}/off-shelf` |
+
+Future admin product status mutation should prefer a single status endpoint:
+
+```http
+PUT /api/admin/products/{productId}/status
+Authorization: Bearer <admin-jwt>
+Content-Type: application/json
+
+{
+  "status": "ON_SHELF"
+}
+```
+
+This `/api/admin/**` endpoint is a Phase 2 direction, not a Phase 0 API. Phase 0
+does not introduce RBAC, administrator accounts, or new admin controllers.
 
 Not yet exposed for admin/backoffice UI:
 
@@ -359,10 +379,10 @@ Not yet exposed for admin/backoffice UI:
 | Order frontend | `POST /api/order/orders/{orderNo}/cancel` | Frontend UI ready | Current user's cancellable order. |
 | Payment frontend | `POST /api/payment/payments/{orderNo}/pay` | Frontend UI ready | Requires idempotency for repeat clicks. |
 | Payment frontend | `GET /api/payment/payments/{orderNo}` | Frontend UI ready | Current user's payment detail. |
-| Product admin | `POST /api/product/products` | Admin UI contract ready | No RBAC yet. |
-| Product admin | `PUT /api/product/products/{productId}` | Admin UI contract ready | No RBAC yet. |
-| Product admin | `POST /api/product/products/{productId}/on-shelf` | Admin UI contract ready | No RBAC yet. |
-| Product admin | `POST /api/product/products/{productId}/off-shelf` | Admin UI contract ready | No RBAC yet. |
+| Product admin | `POST /api/products` | Not admin-safe | Existing backend write capability; do not use from a customer frontend or real admin UI until RBAC exists. |
+| Product admin | `PUT /api/products/{productId}` | Not admin-safe | Existing backend write capability; future admin UI should define RBAC first. |
+| Product admin | `POST /api/products/{productId}/on-shelf` | Not admin-safe | Existing split status mutation; future admin direction is `PUT /api/admin/products/{productId}/status`. |
+| Product admin | `POST /api/products/{productId}/off-shelf` | Not admin-safe | Existing split status mutation; future admin direction is `PUT /api/admin/products/{productId}/status`. |
 | Product internal | `GET /internal/products/{productId}` | Internal only | Used by order-service, not routed by gateway. |
 | Inventory internal | `POST /internal/inventories/deduct` | Internal only | Used by order-service, not routed by gateway. |
 | Inventory internal | `POST /internal/inventories/release` | Internal only | Used by order-service, not routed by gateway. |
