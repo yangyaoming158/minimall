@@ -1,0 +1,934 @@
+Phase 1 PRD：MiniMall Customer Frontend
+
+文件建议位置：
+.taskmaster/docs/phase1-customer-frontend-prd.txt
+
+版本：v1.0
+阶段：Phase 1 - Customer Frontend
+默认技术栈：Vue 3 + TypeScript + Vite + Element Plus + Pinia + Vue Router + Axios
+
+说明：
+如果后续决定使用 React，也可以改为 React + TypeScript + Vite + Ant Design + React Router + Zustand/Redux Toolkit + Axios。
+当前 PRD 默认采用 Vue 3 + Element Plus，原因是开发效率高、表单/表格/分页组件成熟，后续管理员后台也可复用。
+
+============================================================
+一、背景
+============================================================
+
+MiniMall Order 后端 MVP 已完成，并且 Phase 0 已完成 API Contract Polish。当前后端已经提供稳定的 canonical API：
+
+- /api/users/**
+- /api/products/**
+- /api/inventories/**
+- /api/orders/**
+- /api/payments/**
+
+前端只允许通过 api-gateway 调用后端。
+禁止直接访问 user-service、product-service、inventory-service、order-service、payment-service、notification-service 等微服务端口。
+禁止调用 /internal/**。
+禁止前端主动发送 X-User-Id 或 X-Username。
+
+Phase 1 的目标是开发一个面向普通用户的 MiniMall 用户商城前台，完整跑通：
+
+注册 -> 登录 -> 浏览商品 -> 查看库存 -> 创建订单 -> 查看订单 -> 模拟支付 -> 订单变为 PAID
+
+该阶段不做管理员后台，不做 RBAC，不做购物车，不做收货地址，不做优惠券，不做真实支付，不做退款/售后。
+
+============================================================
+二、产品定位
+============================================================
+
+Phase 1 产品定位：MiniMall 用户商城前台。
+
+它不是完整淘宝/京东级电商平台，而是一个用于展示 MiniMall 后端微服务订单链路的轻量级用户前台。
+
+界面目标：
+
+1. 简洁现代。
+2. 有基础电商前台观感。
+3. 能清楚展示商品、库存、订单、支付状态。
+4. 能完整演示后端微服务核心链路。
+5. 不追求复杂营销页、复杂推荐、购物车、地址管理、优惠券系统。
+
+演示核心价值：
+
+1. 用户认证：注册、登录、JWT 持久化、当前用户。
+2. 商品浏览：商品列表、商品详情。
+3. 库存展示：可用库存、锁定库存、库存状态。
+4. 订单链路：创建订单、我的订单、订单详情、取消订单。
+5. 模拟支付：支付成功后订单状态刷新为 PAID。
+6. 网关接入：所有请求通过 api-gateway。
+7. 统一错误处理：ApiResponse、401、429、业务错误提示。
+
+============================================================
+三、非目标
+============================================================
+
+Phase 1 明确不做以下内容：
+
+1. 不开发管理员后台。
+2. 不实现 RBAC、角色、权限、管理员登录。
+3. 不实现商品创建、编辑、上下架 UI。
+4. 不实现库存调整 UI。
+5. 不实现订单后台管理。
+6. 不实现通知日志后台管理。
+7. 不实现购物车。
+8. 不实现收货地址。
+9. 不实现优惠券、促销、积分。
+10. 不实现收藏、推荐、评价。
+11. 不实现真实支付渠道。
+12. 不实现退款、对账、支付回调。
+13. 不直接访问微服务端口。
+14. 不调用 /internal/**。
+15. 不修改后端业务逻辑，除非前端联调发现明确 bug 且经过确认。
+16. 不引入复杂前端微前端架构。
+17. 不引入服务端渲染框架。
+18. 不做移动端 App，只做 Web 前台，PC 优先，兼顾基础响应式。
+
+============================================================
+四、用户角色
+============================================================
+
+4.1 游客
+
+游客可以：
+
+1. 访问商品列表。
+2. 查看商品详情。
+3. 查看商品库存。
+4. 进入登录页。
+5. 进入注册页。
+
+游客不能：
+
+1. 创建订单。
+2. 查看我的订单。
+3. 查看订单详情。
+4. 模拟支付。
+5. 取消订单。
+
+游客点击需要登录的操作时，应跳转到登录页，并带上 redirect 参数，登录成功后回到原页面。
+
+4.2 已登录用户
+
+已登录用户可以：
+
+1. 查看当前用户信息。
+2. 浏览商品。
+3. 查看库存。
+4. 创建订单。
+5. 查看我的订单。
+6. 查看订单详情。
+7. 取消待支付订单。
+8. 模拟支付待支付订单。
+9. 查看支付结果。
+
+4.3 管理员
+
+Phase 1 不支持管理员角色。
+如后续 Phase 2 开发管理员后台，应单独写 Admin Platform PRD，并定义 /api/admin/**、RBAC 和 admin-safe APIs。
+
+============================================================
+五、页面范围
+============================================================
+
+Phase 1 需要实现以下页面：
+
+1. 首页重定向
+   路由：/
+   行为：重定向到 /products
+
+2. 登录页
+   路由：/login
+
+3. 注册页
+   路由：/register
+
+4. 商品列表页
+   路由：/products
+
+5. 商品详情页
+   路由：/products/:productId
+
+6. 下单确认页
+   路由：/checkout?productId=xxx&quantity=1
+
+7. 我的订单页
+   路由：/orders
+
+8. 订单详情页
+   路由：/orders/:orderNo
+
+9. 模拟支付页
+   路由：/payments/:orderNo
+
+10. 403 页面
+    路由：/403
+
+11. 404 页面
+    路由：/:pathMatch(.*)*
+
+============================================================
+六、页面详细需求
+============================================================
+
+6.1 全局布局
+
+顶部导航栏内容：
+
+登录前：
+- MiniMall Logo
+- 商品
+- 登录
+- 注册
+
+登录后：
+- MiniMall Logo
+- 商品
+- 我的订单
+- 当前用户名
+- 退出登录
+
+要求：
+
+1. 所有页面保持统一顶部导航。
+2. 当前路由高亮。
+3. 用户登录状态由 auth store 控制。
+4. 点击退出登录后清理 token、用户信息，并回到 /products 或 /login。
+5. 页面主体使用浅灰背景 + 白色卡片布局。
+6. PC 端优先，页面宽度建议使用居中容器。
+7. 移动端基础适配即可，不要求完整移动商城体验。
+
+6.2 登录页
+
+路由：/login
+调用 API：POST /api/users/login
+
+表单字段：
+1. username
+2. password
+
+交互要求：
+
+1. 用户名和密码不能为空。
+2. 登录按钮支持 loading 状态。
+3. 登录成功后保存 token。
+4. 登录成功后调用 GET /api/users/me 或使用登录响应中的用户信息初始化当前用户。
+5. 登录成功后跳转：如果 URL 有 redirect 参数，跳转 redirect；否则跳转 /products。
+6. 登录失败时展示后端返回的 message。
+7. 401 或业务错误不要导致页面崩溃。
+8. 提供“没有账号？立即注册”入口。
+
+UI 设计方向：简洁登录卡片，可包含 MiniMall 品牌说明区域，不需要复杂背景动画。
+
+6.3 注册页
+
+路由：/register
+调用 API：POST /api/users/register
+
+表单字段：
+1. username
+2. password
+3. email
+4. phone
+
+交互要求：
+
+1. 用户名不能为空。
+2. 密码不能为空，最少长度按后端约束或前端基础校验。
+3. email 和 phone 按后端要求提交；若后端允许为空，前端可不强制。
+4. 注册按钮支持 loading 状态。
+5. 注册成功后提示成功，并跳转 /login。
+6. 注册失败时展示后端 message。
+7. 提供“已有账号？立即登录”入口。
+
+6.4 商品列表页
+
+路由：/products
+调用 API：GET /api/products
+
+可选查询参数：page、size、keyword、status。是否真正支持以后端为准。
+
+最低要求：
+
+1. 展示商品卡片网格。
+2. 每个商品卡片展示商品名称、商品描述摘要、商品价格、商品状态、查看详情按钮。
+3. 支持分页。
+4. 支持 loading 状态。
+5. 支持 empty 状态。
+6. API 错误时展示错误提示。
+7. 点击商品卡片或按钮进入 /products/:productId。
+
+商品状态展示：
+1. ON_SHELF：上架中。
+2. OFF_SHELF：已下架。
+
+如果商品已下架，可以展示，但应弱化购买入口；商品详情页应禁用下单按钮。
+
+UI 设计方向：商品卡片式布局，PC 端建议 3 到 4 列，卡片保持留白，价格醒目。
+
+6.5 商品详情页
+
+路由：/products/:productId
+调用 API：
+1. GET /api/products/{productId}
+2. GET /api/inventories/{productId}
+
+展示内容：
+1. 商品名称。
+2. 商品描述。
+3. 商品价格。
+4. 商品状态。
+5. 库存信息：availableStock、lockedStock、stockState。
+6. 数量选择器。
+7. 立即下单按钮。
+
+交互要求：
+
+1. 页面进入时并行或顺序加载商品详情和库存信息。
+2. 商品不存在时展示错误状态。
+3. 商品下架时禁用下单按钮。
+4. 库存不足时禁用下单按钮。
+5. 用户未登录点击下单时跳转 /login，并携带 redirect。
+6. 数量最小为 1。
+7. 数量不能超过库存或后端允许的最大值。
+8. 点击立即下单跳转到 /checkout?productId=<productId>&quantity=<quantity>。
+
+UI 设计方向：左侧商品展示区域，右侧商品信息和购买区域；库存信息用卡片或信息框展示。
+
+6.6 下单确认页
+
+路由：/checkout?productId=xxx&quantity=1
+调用 API：
+1. GET /api/products/{productId}
+2. GET /api/inventories/{productId}
+3. POST /api/orders
+
+创建订单请求字段：
+1. productId
+2. quantity
+3. idempotencyKey
+
+idempotencyKey 生成要求：
+
+1. 前端每次进入下单确认页可生成一次 idempotencyKey。
+2. 用户点击确认下单时使用该 idempotencyKey。
+3. 点击按钮后进入 loading 状态，防止重复点击。
+4. 网络失败或超时可复用当前 idempotencyKey 重试。
+5. 用户重新进入 checkout 页面则生成新的 idempotencyKey。
+6. idempotencyKey 可以用 crypto.randomUUID() 或等价方式生成。
+
+展示内容：商品信息、单价、数量、总金额、库存状态、确认下单按钮、返回商品详情按钮。
+
+交互要求：商品下架或库存不足时禁止确认下单；未登录访问 checkout 时跳转 /login；创建订单成功后跳转 /orders/{orderNo}。
+
+6.7 我的订单页
+
+路由：/orders
+调用 API：GET /api/orders/my
+
+展示内容：
+1. 订单编号 orderNo。
+2. 商品摘要。
+3. 订单金额 totalAmount。
+4. 订单状态 status。
+5. 创建时间。
+6. 操作按钮：查看详情、去支付、取消。
+
+最低要求：
+1. 登录用户可访问。
+2. 未登录自动跳转 /login。
+3. 支持分页。
+4. 支持 loading、empty、error 状态。
+5. 点击查看详情进入 /orders/:orderNo。
+6. 点击去支付进入 /payments/:orderNo。
+7. 点击取消订单可调用取消接口，成功后刷新列表。
+
+订单状态标签建议：
+1. PENDING_PAYMENT：待支付，橙色。
+2. PAID：已支付，绿色。
+3. CANCELLED：已取消，灰色。
+4. CLOSED：已关闭，深灰。
+5. REFUNDED：已退款，蓝灰，如后端已有。
+
+UI 设计方向：PC 端建议表格，状态标签醒目，操作按钮不要过多。
+
+6.8 订单详情页
+
+路由：/orders/:orderNo
+调用 API：
+1. GET /api/orders/{orderNo}
+2. GET /api/payments/{orderNo}，如果订单已经支付或需要展示支付信息
+
+展示内容：订单编号、订单状态、商品信息、商品数量、商品单价、总金额、创建时间、过期时间、支付信息。
+
+操作按钮：
+1. PENDING_PAYMENT：去支付、取消订单。
+2. PAID：查看支付信息。
+3. CANCELLED / CLOSED：无主要操作，展示状态说明。
+
+交互要求：未登录访问跳转 /login；订单不存在时展示错误提示；用户无权访问时展示 403 或后端 message；取消订单成功后刷新订单详情；支付成功返回后重新拉取订单详情。
+
+UI 设计方向：多张信息卡片，简化时间线可选：订单创建 -> 等待支付 -> 支付成功。
+
+6.9 模拟支付页
+
+路由：/payments/:orderNo
+调用 API：
+1. GET /api/orders/{orderNo}
+2. POST /api/payments/{orderNo}/pay
+3. GET /api/payments/{orderNo}
+4. GET /api/orders/{orderNo}，支付后刷新订单状态
+
+展示内容：订单编号、支付金额、当前订单状态、支付状态、模拟支付按钮、支付成功结果。
+
+交互要求：
+1. 只有 PENDING_PAYMENT 订单显示模拟支付按钮。
+2. 点击模拟支付时按钮 loading。
+3. 支付成功后展示成功状态。
+4. 支付成功后重新查询订单详情，确认订单状态变为 PAID。
+5. 如果后端 MQ 消费存在轻微异步延迟，可以做短轮询：最多 3 到 5 次，每次间隔 500ms 到 1000ms。
+6. 超过轮询次数后提示“支付已提交，订单状态稍后刷新”。
+7. 明确提示“当前为模拟支付，用于演示订单支付事件链路”。
+
+6.10 403 页面
+
+展示：无权限访问、返回商品列表、重新登录。
+
+6.11 404 页面
+
+展示：页面不存在、返回首页或商品列表。
+
+============================================================
+七、API Client 设计
+============================================================
+
+必须封装统一 API client，不允许页面组件直接散落 axios 调用。
+
+建议目录：
+
+src/api/http.ts
+src/api/user.ts
+src/api/product.ts
+src/api/inventory.ts
+src/api/order.ts
+src/api/payment.ts
+
+http.ts 要求：
+
+1. 设置 baseURL。
+2. 从环境变量读取 VITE_API_BASE_URL。
+3. 默认 baseURL 可为 http://localhost:8080，具体端口以 api-gateway 为准。
+4. 请求拦截器自动附加 Authorization: Bearer <token>。
+5. 响应拦截器统一处理 ApiResponse。
+6. success === true：返回 data。
+7. success === false：抛出带 code/message 的业务错误。
+8. HTTP 401：清除 token，跳转 /login，提示登录已过期。
+9. HTTP 429：提示请求过于频繁，请稍后再试。
+10. HTTP 500：展示系统异常提示。
+11. 不发送 X-User-Id 或 X-Username。
+12. 不调用 /internal/**。
+
+ApiResponse 类型：
+
+interface ApiResponse<T> {
+  success: boolean
+  code: string
+  message: string
+  data: T | null
+}
+
+分页类型：
+
+interface PageResponse<T> {
+  content: T[]
+  page: number
+  size: number
+  totalElements: number
+  totalPages: number
+}
+
+============================================================
+八、状态管理
+============================================================
+
+推荐使用 Pinia。
+
+必须实现 authStore：
+
+1. token
+2. currentUser
+3. isLoggedIn
+4. login()
+5. register()
+6. fetchCurrentUser()
+7. logout()
+
+可选 productStore / orderStore。若页面简单，可以页面内请求，不要过度抽象。
+
+localStorage：
+
+1. token 可保存在 localStorage。
+2. 刷新页面时从 localStorage 恢复 token。
+3. 应用启动后如有 token，调用 /api/users/me 恢复当前用户。
+4. token 无效时清理并跳转登录。
+
+============================================================
+九、路由守卫
+============================================================
+
+公开路由：
+1. /
+2. /products
+3. /products/:productId
+4. /login
+5. /register
+6. /403
+7. /404
+
+需要登录的路由：
+1. /checkout
+2. /orders
+3. /orders/:orderNo
+4. /payments/:orderNo
+
+守卫逻辑：
+
+1. 如果目标路由需要登录但没有 token，跳转 /login?redirect=<currentPath>。
+2. 如果已登录用户访问 /login 或 /register，可跳转 /products。
+3. 不在路由守卫里调用复杂 API，避免无限循环。
+4. currentUser 可在应用初始化或页面内补齐。
+
+============================================================
+十、UI 设计要求
+============================================================
+
+10.1 总体风格
+
+UI 应为简洁现代的轻量电商风格。
+
+建议：
+
+1. 白色卡片。
+2. 浅灰背景。
+3. 实现者选择的统一主色。
+4. 清晰商品卡片。
+5. 清晰订单状态标签。
+6. 适度圆角。
+7. 适度阴影。
+8. 不使用过度动画。
+9. 不做复杂营销视觉。
+10. PC 端优先，基础响应式。
+
+注意：
+PRD 不锁死像素级布局。实现者可以根据现代电商前台最佳实践优化视觉细节，但不得新增 PRD 外的业务功能。
+
+10.2 组件建议
+
+建议组件：
+
+1. AppHeader
+2. ProductCard
+3. PriceText
+4. StatusTag
+5. OrderStatusTag
+6. LoadingState
+7. EmptyState
+8. ApiErrorAlert
+9. PaginationBar
+10. ConfirmDialog
+11. PaymentResultCard
+
+10.3 页面交互状态
+
+每个 API 页面必须考虑：loading、empty、error、success、disabled、submitting、unauthorized。
+
+10.4 状态标签
+
+订单状态、商品状态、支付状态、库存状态都应该用标签展示，不要只显示原始字符串。
+已知状态使用中文文案和颜色，未知状态显示原始枚举值。
+
+============================================================
+十一、前端目录建议
+============================================================
+
+建议目录：
+
+frontend/
+  package.json
+  vite.config.ts
+  tsconfig.json
+  .env.example
+  README.md
+  src/
+    api/
+      http.ts
+      user.ts
+      product.ts
+      inventory.ts
+      order.ts
+      payment.ts
+    components/
+      AppHeader.vue
+      ProductCard.vue
+      PriceText.vue
+      StatusTag.vue
+      OrderStatusTag.vue
+      LoadingState.vue
+      EmptyState.vue
+      ApiErrorAlert.vue
+      ConfirmDialog.vue
+    router/
+      index.ts
+    stores/
+      auth.ts
+    types/
+      api.ts
+      user.ts
+      product.ts
+      inventory.ts
+      order.ts
+      payment.ts
+    views/
+      LoginPage.vue
+      RegisterPage.vue
+      ProductListPage.vue
+      ProductDetailPage.vue
+      CheckoutPage.vue
+      OrderListPage.vue
+      OrderDetailPage.vue
+      PaymentPage.vue
+      ForbiddenPage.vue
+      NotFoundPage.vue
+    App.vue
+    main.ts
+
+如果项目已有前端目录命名规范，则按现有项目规范执行。
+
+============================================================
+十二、环境变量
+============================================================
+
+前端需要提供 .env.example：
+
+VITE_API_BASE_URL=http://localhost:8080
+
+要求：
+
+1. 所有 API 请求使用 VITE_API_BASE_URL。
+2. 不在代码中硬编码后端真实地址。
+3. 不直接写微服务端口。
+4. README 说明如何配置。
+
+============================================================
+十三、错误处理要求
+============================================================
+
+13.1 统一业务错误
+
+后端返回 ApiResponse success=false 时：展示 message，可以记录 code，不展示原始堆栈，不让页面崩溃。
+
+13.2 401
+
+清理 token，清理 currentUser，跳转 /login，提示登录已过期，请重新登录。
+
+13.3 403
+
+跳转 /403 或展示无权限提示。
+
+13.4 404
+
+商品或订单不存在时展示友好提示；页面路由不存在时展示 404 页面。
+
+13.5 409 或业务冲突
+
+例如库存不足、订单状态不允许取消、重复支付、订单已过期。应展示后端 message，必要时刷新当前数据。
+
+13.6 429
+
+展示“请求过于频繁，请稍后再试”。不重复自动重试。
+
+13.7 网络错误
+
+展示“网络连接异常，请稍后重试”。表单提交失败后恢复按钮状态。
+
+============================================================
+十四、关键业务交互要求
+============================================================
+
+14.1 下单幂等
+
+1. 下单请求必须包含 idempotencyKey。
+2. 点击确认下单后按钮进入 loading。
+3. loading 期间禁止再次点击。
+4. 重复点击不会发出多次有效请求。
+5. 请求成功后跳转订单详情。
+6. 请求失败后展示错误，并恢复按钮状态。
+
+14.2 支付后订单状态刷新
+
+1. 支付成功后先展示支付成功。
+2. 然后重新请求订单详情。
+3. 如果订单状态已经 PAID，展示已支付。
+4. 如果订单状态暂未更新，可短轮询。
+5. 轮询失败后提示稍后刷新，不应认为支付失败。
+
+14.3 取消订单
+
+1. 只有 PENDING_PAYMENT 状态显示取消按钮。
+2. 取消前弹出确认。
+3. 取消成功后刷新订单状态。
+4. 如果后端返回订单已支付或不可取消，展示 message 并刷新订单。
+
+14.4 登录跳转
+
+1. 未登录访问受保护路由跳转登录。
+2. 登录成功后回到 redirect。
+3. 如果没有 redirect，回到 /products。
+
+============================================================
+十五、测试要求
+============================================================
+
+15.1 静态检查
+
+需要通过：
+
+1. npm install
+2. npm run build
+3. npm run type-check，如已配置
+4. npm run lint，如已配置
+
+如果没有 lint/type-check，可至少保证 npm run build 通过。
+
+15.2 API client 测试或手动验证
+
+至少验证：
+
+1. 成功 ApiResponse 能正确返回 data。
+2. success=false 能展示 message。
+3. 401 会清理 token 并跳转登录。
+4. 429 能展示限流提示。
+5. Authorization header 能正确携带 token。
+6. 不发送 X-User-Id 或 X-Username。
+
+15.3 页面 smoke 验证
+
+通过浏览器完成：
+
+1. 打开 /products。
+2. 查看商品列表。
+3. 进入商品详情。
+4. 注册新用户。
+5. 登录。
+6. 创建订单。
+7. 查看订单详情。
+8. 模拟支付。
+9. 查看支付结果。
+10. 返回订单详情确认 PAID。
+11. 查看我的订单。
+12. 退出登录。
+13. 未登录访问 /orders 跳转登录。
+
+15.4 后端联调要求
+
+联调必须使用 api-gateway。
+禁止直接访问任意微服务端口，禁止调用 /internal/**。
+
+15.5 可选 E2E 自动化
+
+如果时间允许，可加入 Playwright 或 Cypress。最小 E2E：登录、浏览商品、创建订单、支付、校验订单状态为 PAID。
+如果时间不足，Phase 1 可以先用手动 smoke + build 作为验收。
+
+============================================================
+十六、验收标准
+============================================================
+
+Phase 1 完成后，必须满足：
+
+1. 用户前端项目可以安装依赖并启动。
+2. npm run build 通过。
+3. 前端只通过 VITE_API_BASE_URL 调用 api-gateway。
+4. 前端不直接访问任何微服务端口。
+5. 前端不调用 /internal/**。
+6. 登录、注册流程可用。
+7. token 可以保存和恢复。
+8. 401 会清理登录状态并跳转登录。
+9. 商品列表可展示。
+10. 商品详情可展示。
+11. 库存信息可展示。
+12. 未登录用户点击下单会跳转登录。
+13. 登录用户可以创建订单。
+14. 创建订单请求包含 idempotencyKey。
+15. 重复点击下单按钮不会重复提交。
+16. 我的订单页面可展示订单列表。
+17. 订单详情页面可展示订单状态、金额、商品信息。
+18. PENDING_PAYMENT 订单可以取消。
+19. PENDING_PAYMENT 订单可以模拟支付。
+20. 支付成功后支付状态显示 SUCCESS。
+21. 支付成功后订单状态最终显示 PAID。
+22. 429 限流提示友好。
+23. 后端业务错误 message 能展示给用户。
+24. 页面具备 loading、empty、error 基础状态。
+25. README 说明前端启动、环境变量和联调方式。
+26. Phase 1 验收记录写入 docs 或 frontend/README 中。
+27. TaskMaster phase1-customer-frontend tag 中任务全部完成。
+
+============================================================
+十七、文档要求
+============================================================
+
+Phase 1 完成后需要新增或更新：
+
+1. frontend/README.md
+   内容：技术栈、安装依赖、启动命令、构建命令、环境变量、后端依赖、演示流程。
+
+2. docs/frontend-integration.md
+   如有必要，补充前端实现与 canonical API 的对应关系。
+
+3. docs/phase1-frontend-acceptance.md
+   建议新增，记录验收日期、前端构建命令、后端版本、API base URL、smoke 流程、已知限制。
+
+4. README.md
+   如项目根 README 需要，增加前端入口说明。
+
+============================================================
+十八、TaskMaster 推荐任务拆分方向
+============================================================
+
+建议解析为 10 到 12 个任务。
+
+推荐任务：
+
+1. 初始化前端工程与基础配置。
+2. 实现 API client 与类型定义。
+3. 实现路由、认证状态与全局导航。
+4. 实现登录与注册页面。
+5. 实现商品列表页。
+6. 实现商品详情与库存展示。
+7. 实现下单确认页。
+8. 实现我的订单与订单详情。
+9. 实现模拟支付与支付结果。
+10. 完善全局错误状态与体验。
+11. 联调完整购买闭环。
+12. 文档与最终验收。
+
+如果需要控制任务数量，可合并：
+
+1. 任务 10 合并到各页面任务。
+2. 任务 11 和任务 12 合并。
+3. 最终控制在 10 个左右。
+
+============================================================
+十九、TaskMaster 使用建议
+============================================================
+
+本 PRD 应作为新的独立任务树输入，不应追加到 master 或 phase0-api-polish 任务树。
+
+建议使用独立 tag：
+
+phase1-customer-frontend
+
+推荐命令：
+
+task-master add-tag phase1-customer-frontend --description="Phase 1 customer storefront frontend development"
+
+task-master use-tag phase1-customer-frontend
+
+task-master parse-prd .taskmaster/docs/phase1-customer-frontend-prd.txt --num-tasks=10
+
+task-master list
+
+task-master validate-dependencies
+
+如果本地没有全局 task-master 命令，可使用：
+
+node node_modules/task-master-ai/dist/task-master.js add-tag phase1-customer-frontend --description="Phase 1 customer storefront frontend development"
+
+node node_modules/task-master-ai/dist/task-master.js use-tag phase1-customer-frontend
+
+node node_modules/task-master-ai/dist/task-master.js parse-prd .taskmaster/docs/phase1-customer-frontend-prd.txt --num-tasks=10
+
+node node_modules/task-master-ai/dist/task-master.js list
+
+node node_modules/task-master-ai/dist/task-master.js validate-dependencies
+
+解析前建议备份：
+
+mkdir -p .taskmaster/backups
+
+cp .taskmaster/tasks/tasks.json .taskmaster/backups/tasks-before-phase1-customer-frontend.json
+
+如果存在 .taskmaster/state.json，也建议备份：
+
+cp .taskmaster/state.json .taskmaster/backups/state-before-phase1-customer-frontend.json
+
+注意：
+
+1. 不要覆盖 .taskmaster/docs/prd.txt。
+2. 不要覆盖 .taskmaster/docs/phase0-api-contract-polish-prd.txt。
+3. 不要在 master tag 上 parse-prd。
+4. 不要在 phase0-api-polish tag 上 parse-prd。
+5. 不要手动编辑 .taskmaster/state.json。
+6. 不要把 Phase 1 任务追加到后端 MVP 或 Phase 0 任务树中。
+7. 解析完成后应分别检查：
+
+   task-master list --tag=master
+   task-master list --tag=phase0-api-polish
+   task-master list --tag=phase1-customer-frontend
+
+预期结果：
+
+1. master 仍然是原后端 MVP 的 20/20 done。
+2. phase0-api-polish 仍然是 Phase 0 的完成状态。
+3. phase1-customer-frontend 中出现新的 pending tasks。
+
+============================================================
+二十、给前端实现 Agent 的边界说明
+============================================================
+
+如果由 Claude Opus 或其他 coding agent 执行本阶段，应遵守：
+
+1. 先读取本 PRD。
+2. 先读取 docs/frontend-integration.md。
+3. 先读取 docs/api-gateway-contract.md。
+4. 先读取 docs/phase0-acceptance.md。
+5. 先读取 README.md。
+6. 每次只执行一个 TaskMaster task 或 subtask。
+7. 先输出计划，再修改代码。
+8. 不新增 PRD 之外的业务功能。
+9. 可以优化 UI 美感、布局、组件结构和交互细节。
+10. 不得新增购物车、地址、优惠券、管理员后台、RBAC、真实支付。
+11. 不得直接调用微服务端口。
+12. 不得调用 /internal/**。
+13. 不得发送 X-User-Id 或 X-Username。
+14. 不得修改后端业务代码，除非当前任务明确要求并经过确认。
+15. 完成后必须运行构建或对应测试。
+16. 需要记录修改文件、运行命令、验证结果和遗留问题。
+
+============================================================
+二十一、UI 设计自由度说明
+============================================================
+
+本 PRD 只限定功能边界、接口契约、页面范围和验收标准，不锁死 UI 像素级细节。
+
+允许实现者自由优化：
+
+1. 页面布局。
+2. 商品卡片视觉。
+3. 登录页视觉。
+4. 状态标签样式。
+5. 空状态插画或图标。
+6. loading 体验。
+7. 支付成功页表现。
+8. 响应式细节。
+9. 组件封装方式。
+10. 视觉主题一致性。
+
+禁止实现者擅自新增：
+
+1. PRD 未定义的业务模块。
+2. 后端不存在的接口依赖。
+3. 管理员后台功能。
+4. 复杂营销系统。
+5. 与后端 canonical API 不一致的前端请求。
