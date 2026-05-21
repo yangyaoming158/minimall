@@ -1426,18 +1426,19 @@
   "phase1-customer-frontend": {
     "tasks": [
       {
-        "id": 1,
+        "id": "1",
         "title": "Initialize customer frontend project",
         "description": "Create the Phase 1 customer storefront frontend scaffold using Vue 3, TypeScript, Vite, Element Plus, Pinia, Vue Router, and Axios.",
         "details": "Add a dedicated frontend project with package scripts, TypeScript and Vite configuration, Element Plus setup, base application entry files, .env.example with VITE_API_BASE_URL, and README startup notes. Keep the frontend isolated from backend service modules. Do not add admin console, RBAC, cart, address, coupon, real payment, refund, or backend refactor scope.",
         "testStrategy": "Run npm install, npm run build, and any configured type-check or lint scripts from the frontend directory. Verify .env.example points to the api-gateway base URL only and no service port is hardcoded.",
-        "status": "pending",
+        "status": "done",
         "dependencies": [],
         "priority": "high",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-05-21T14:37:57.738Z"
       },
       {
-        "id": 2,
+        "id": "2",
         "title": "Implement API client and shared frontend types",
         "description": "Create a typed Axios API client and endpoint modules for users, products, inventories, orders, and payments.",
         "details": "Add src/api/http.ts plus user, product, inventory, order, and payment modules. Define ApiResponse<T>, PageResponse<T>, domain DTOs, enum string types, and normalized business error handling. The client must read VITE_API_BASE_URL, attach Authorization Bearer tokens, unwrap successful ApiResponse data, throw business errors for success=false, handle 401, 403, 429, 500, and network failures consistently, never send X-User-Id or X-Username, and never call /internal/**.",
@@ -1450,7 +1451,7 @@
         "subtasks": []
       },
       {
-        "id": 3,
+        "id": "3",
         "title": "Build routing authentication store and global layout",
         "description": "Implement Vue Router, Pinia auth state, protected route guards, token restoration, and the shared customer navigation layout.",
         "details": "Configure routes for /, /login, /register, /products, /products/:productId, /checkout, /orders, /orders/:orderNo, /payments/:orderNo, /403, and 404. Implement authStore with token, currentUser, isLoggedIn, login, register, fetchCurrentUser, and logout. Add route guards for protected checkout, orders, order detail, and payment routes, including redirect query behavior. Add the shared top navigation with login/register links for guests and my orders, username, and logout for signed-in users.",
@@ -1464,7 +1465,7 @@
         "subtasks": []
       },
       {
-        "id": 4,
+        "id": "4",
         "title": "Implement login and registration pages",
         "description": "Create the customer login and registration flows against the canonical user APIs.",
         "details": "Implement /login using POST /api/users/login and /register using POST /api/users/register. Add required form validation, loading and disabled submit states, backend message display, redirect-after-login behavior, token persistence, current user initialization through login response or GET /api/users/me, and navigation links between login and registration. 401 and business errors must not crash the page.",
@@ -1478,7 +1479,7 @@
         "subtasks": []
       },
       {
-        "id": 5,
+        "id": "5",
         "title": "Implement product listing page",
         "description": "Build the public product list page with card grid, pagination, search-ready query handling, and robust loading states.",
         "details": "Implement /products using GET /api/products through the API client. Show product name, description summary, price, status tag, and detail action in a responsive card grid. Support pagination and optional keyword or status query parameters when the backend supports them. Include loading, empty, error, and retry states. OFF_SHELF products may be shown but purchase actions must be visually weakened.",
@@ -1492,7 +1493,7 @@
         "subtasks": []
       },
       {
-        "id": 6,
+        "id": "6",
         "title": "Implement product detail and inventory display",
         "description": "Create the product detail page with inventory information and guarded immediate-order entry.",
         "details": "Implement /products/:productId using GET /api/products/{productId} and GET /api/inventories/{productId}. Display product name, description, price, product status, availableStock, lockedStock, stockState, quantity selector, and immediate order button. Disable ordering when the product is off shelf, inventory is unavailable, quantity is invalid, or stock is insufficient. Unauthenticated users clicking order must go to /login with redirect back to the current product page.",
@@ -1507,7 +1508,7 @@
         "subtasks": []
       },
       {
-        "id": 7,
+        "id": "7",
         "title": "Implement checkout and idempotent order creation",
         "description": "Build the protected checkout page that confirms product, inventory, quantity, total amount, and creates an order with an idempotency key.",
         "details": "Implement /checkout?productId=xxx&quantity=1 using product and inventory reads plus POST /api/orders. Generate one idempotencyKey when entering the checkout page, reuse it for retry after network failure or timeout, and generate a new key only when re-entering checkout. Disable duplicate submits while loading. Block order creation when product is off shelf or inventory is insufficient. On success, navigate to /orders/{orderNo}.",
@@ -1523,7 +1524,7 @@
         "subtasks": []
       },
       {
-        "id": 8,
+        "id": "8",
         "title": "Implement my orders order detail and cancellation",
         "description": "Create protected order list and order detail pages with status-aware actions and cancellation support.",
         "details": "Implement /orders with GET /api/orders/my and /orders/:orderNo with GET /api/orders/{orderNo}. Display orderNo, product summary, totalAmount, status, created time, optional expire time, and payment information where relevant. Support pagination, loading, empty, and error states. Show status tags for PENDING_PAYMENT, PAID, CANCELLED, CLOSED, and known backend values. Only PENDING_PAYMENT orders should show cancel and pay actions. Cancel must use confirmation, call the canonical cancel API, handle business conflicts, and refresh current data.",
@@ -1538,7 +1539,7 @@
         "subtasks": []
       },
       {
-        "id": 9,
+        "id": "9",
         "title": "Implement simulated payment flow",
         "description": "Build the protected simulated payment page and refresh order status after payment submission.",
         "details": "Implement /payments/:orderNo using GET /api/orders/{orderNo}, POST /api/payments/{orderNo}/pay, GET /api/payments/{orderNo}, and a post-payment order refresh. Show orderNo, amount, order status, payment status, simulated payment button, and success result. Only PENDING_PAYMENT orders should allow payment. After successful payment, display success and refresh order detail; if order status update is asynchronous, poll 3 to 5 times at 500ms to 1000ms intervals before showing a submitted-but-not-yet-refreshed message. Clearly state this is simulated payment for the demo chain.",
@@ -1553,7 +1554,7 @@
         "subtasks": []
       },
       {
-        "id": 10,
+        "id": "10",
         "title": "Finalize global UX verification and frontend documentation",
         "description": "Polish cross-page error states, responsive behavior, acceptance documentation, and the full customer purchase smoke flow.",
         "details": "Ensure every API page has loading, empty, error, success, disabled, submitting, and unauthorized behavior. Add or update frontend/README.md, docs/frontend-integration.md if needed, docs/phase1-frontend-acceptance.md, and root README frontend entry notes as appropriate. Verify all browser traffic uses VITE_API_BASE_URL through api-gateway and never direct service ports, /internal/**, X-User-Id, or X-Username. Run the full flow: products, detail, register, login, checkout, order detail, simulated payment, PAID verification, my orders, logout, and protected-route redirect.",
@@ -1573,15 +1574,12 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-21T13:01:21.000Z",
+      "lastModified": "2026-05-21T14:37:57.738Z",
       "taskCount": 10,
-      "completedCount": 0,
+      "completedCount": 1,
       "tags": [
         "phase1-customer-frontend"
-      ],
-      "created": "2026-05-21T12:45:56.860Z",
-      "updated": "2026-05-21T13:01:21.000Z",
-      "description": "Phase 1 customer storefront frontend development"
+      ]
     }
   }
 }
