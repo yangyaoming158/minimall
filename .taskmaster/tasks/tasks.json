@@ -1398,7 +1398,7 @@
         "description": "Run required verification for the canonical API polish and record the Phase 0 acceptance outcome.",
         "details": "Run focused gateway and contract tests, then mvn test, mvn clean package -DskipTests, docker compose config checks, and canonical E2E smoke when runtime is available. Create docs/phase0-acceptance.md with commands, results, legacy strategy, remaining risks, and follow-up items for Phase 1 frontend and Phase 2 admin. Verification: all Phase 0 acceptance criteria are recorded and TaskMaster phase0-api-polish tasks can be marked done only after checks pass.",
         "testStrategy": "",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           "3",
           "4",
@@ -1406,20 +1406,21 @@
           "7"
         ],
         "priority": "high",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-05-21T12:05:23.300Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-21T11:39:14.555Z",
+      "lastModified": "2026-05-21T12:05:23.303Z",
       "taskCount": 8,
-      "completedCount": 7,
+      "completedCount": 8,
       "tags": [
         "phase0-api-polish"
       ],
-      "created": "2026-05-21T11:39:26.936Z",
+      "created": "2026-05-21T12:05:30.560Z",
       "description": "Tasks for phase0-api-polish context",
-      "updated": "2026-05-21T11:39:26.936Z"
+      "updated": "2026-05-21T12:05:30.560Z"
     }
   }
 }
