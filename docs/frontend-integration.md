@@ -415,5 +415,5 @@ Before a frontend PR claims backend readiness, verify:
     `data` from the `ApiResponse` envelope.
 
 The k6 gateway script in `pressure/mini-mall-gateway.js` is the backend-side
-smoke target for this contract. Phase 0 Task 7 updates its executable defaults
-to the canonical paths listed here.
+smoke target for this contract and uses the canonical paths listed here by
+default.

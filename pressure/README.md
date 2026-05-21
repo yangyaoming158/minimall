@@ -24,8 +24,7 @@ so the script does not call a callback path.
 
 The pressure flow targets canonical frontend-facing gateway paths. Gateway route
 handling preserves these paths when forwarding to downstream `/api/**`
-controllers. Task 7 owns the JavaScript script default path update; this
-document records the target contract the script must use.
+controllers. The JavaScript defaults use the same canonical paths listed here.
 
 | Flow | Canonical gateway path |
 | --- | --- |
@@ -108,9 +107,9 @@ failures such as `40400` or order-state conflict codes.
 
 ## Path Overrides
 
-Task 7 updates the executable defaults to follow the current gateway contract.
-Until that script update is complete, these overrides can point a run at the
-canonical paths listed above:
+The defaults follow the current gateway contract. Override these only when the
+gateway contract changes or when intentionally comparing a different deployed
+environment:
 
 - `LOGIN_PATH`
 - `ME_PATH`

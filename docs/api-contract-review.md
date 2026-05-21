@@ -74,11 +74,16 @@ See `docs/api-gateway-contract.md` for the stable gateway contract.
 | --- | --- |
 | API contract documentation | Frontend, gateway, README, deployment, architecture, acceptance summary, and pressure documentation now recommend canonical gateway paths only. Documentation records that legacy service-prefix routes were removed, `/internal/**` remains non-browser, tokens use `Authorization: Bearer <jwt>`, product write APIs are not customer/admin-safe, and real admin APIs require future RBAC. |
 
+## Resolved in Phase 0 Task 7
+
+| Area | Result |
+| --- | --- |
+| Browser-like pressure script paths | `pressure/mini-mall-gateway.js` now defaults to canonical gateway paths for login, current user, product, inventory, order, cancel, payment, and payment detail flows. Script documentation matches those executable defaults. |
+
 ## Remaining issues
 
 | Priority | Issue | Recommended follow-up |
 | --- | --- | --- |
-| P1 | Browser-like smoke and k6 script defaults still need canonical gateway paths. | Complete Task 7 so executable scripts use the same canonical path contract documented here. |
 | P2 | Real admin APIs still need RBAC, administrator identity, permissions, and audit policy. | Define Phase 2 admin PRD before exposing `/api/admin/**` endpoints to an admin UI. |
 
 ## Current DTO exposure rule

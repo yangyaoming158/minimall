@@ -1383,13 +1383,14 @@
         "description": "Move browser-like E2E smoke and k6 pressure paths to canonical gateway APIs.",
         "details": "Update pressure/mini-mall-gateway.js and related script documentation so all user, product, inventory, order, and payment calls go through api-gateway canonical paths. Do not call service ports or /internal paths. Verification: smoke run exercises register or login, product, inventory, order, cancel or pay flow, and pressure criteria remain 0 HTTP failures, 0 ApiResponse contract failures, and 0 negative inventory observations.",
         "testStrategy": "",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           "2",
           "6"
         ],
         "priority": "medium",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-05-21T11:39:14.550Z"
       },
       {
         "id": 8,
@@ -1410,15 +1411,15 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-20T12:03:59.809Z",
+      "lastModified": "2026-05-21T11:39:14.555Z",
       "taskCount": 8,
-      "completedCount": 6,
+      "completedCount": 7,
       "tags": [
         "phase0-api-polish"
       ],
-      "created": "2026-05-20T12:04:12.140Z",
+      "created": "2026-05-21T11:39:26.936Z",
       "description": "Tasks for phase0-api-polish context",
-      "updated": "2026-05-20T12:04:12.140Z"
+      "updated": "2026-05-21T11:39:26.936Z"
     }
   }
 }
