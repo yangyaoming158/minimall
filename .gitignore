@@ -3,6 +3,7 @@ node_modules/
 npm-debug.log*
 .taskmaster/reports/*.json
 target/
+.claude/settings.local.json
 
 # Windows download metadata copied into WSL.
 *:Zone.Identifier
