@@ -1487,13 +1487,14 @@
         "description": "Build the public product list page with card grid, pagination, search-ready query handling, and robust loading states.",
         "details": "Implement /products using GET /api/products through the API client. Show product name, description summary, price, status tag, and detail action in a responsive card grid. Support pagination and optional keyword or status query parameters when the backend supports them. Include loading, empty, error, and retry states. OFF_SHELF products may be shown but purchase actions must be visually weakened.",
         "testStrategy": "Run build and browser smoke for loading product data, empty product list, API error display, pagination changes, status tag rendering for ON_SHELF and OFF_SHELF, and navigation from a card or detail button to /products/:productId.",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           "2",
           "3"
         ],
         "priority": "high",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-05-22T13:35:54.437Z"
       },
       {
         "id": "6",
@@ -1577,9 +1578,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-22T13:07:26.444Z",
+      "lastModified": "2026-05-22T13:35:54.437Z",
       "taskCount": 10,
-      "completedCount": 4,
+      "completedCount": 5,
       "tags": [
         "phase1-customer-frontend"
       ]
