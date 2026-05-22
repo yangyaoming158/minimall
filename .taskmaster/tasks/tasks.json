@@ -1443,12 +1443,13 @@
         "description": "Create a typed Axios API client and endpoint modules for users, products, inventories, orders, and payments.",
         "details": "Add src/api/http.ts plus user, product, inventory, order, and payment modules. Define ApiResponse<T>, PageResponse<T>, domain DTOs, enum string types, and normalized business error handling. The client must read VITE_API_BASE_URL, attach Authorization Bearer tokens, unwrap successful ApiResponse data, throw business errors for success=false, handle 401, 403, 429, 500, and network failures consistently, never send X-User-Id or X-Username, and never call /internal/**.",
         "testStrategy": "Add focused API client tests if the frontend test stack is configured, or manually verify success ApiResponse unwrap, success=false message propagation, 401 token cleanup behavior, 429 message handling, Authorization header injection, and absence of X-User-Id, X-Username, /internal, and direct service-port URLs.",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           "1"
         ],
         "priority": "high",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-05-22T09:52:39.355Z"
       },
       {
         "id": "3",
@@ -1574,9 +1575,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-21T14:37:57.738Z",
+      "lastModified": "2026-05-22T09:52:39.356Z",
       "taskCount": 10,
-      "completedCount": 1,
+      "completedCount": 2,
       "tags": [
         "phase1-customer-frontend"
       ]
