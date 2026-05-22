@@ -112,6 +112,47 @@ class GatewayAuthenticationFilterTest {
     }
 
     @Test
+    void publicProductListBypassesJwtAndStripsSpoofedHeaders() {
+        webTestClient.get()
+                .uri("/api/products")
+                .header(AuthHeaders.USER_ID, "999")
+                .header(AuthHeaders.USERNAME, "mallory")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.userId").isEqualTo("")
+                .jsonPath("$.username").isEqualTo("");
+    }
+
+    @Test
+    void publicProductDetailBypassesJwt() {
+        webTestClient.get()
+                .uri("/api/products/SKU-1")
+                .exchange()
+                .expectStatus().isOk();
+    }
+
+    @Test
+    void publicInventoryReadBypassesJwt() {
+        webTestClient.get()
+                .uri("/api/inventories/SKU-1")
+                .exchange()
+                .expectStatus().isOk();
+    }
+
+    @Test
+    void productMutationStillRequiresJwt() {
+        webTestClient.post()
+                .uri("/api/products")
+                .exchange()
+                .expectStatus().isUnauthorized()
+                .expectBody()
+                .jsonPath("$.success").isEqualTo(false)
+                .jsonPath("$.code").isEqualTo(ErrorCode.UNAUTHORIZED.getCode())
+                .jsonPath("$.message").isEqualTo("Missing token");
+    }
+
+    @Test
     void optionsRequestBypassesJwt() {
         webTestClient.options()
                 .uri("/api/orders/my")

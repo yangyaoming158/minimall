@@ -65,16 +65,16 @@ class GatewayIntegrationRegressionTest {
         String token = jwtUtils.generateToken(42L, "alice");
 
         expectPublicUserRoutes();
-        expectProtectedRoute("/api/products", "product", token);
-        expectProtectedRoute("/api/inventories/SKU-1", "inventory", token);
+        expectPublicCatalogRead("/api/products", "product");
+        expectPublicCatalogRead("/api/inventories/SKU-1", "inventory");
         expectProtectedRoute("/api/orders/my", "order", token);
         expectProtectedRoute("/api/payments/ORDER-1", "payment", token);
 
         assertThat(rateLimiter.keys()).containsExactly(
                 "ip:unknown",
                 "ip:unknown",
-                "user:42",
-                "user:42",
+                "ip:unknown",
+                "ip:unknown",
                 "user:42",
                 "user:42");
     }
@@ -176,6 +176,21 @@ class GatewayIntegrationRegressionTest {
                 .expectStatus().isOk()
                 .expectBody()
                 .jsonPath("$.service").isEqualTo("user")
+                .jsonPath("$.userId").isEqualTo("")
+                .jsonPath("$.username").isEqualTo("");
+    }
+
+    // Catalog reads are public (PRD 4.1): they route through without a token and
+    // any spoofed trusted-user headers must be stripped, like the user routes.
+    private void expectPublicCatalogRead(String uri, String expectedService) {
+        webTestClient.get()
+                .uri(uri)
+                .header(AuthHeaders.USER_ID, "999")
+                .header(AuthHeaders.USERNAME, "mallory")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.service").isEqualTo(expectedService)
                 .jsonPath("$.userId").isEqualTo("")
                 .jsonPath("$.username").isEqualTo("");
     }

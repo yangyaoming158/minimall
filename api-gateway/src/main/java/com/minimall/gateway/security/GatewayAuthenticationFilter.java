@@ -23,6 +23,9 @@ public class GatewayAuthenticationFilter implements GlobalFilter, Ordered {
     private static final String BEARER_PREFIX = "Bearer ";
     private static final String USER_LOGIN_PATH = "/api/users/login";
     private static final String USER_REGISTER_PATH = "/api/users/register";
+    private static final String PRODUCTS_PATH = "/api/products";
+    private static final String PRODUCTS_PATH_PREFIX = "/api/products/";
+    private static final String INVENTORIES_PATH_PREFIX = "/api/inventories/";
 
     private final JwtUtils jwtUtils;
     private final GatewayErrorResponseWriter errorResponseWriter;
@@ -88,7 +91,24 @@ public class GatewayAuthenticationFilter implements GlobalFilter, Ordered {
             return true;
         }
 
-        return USER_LOGIN_PATH.equals(path) || USER_REGISTER_PATH.equals(path);
+        if (USER_LOGIN_PATH.equals(path) || USER_REGISTER_PATH.equals(path)) {
+            return true;
+        }
+
+        return isPublicCatalogRead(request, path);
+    }
+
+    // Guests may browse the product catalog and check stock without a token
+    // (Phase 1 PRD 4.1). Only GET reads are public; product mutations
+    // (create/update/on-shelf/off-shelf) and all inventory writes still require
+    // authentication because they are not GET requests.
+    private boolean isPublicCatalogRead(ServerHttpRequest request, String path) {
+        if (!HttpMethod.GET.equals(request.getMethod())) {
+            return false;
+        }
+        return PRODUCTS_PATH.equals(path)
+                || path.startsWith(PRODUCTS_PATH_PREFIX)
+                || path.startsWith(INVENTORIES_PATH_PREFIX);
     }
 
     private HttpStatus statusFor(ErrorCode errorCode) {
