@@ -1457,13 +1457,14 @@
         "description": "Implement Vue Router, Pinia auth state, protected route guards, token restoration, and the shared customer navigation layout.",
         "details": "Configure routes for /, /login, /register, /products, /products/:productId, /checkout, /orders, /orders/:orderNo, /payments/:orderNo, /403, and 404. Implement authStore with token, currentUser, isLoggedIn, login, register, fetchCurrentUser, and logout. Add route guards for protected checkout, orders, order detail, and payment routes, including redirect query behavior. Add the shared top navigation with login/register links for guests and my orders, username, and logout for signed-in users.",
         "testStrategy": "Run frontend build and route smoke checks. Verify / redirects to /products, protected routes redirect unauthenticated users to /login?redirect=..., signed-in users are redirected away from /login and /register, logout clears localStorage and auth state, and route highlight/navigation state is correct.",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           "1",
           "2"
         ],
         "priority": "high",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-05-22T10:28:39.826Z"
       },
       {
         "id": "4",
@@ -1575,9 +1576,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-22T09:52:39.356Z",
+      "lastModified": "2026-05-22T10:28:39.826Z",
       "taskCount": 10,
-      "completedCount": 2,
+      "completedCount": 3,
       "tags": [
         "phase1-customer-frontend"
       ]
