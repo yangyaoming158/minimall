@@ -1472,13 +1472,14 @@
         "description": "Create the customer login and registration flows against the canonical user APIs.",
         "details": "Implement /login using POST /api/users/login and /register using POST /api/users/register. Add required form validation, loading and disabled submit states, backend message display, redirect-after-login behavior, token persistence, current user initialization through login response or GET /api/users/me, and navigation links between login and registration. 401 and business errors must not crash the page.",
         "testStrategy": "Run build and browser smoke for successful registration, failed registration message display, successful login, failed login message display, redirect query handling, token persistence after refresh, and auth state cleanup on invalid token.",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           "2",
           "3"
         ],
         "priority": "high",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-05-22T13:07:26.444Z"
       },
       {
         "id": "5",
@@ -1576,9 +1577,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-22T10:28:39.826Z",
+      "lastModified": "2026-05-22T13:07:26.444Z",
       "taskCount": 10,
-      "completedCount": 3,
+      "completedCount": 4,
       "tags": [
         "phase1-customer-frontend"
       ]
