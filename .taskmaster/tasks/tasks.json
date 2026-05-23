@@ -1548,7 +1548,7 @@
         "description": "Build the protected simulated payment page and refresh order status after payment submission.",
         "details": "Implement /payments/:orderNo using GET /api/orders/{orderNo}, POST /api/payments/{orderNo}/pay, GET /api/payments/{orderNo}, and a post-payment order refresh. Show orderNo, amount, order status, payment status, simulated payment button, and success result. Only PENDING_PAYMENT orders should allow payment. After successful payment, display success and refresh order detail; if order status update is asynchronous, poll 3 to 5 times at 500ms to 1000ms intervals before showing a submitted-but-not-yet-refreshed message. Clearly state this is simulated payment for the demo chain.",
         "testStrategy": "Run build and browser smoke for protected route redirect, pending-payment button visibility, disabled button for non-payable statuses, successful payment result, payment detail refresh, order status reaching PAID, async polling fallback message, and backend business error message display.",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           "2",
           "3",
@@ -1580,11 +1580,11 @@
       "version": "1.0.0",
       "lastModified": "2026-05-22T13:35:54.437Z",
       "taskCount": 10,
-      "completedCount": 8,
+      "completedCount": 9,
       "tags": [
         "phase1-customer-frontend"
       ],
-      "updated": "2026-05-23T08:47:36.920Z"
+      "updated": "2026-05-23T09:07:49.476Z"
     }
   }
 }
