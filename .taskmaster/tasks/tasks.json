@@ -1533,7 +1533,7 @@
         "description": "Create protected order list and order detail pages with status-aware actions and cancellation support.",
         "details": "Implement /orders with GET /api/orders/my and /orders/:orderNo with GET /api/orders/{orderNo}. Display orderNo, product summary, totalAmount, status, created time, optional expire time, and payment information where relevant. Support pagination, loading, empty, and error states. Show status tags for PENDING_PAYMENT, PAID, CANCELLED, CLOSED, and known backend values. Only PENDING_PAYMENT orders should show cancel and pay actions. Cancel must use confirmation, call the canonical cancel API, handle business conflicts, and refresh current data.",
         "testStrategy": "Run build and browser smoke for unauthenticated redirect, order list pagination, empty list, detail success, 403 or not-found message display, status tag rendering, pay navigation, cancel confirmation, cancel success refresh, and cancel conflict message plus refresh.",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           "2",
           "3",
@@ -1580,11 +1580,11 @@
       "version": "1.0.0",
       "lastModified": "2026-05-22T13:35:54.437Z",
       "taskCount": 10,
-      "completedCount": 7,
+      "completedCount": 8,
       "tags": [
         "phase1-customer-frontend"
       ],
-      "updated": "2026-05-23T08:06:13.859Z"
+      "updated": "2026-05-23T08:47:36.920Z"
     }
   }
 }
