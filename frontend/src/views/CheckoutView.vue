@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getProduct } from '@/api/product'
 import { getInventory } from '@/api/inventory'
@@ -23,9 +23,16 @@ const submitting = ref(false)
 const submitError = ref<string | null>(null)
 
 // Generated once when entering the page and reused for every retry of the
-// same checkout attempt. Re-entering /checkout creates a new component
-// instance and therefore a new key (per Task 7 contract).
+// same checkout attempt. Re-entering /checkout OR changing the productId /
+// quantity query creates a fresh attempt and therefore a fresh key. Retries
+// of a failed submit, however, MUST reuse the same key.
 const idempotencyKey = ref<string>('')
+
+// Monotonic counter that "owns" the currently-active load attempt. Every
+// async function captures the value at entry and re-checks it after each
+// await; a mismatch means the query string changed (or the component
+// unmounted) and any pending writes must be dropped.
+let activeRunId = 0
 
 const productIdParam = computed(() => {
   const v = route.query.productId
@@ -51,12 +58,24 @@ function generateKey(): string {
   return `${Date.now().toString(16)}-${Math.random().toString(16).slice(2)}-${Math.random().toString(16).slice(2)}`
 }
 
-async function loadProduct(): Promise<void> {
+function resetForNewRun(): void {
+  product.value = null
+  inventory.value = null
+  productError.value = null
+  inventoryError.value = null
+  submitError.value = null
+  submitting.value = false
+}
+
+async function loadProduct(myRun: number): Promise<void> {
   if (!productIdParam.value) return
   productError.value = null
   try {
-    product.value = await getProduct(productIdParam.value)
+    const p = await getProduct(productIdParam.value)
+    if (myRun !== activeRunId) return
+    product.value = p
   } catch (err) {
+    if (myRun !== activeRunId) return
     product.value = null
     if (err instanceof ApiError && (err.httpStatus === 404 || err.code === '40400')) {
       productError.value = { kind: 'not-found', message: '商品不存在或已被移除' }
@@ -69,24 +88,33 @@ async function loadProduct(): Promise<void> {
   }
 }
 
-async function loadInventory(): Promise<void> {
+async function loadInventory(myRun?: number): Promise<void> {
   if (!productIdParam.value) return
+  const run = myRun ?? activeRunId
   inventoryError.value = null
   inventoryLoading.value = true
   try {
-    inventory.value = await getInventory(productIdParam.value)
+    const inv = await getInventory(productIdParam.value)
+    if (run !== activeRunId) return
+    inventory.value = inv
   } catch (err) {
+    if (run !== activeRunId) return
     inventory.value = null
     inventoryError.value = err instanceof Error ? err.message : '加载库存失败'
   } finally {
-    inventoryLoading.value = false
+    if (run === activeRunId) {
+      inventoryLoading.value = false
+    }
   }
 }
 
 async function loadAll(): Promise<void> {
   if (!paramsValid.value) return
+  activeRunId += 1
+  const myRun = activeRunId
   loading.value = true
-  await Promise.allSettled([loadProduct(), loadInventory()])
+  await Promise.allSettled([loadProduct(myRun), loadInventory(myRun)])
+  if (myRun !== activeRunId) return
   loading.value = false
 }
 
@@ -94,6 +122,33 @@ onMounted(() => {
   idempotencyKey.value = generateKey()
   loadAll()
 })
+
+// Bumping activeRunId on unmount makes every in-flight await bail before
+// writing to a torn-down component.
+onBeforeUnmount(() => {
+  activeRunId += 1
+})
+
+// Same-component navigation: /checkout?productId=A -> /checkout?productId=B
+// reuses the instance. Reset state, regenerate the idempotency key (a fresh
+// product/quantity is a fresh attempt), and trigger a new load. Invalid new
+// params skip the load entirely; the template's paramsValid branch renders
+// the "参数无效" el-result.
+watch(
+  [productIdParam, quantityParam],
+  ([nextPid, nextQty], [prevPid, prevQty]) => {
+    if (nextPid === prevPid && nextQty === prevQty) return
+    // Bump runId immediately so any prev-run in-flight requests bail.
+    activeRunId += 1
+    resetForNewRun()
+    idempotencyKey.value = generateKey()
+    if (paramsValid.value) {
+      loadAll()
+    } else {
+      loading.value = false
+    }
+  },
+)
 
 const isOffShelf = computed(() => product.value?.status === 'OFF_SHELF')
 
@@ -142,6 +197,11 @@ const disabledHint = computed(() => {
 async function onSubmit(): Promise<void> {
   if (!canSubmit.value || !product.value || quantityParam.value === null) return
 
+  // Guard against stale data: if a query change is in flight and product.value
+  // still holds the old SKU, refuse to submit. The watcher will reload shortly.
+  if (product.value.productId !== productIdParam.value) return
+
+  const myRun = activeRunId
   submitting.value = true
   submitError.value = null
 
@@ -151,10 +211,12 @@ async function onSubmit(): Promise<void> {
       quantity: quantityParam.value,
       idempotencyKey: idempotencyKey.value,
     })
+    if (myRun !== activeRunId) return
     // replace (not push) so the back button does not return to this page
     // and risk a stale double-submit.
     router.replace({ name: 'order-detail', params: { orderNo: res.orderNo } })
   } catch (err) {
+    if (myRun !== activeRunId) return
     submitError.value = err instanceof Error ? err.message : '订单创建失败'
     submitting.value = false
     // idempotencyKey is intentionally NOT regenerated - retry must reuse it.
@@ -255,7 +317,7 @@ function goProductList(): void {
             class="retry-btn"
             size="small"
             :loading="inventoryLoading"
-            @click="loadInventory"
+            @click="loadInventory()"
           >
             重试加载库存
           </el-button>

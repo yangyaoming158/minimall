@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getOrder } from '@/api/order'
@@ -35,12 +35,16 @@ const submitError = ref<string | null>(null)
 const order = ref<Order | null>(null)
 const payment = ref<Payment | null>(null)
 
-// Generated once on entry; reused across retries until the user navigates
-// away and the component unmounts (consistent with checkout's contract).
+// Reused for every retry of the same in-page attempt; reset only when the
+// component remounts OR when route param orderNo changes (see watch below).
 const idempotencyKey = ref('')
 
-// Component lifetime cancellation flag for the polling loop.
-let cancelled = false
+// Monotonic counter that "owns" the currently-active load attempt. Every
+// async function captures the value at entry and re-checks it after each
+// await; a mismatch means the user navigated to a new orderNo (or the
+// component unmounted) and any pending writes must be dropped to avoid
+// clobbering the new run's state.
+let activeRunId = 0
 
 function generateKey(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -53,18 +57,31 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-async function loadInitial(): Promise<void> {
-  state.value = 'loading'
+function resetForNewRun(): void {
+  order.value = null
+  payment.value = null
+  submitError.value = null
   errorMessage.value = ''
+  state.value = 'loading'
+}
+
+async function loadInitial(): Promise<void> {
+  activeRunId += 1
+  const myRun = activeRunId
+  resetForNewRun()
   try {
     const o = await getOrder(orderNo.value)
+    if (myRun !== activeRunId) return
     order.value = o
     if (o.status === 'PAID') {
       // Backend may or may not have a payment row yet visible to GET; tolerate
       // a missing payment record so the page still renders.
       try {
-        payment.value = await getPayment(orderNo.value)
+        const p = await getPayment(orderNo.value)
+        if (myRun !== activeRunId) return
+        payment.value = p
       } catch {
+        if (myRun !== activeRunId) return
         payment.value = null
       }
       state.value = 'already-paid'
@@ -74,6 +91,7 @@ async function loadInitial(): Promise<void> {
       state.value = 'not-payable'
     }
   } catch (err) {
+    if (myRun !== activeRunId) return
     order.value = null
     if (
       err instanceof ApiError &&
@@ -93,19 +111,37 @@ onMounted(() => {
   loadInitial()
 })
 
+// Bumping activeRunId in onBeforeUnmount guarantees that any in-flight await
+// resolving after teardown finds (myRun !== activeRunId) and bails before
+// writing to a torn-down component.
 onBeforeUnmount(() => {
-  cancelled = true
+  activeRunId += 1
 })
+
+// Same-component navigation: /payments/A -> /payments/B reuses the instance.
+// Reset everything (order, payment, errors, state, idempotencyKey) and start
+// a fresh load for the new orderNo. Bumping activeRunId implicitly happens
+// inside loadInitial, which invalidates any A-run that's still awaiting.
+watch(
+  () => orderNo.value,
+  (next, prev) => {
+    if (next && next !== prev) {
+      idempotencyKey.value = generateKey()
+      loadInitial()
+    }
+  },
+)
 
 // After the /pay POST returns SUCCESS, the order-service still has to consume
 // the RabbitMQ PaymentSuccessEvent before the order flips to PAID. Poll a few
 // times so the user sees the final state in the same flow.
-async function pollOrderUntilPaid(): Promise<boolean> {
+async function pollOrderUntilPaid(myRun: number): Promise<boolean> {
   for (let i = 0; i < POLL_ATTEMPTS; i += 1) {
     await sleep(POLL_INTERVAL_MS)
-    if (cancelled) return false
+    if (myRun !== activeRunId) return false
     try {
       const o = await getOrder(orderNo.value)
+      if (myRun !== activeRunId) return false
       order.value = o
       if (o.status === 'PAID') {
         return true
@@ -118,10 +154,13 @@ async function pollOrderUntilPaid(): Promise<boolean> {
   return false
 }
 
-async function refreshPaymentReceipt(): Promise<void> {
+async function refreshPaymentReceipt(myRun: number): Promise<void> {
   try {
-    payment.value = await getPayment(orderNo.value)
+    const p = await getPayment(orderNo.value)
+    if (myRun !== activeRunId) return
+    payment.value = p
   } catch {
+    if (myRun !== activeRunId) return
     payment.value = null
   }
 }
@@ -129,6 +168,7 @@ async function refreshPaymentReceipt(): Promise<void> {
 async function onSubmit(): Promise<void> {
   if (state.value !== 'ready' || !order.value) return
 
+  const myRun = activeRunId
   state.value = 'submitting'
   submitError.value = null
 
@@ -138,6 +178,7 @@ async function onSubmit(): Promise<void> {
       idempotencyKey: idempotencyKey.value,
     })
   } catch (err) {
+    if (myRun !== activeRunId) return
     // PAYMENT_ALREADY_SUCCESS: another tab/process paid this order while we
     // were on the page. Re-read order + payment and present the already-paid
     // view instead of leaving the user stuck with a stale error.
@@ -151,12 +192,15 @@ async function onSubmit(): Promise<void> {
     return
   }
 
+  if (myRun !== activeRunId) return
+
   // Pay accepted. Now wait for order-service to consume the async event.
-  const paid = await pollOrderUntilPaid()
-  if (cancelled) return
+  const paid = await pollOrderUntilPaid(myRun)
+  if (myRun !== activeRunId) return
 
   if (paid) {
-    await refreshPaymentReceipt()
+    await refreshPaymentReceipt(myRun)
+    if (myRun !== activeRunId) return
     state.value = 'success'
   } else {
     state.value = 'success-pending'
@@ -165,11 +209,13 @@ async function onSubmit(): Promise<void> {
 
 async function onManualRefresh(): Promise<void> {
   if (state.value !== 'success-pending') return
+  const myRun = activeRunId
   state.value = 'submitting'
-  const paid = await pollOrderUntilPaid()
-  if (cancelled) return
+  const paid = await pollOrderUntilPaid(myRun)
+  if (myRun !== activeRunId) return
   if (paid) {
-    await refreshPaymentReceipt()
+    await refreshPaymentReceipt(myRun)
+    if (myRun !== activeRunId) return
     state.value = 'success'
   } else {
     state.value = 'success-pending'
