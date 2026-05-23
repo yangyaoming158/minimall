@@ -1502,7 +1502,7 @@
         "description": "Create the product detail page with inventory information and guarded immediate-order entry.",
         "details": "Implement /products/:productId using GET /api/products/{productId} and GET /api/inventories/{productId}. Display product name, description, price, product status, availableStock, lockedStock, stockState, quantity selector, and immediate order button. Disable ordering when the product is off shelf, inventory is unavailable, quantity is invalid, or stock is insufficient. Unauthenticated users clicking order must go to /login with redirect back to the current product page.",
         "testStrategy": "Run build and browser smoke for product detail success, missing product error state, inventory load failure, disabled order states, quantity lower and upper bounds, unauthenticated order redirect, and authenticated transition to /checkout?productId=...&quantity=....",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           "2",
           "3",
@@ -1580,10 +1580,11 @@
       "version": "1.0.0",
       "lastModified": "2026-05-22T13:35:54.437Z",
       "taskCount": 10,
-      "completedCount": 5,
+      "completedCount": 6,
       "tags": [
         "phase1-customer-frontend"
-      ]
+      ],
+      "updated": "2026-05-23T07:14:37.166Z"
     }
   }
 }
