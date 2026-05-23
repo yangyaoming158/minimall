@@ -94,6 +94,8 @@ Legacy service-prefix aliases are not frontend contracts.
 - `docs/local-infrastructure.md`: Docker Compose dependency services and local command reference.
 - `docs/api-gateway-contract.md`: stable gateway routes, authentication, CORS, and rate limiting contract.
 - `docs/frontend-integration.md`: frontend-ready API usage guide and response envelope rules.
+- `frontend/README.md`: customer frontend dev quickstart, routes, idempotency, and mock-payment notes.
+- `docs/phase1-frontend-acceptance.md`: Phase 1 customer-frontend scope, state matrix, security audit, and E2E smoke checklist.
 - `docs/sql/README.md`: schema migration layout and required table/constraint baseline.
 - `docs/messaging/payment-success-event.md`: RabbitMQ payment success event topology and payload.
 - `docs/observability.md`: Prometheus and Grafana provisioning and checks.

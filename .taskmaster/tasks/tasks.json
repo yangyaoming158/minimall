@@ -1563,7 +1563,7 @@
         "description": "Polish cross-page error states, responsive behavior, acceptance documentation, and the full customer purchase smoke flow.",
         "details": "Ensure every API page has loading, empty, error, success, disabled, submitting, and unauthorized behavior. Add or update frontend/README.md, docs/frontend-integration.md if needed, docs/phase1-frontend-acceptance.md, and root README frontend entry notes as appropriate. Verify all browser traffic uses VITE_API_BASE_URL through api-gateway and never direct service ports, /internal/**, X-User-Id, or X-Username. Run the full flow: products, detail, register, login, checkout, order detail, simulated payment, PAID verification, my orders, logout, and protected-route redirect.",
         "testStrategy": "Run npm run build, npm run type-check if configured, npm run lint if configured, and final browser smoke against api-gateway. Record commands, API base URL, backend version or commit, smoke results, known limits, and confirmation that admin, RBAC, cart, address, coupon, real payment, refund, and backend refactor scope were not introduced.",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           "4",
           "5",
@@ -1578,13 +1578,13 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-22T13:35:54.437Z",
+      "lastModified": "2026-05-23T12:27:27.858Z",
       "taskCount": 10,
-      "completedCount": 9,
+      "completedCount": 10,
       "tags": [
         "phase1-customer-frontend"
       ],
-      "updated": "2026-05-23T09:07:49.476Z"
+      "updated": "2026-05-23T12:27:27.858Z"
     }
   }
 }

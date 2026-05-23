@@ -37,6 +37,7 @@ async function load(): Promise<void> {
     const res = await listMyOrders({
       page: currentPage.value - 1,
       size: PAGE_SIZE,
+      sort: 'createdAt,desc',
     })
     orders.value = res.content
     totalElements.value = res.totalElements
