@@ -1449,3 +1449,88 @@ Append one entry per implementation task so future sessions can recover project 
   9. `prefers-reduced-motion` enabled at OS level → stepper current dot is solid terracotta without pulse animation.
 - Issues: None observed. Pattern lesson from B3 (`size="full"` for CSS-sized covers) applied correctly first-pass on the 72px item cover wrapper.
 - Next: B6 — Payment page rewrite. Per redesign spec §5.9: 480px narrow container, OrderStepper at top (reusing the new component), neutral Notice "Demo payment · 模拟链路", AmountDisplay (caption + 56/700 number with mount-tween 0→amount over 420ms), single-method payment card with "Mock" badge, CTA "确认支付 ¥X" with loading dots, success state with terracotta check + receipt block + dual CTA. Plus three secondary terminal states: success-pending, already-paid, not-payable. Existing PaymentView state machine + polling + run-id tracking + idempotency-key contract must be preserved verbatim — only the chrome changes.
+
+## 2026-05-24 · B6 — Payment page rewrite
+
+- Date: 2026-05-24
+- Status: implementation complete; visual smoke pending user verification; PaymentView 4-spec contract preserved (33/33 vitest)
+- Branch: feature/phase1-customer-frontend
+- Scope: B6 — Replace PaymentView's Element Plus shell (el-alert / el-result / el-tag / el-button / el-divider / el-icon / v-loading) with Phase A vocabulary while preserving the full state machine + polling + run-id tracking + idempotency-key contract byte-identical. Largest page in the project (state machine has 9 ViewState branches; renders 4 distinct terminal screens). Single source file change; api/order.ts, api/payment.ts, types/, router, store untouched.
+- Implemented:
+  - **Top chrome** (rendered for every non-error/non-loading state):
+    - Breadcrumb text Button "← 订单详情 · {full orderNo}" → goOrderDetail. Uses the full orderNo (not last-8 like B5) because `PaymentView.spec.ts` tests assert `wrapper.text()` contains the orderNo verbatim (e.g., 'ORDER-A'). Indented -4px to compensate for text-button padding.
+    - `<OrderStepper :status :closed-at :updated-at>` — reuses the B5 component. For PENDING_PAYMENT shows step 2 (已支付) as terracotta-pulsing current; for PAID shows all three steps finished; for CANCELLED/CLOSED/REFUNDED shows the terminal pill.
+    - `<Notice tone="neutral">` thin chip: "Demo payment · 模拟链路，不会发生真实扣款". Uses canvas-darker background; no title, body slot only.
+  - **AmountDisplay block** (ready/submitting state, margin-top 24, centered):
+    - 24px terracotta dot at top (decorative).
+    - Caption "应付金额" — 12/500 ink-500 with `text-transform: uppercase` + 0.1em letter-spacing. (CJK glyphs don't actually uppercase, but the letter-spacing gives the typographic gesture the spec describes.)
+    - 56/700 amount using `--font-display` / `--t-amount-display-size` / `--t-amount-display-weight` tokens, ink-900, tabular-nums, -0.01em tracking.
+    - Tween: on entering `ready` state, RAF-driven ease-out cubic 0 → totalAmount over 420ms (`--dur-3` equivalent). `prefers-reduced-motion: reduce` snaps to final value instantly. Tween cancelled on unmount via `cancelTween()` called from `onBeforeUnmount`. Skipped for `already-paid` (per spec: "no animation, since not fresh") — `displayAmount` set directly to total on the watcher.
+  - **Method card** (ready/submitting, margin-top 16):
+    - Full-width grid `auto | 1fr | auto`, 2px ink-900 border (radius-md), padding 16, surface bg.
+    - Left: mono ink-300 "Mock" badge (11px, ink-100 1px border, letter-spacing 0.04em, padding 2/8).
+    - Middle: 14/600 "模拟支付" title + 12 ink-500 "演示渠道 · 立即标记订单为已支付" sub.
+    - Right: 24×24 inline SVG circle outline + check stroke, terracotta. (Visual affordance only; the card is the single available method, so it always shows as selected.)
+    - `<button type="button" aria-pressed="true" aria-label="...">` — semantically a button for screen readers even though it has no click handler (single-method UI, no actual selection logic). cursor:default.
+  - **Submit error** (between method card and CTA, only if `submitError`): `<Notice tone="danger" title="支付失败">{{ submitError }}</Notice>`.
+  - **CTA**: `<Button variant="primary" size="lg" full :loading="submitting" @click="onSubmit">{{ ctaLabel }}</Button>` where `ctaLabel = '确认支付 ' + amountText.value`. Critical: the literal substring "确认支付" is preserved because `PaymentView.spec.ts:131` does `findAll('button').find(b => b.text().includes('确认支付'))` to locate the CTA before clicking. Test runs the find in `ready` state (not submitting), so the slot text is "确认支付 ¥100.00" verbatim and the assertion passes.
+  - **Polling hint** (only if submitting, below CTA): 12 ink-500 centered "正在等待订单状态更新…".
+  - **SUCCESS terminal screen** (replaces amount + method + CTA block; stepper + Notice stay):
+    - 96×96 terracotta-soft circle holding a 28×28 terracotta check SVG. Check uses `stroke-dasharray: 36 / stroke-dashoffset: 36` then `animation: terminal-draw 0.6s ease-out 0.1s forwards` to draw in on mount. `prefers-reduced-motion` disables and shows the check immediately at offset 0.
+    - 32/600 display title "支付成功" (font-display token).
+    - 13 ink-500 caption "模拟支付链路 · 订单已标记为已支付".
+    - If `payment` is non-null: Hairline + receipt `<dl>` with 4 rows (支付单号 mono / 支付渠道 / 支付金额 / 支付时间). Labels left ink-500, values right ink-900 / mono. Renders inline (success and already-paid share the exact same receipt markup; not extracted because there are only two callers and the cost is ~25 lines per inline vs. one new component + import).
+    - 50/50 grid actions: ghost "继续逛逛" + primary "查看订单详情".
+  - **SUCCESS-PENDING terminal screen**:
+    - 96×96 canvas-darker circle holding a 28×28 hourglass SVG (top/bottom bars + hourglass body curves, ink-700 stroke). No draw animation (it's a "wait" state, not a celebration).
+    - "支付已提交" display title + "支付请求已被受理，订单状态稍后更新。" sub.
+    - Single-column actions: primary lg full "再次刷新订单" (`@click="onManualRefresh"`) + text sm "返回订单详情" beneath (with -4px negative margin to tighten the gap).
+  - **ALREADY-PAID terminal screen**:
+    - Same 96 terracotta-soft circle + check, but `.terminal__circle--static` flag prevents the draw animation (no class adds the keyframe). The check renders flat on mount.
+    - "该订单已完成支付" + "无需重复支付。下方为支付凭证。" — slightly more explanatory copy than spec's terse "该订单已完成支付" since landing here without context can be confusing.
+    - Same 4-row receipt block as success (inline duplicate).
+    - Single full-width primary "查看订单详情".
+  - **NOT-PAYABLE terminal screen**:
+    - 96 canvas-darker circle holding a 28×28 info "i" icon (circle outline + vertical line + small dot, ink-700).
+    - "无法发起支付" + "当前订单状态为「{label}」，无法发起支付。" where `label = STATUS_LABEL[order.status] ?? raw`. STATUS_LABEL is a local 5-entry Record map (replaces the deleted getOrderStatusMeta dependency; we don't need the el-tag type field anymore).
+    - 50/50 grid actions: ghost "返回订单列表" + primary "查看订单详情".
+  - **Initial-load skeleton** (`state === 'loading'`): structural shape match — breadcrumb bar (160×14) + stepper pill (full×24) + Notice bar (full×44) + centered amount block (80×12 caption + 220×56 number) + method card placeholder (full×80) + CTA placeholder (full×48). Same vertical rhythm as the real layout so success state mounts without shift.
+  - **Errors**: `error-not-found` → `<ErrorState tone="notfound" home-only>` "返回订单列表"; `error-generic` → `<ErrorState tone="error">` with both retry (`@retry="loadInitial"`) and home dual CTAs. No more el-result.
+  - **Responsive**: at <540px, the 50/50 split actions collapse to single-column stack with primary on top (the second `<Button>` in the DOM becomes `grid-row: 2`). Container already narrow enough that other elements don't need adjustment.
+- Decisions:
+  - **Preserved every line of the state machine byte-identical**. All 9 ViewState constants, both POLL_ATTEMPTS / POLL_INTERVAL_MS constants, all refs (state, errorMessage, submitError, order, payment, idempotencyKey), the activeRunId local let, all 5 helper functions (generateKey, sleep, resetForNewRun, pollOrderUntilPaid, refreshPaymentReceipt), and all 4 lifecycle handlers (onMounted, onBeforeUnmount, watch(orderNo), watch(state) — though the state watcher is new for the tween, the orderNo watcher is byte-identical). loadInitial, onSubmit, onManualRefresh, goOrderDetail, goOrders, goShopping — all verbatim. amountText / submitting / formatDateTime — verbatim. ElMessage retained (PAYMENT_ALREADY_SUCCESS warning still needs it; Phase C cleanup will migrate to a Toast atom). The only changes to script: imports list (added atoms, removed getOrderStatusMeta), added STATUS_LABEL local map + notPayableLabel computed (small replacement for orderStatusMeta), added displayAmount ref + tween machinery + ctaLabel computed + state watcher for triggering tween.
+  - **CTA loading state uses Button atom's built-in three-dot animation**, not a label swap. The original showed "处理中…" text when submitting; the Button atom's `:loading` slot swaps the slot content with `.btn__dots` (three pulsing dots, 1.2s stagger) — same UX gesture without needing a ternary on the slot text. Slot text stays "确认支付 ¥X" the whole time, which (a) preserves the test contract for `text().includes('确认支付')` even mid-submit (defensive — current test only checks pre-click, but defensive against future test additions), (b) reduces template branching.
+  - **RAF tween instead of CSS-based animation**. The amount needs to interpolate between two arbitrary numbers (0 and order.totalAmount) and Vue doesn't natively support number-tweens. Wrote a tiny RAF loop with ease-out cubic, ~12 LoC. Alternative would have been Motion One or @vueuse/motion, but bringing a dep just for this is too heavy. `cancelAnimationFrame` cleanup in `onBeforeUnmount` (joined to the existing cleanup that bumps activeRunId).
+  - **`prefers-reduced-motion` honored in three places**: (1) amount tween snaps to final value, (2) success check draw animation disabled, (3) OrderStepper's terracotta pulse already disabled in B5. The terminal__circle backgrounds and other static visuals stay — those are color/contrast, not motion.
+  - **Method card is a real `<button>` element** even though it has no click handler. Single-method UX means there's nothing to select, but the visual + ARIA semantics communicate "this is the chosen payment method" via `aria-pressed="true"` and the terracotta check icon. If we ever add a second method (Alipay sandbox, WeChat Pay sandbox), this turns into a real radio group with minimal churn.
+  - **No PaymentSkeleton component extraction**. The skeleton lives inline in the template's loading branch — five `<Skeleton>` calls totaling ~10 lines. Extracting would have added an import + a 30-line file for a single caller. Below the abstraction threshold.
+  - **Receipt block inlined twice** (success + already-paid). 4-row `<dl>` with identical markup. Extracting to ReceiptBlock.vue would save ~20 LoC of duplication but add a file + import. Two callers is the threshold I usually wait for; here both callers landed in the same commit, so it's borderline. Kept inline because (a) the dl + 4 rows are simple enough to read inline, (b) success and already-paid have subtly different surrounding markup (success has a draw animation on the check; already-paid uses the static version), and refactoring to extract just the receipt while leaving the circle/title inline would feel arbitrary. If a third caller appears, lift then.
+  - **STATUS_LABEL is a local 5-entry map**, not lifted to a shared util. utils/order-status.ts still exports the el-tag-typed map and is still imported elsewhere (it'll be cleaned up in Phase C when we sweep EP); duplicating 5 lines here keeps the EP dependency out of this view. Same pattern as B4's local STATUS_DOT and B5's inline statusTimeRow.
+  - **Receipt and amount values format with `.toFixed(2)`** directly via template expressions, not PriceText. Reason: the amount-display value uses `--t-amount-display-size` (56px) which is bigger than PriceText's largest "xl" (also 56px but with a `¥` currency symbol baked into the markup). I inlined the `¥{amount}` + tabular-nums + tracking to get exact spec match without forcing PriceText to grow a new size token. Receipt rows use plain text values to match the 14/normal-weight body style — using PriceText for those would have been overkill.
+- Changed files:
+  - M frontend/src/views/PaymentView.vue (full rewrite — script changes are scoped to imports + 3 new bindings + state watcher for tween; template + styles fully rewritten; ~470 lines total vs. ~580 lines original)
+  - M docs/dev-log.md (this entry)
+- Commands run: read of PaymentView.vue + PaymentView.spec.ts + Notice.vue (verify tone='neutral' visual) + tokens.css (confirm --accent-terracotta-soft, --t-amount-display-size, --t-display-size all exist) + the §5.9 spec section in phase1-ui-redesign.md; `npm run test -- --run` (4 spec files, 33 tests, 1.31s, all pass — the 4 PaymentView tests pass on first try because the test contract was carefully preserved); `npm run build` (vue-tsc + vite, exit 0, 3.77s — see size deltas below).
+- Test result: 33/33 vitest pass. All four PaymentView tests pass: (1) loads initial orderNo on mount, (2) reloads with new orderNo on route-param change, (3) submits payment with regenerated key + MOCK channel, (4) drops stale in-flight load when orderNo changes mid-request. `npm run build` clean.
+- Build deltas vs B5 (commit f24b7e3):
+  - PaymentView JS chunk: 9.50 → 12.28 kB (+2.78 kB) — net of the 4 terminal screen blocks + RAF tween logic + amount block; partially offset by removing ~6 el-* component imports.
+  - OrderStepper JS chunk: now 1.73 kB extracted as a shared chunk (was inlined into OrderDetailView in B5). Both OrderDetailView and PaymentView now import it.
+  - OrderDetailView JS chunk: 7.95 → 6.40 kB (-1.55 kB) — OrderStepper extracted to shared chunk.
+  - Notice JS chunk: 0.62 → 0.56 kB (drift only, no source changes).
+  - Skeleton/SkeletonText chunks: re-balanced as bundler graph changed. Total `dist/assets/*.js` increased by ~2 kB net.
+  - Main bundle index-*.js: 1087.02 → 1087.23 kB (essentially flat).
+- Visual smoke: NOT performed by Claude (no browser access). Checklist for the user to exercise against http://localhost:5173/:
+  1. `/payments/<pending-orderNo>` — top breadcrumb shows full orderNo, stepper has terracotta pulse on 已支付. Amount tweens 0 → total over 420ms on mount. Mock method card with check icon. Primary "确认支付 ¥X" full-width.
+  2. Click 确认支付 → button shows three-dot animation, polling hint appears below, total ~4s wait → either success or success-pending.
+  3. Success path: 96 terracotta circle with check drawing in (0.6s), display "支付成功", receipt 4 rows, 50/50 ghost+primary actions. Click "继续逛逛" → /products. Click "查看订单详情" → /orders/{orderNo} (which renders the paid receipt view via the B5 path).
+  4. Success-pending path (force by stopping order-service after pay returns SUCCESS): 96 canvas-darker circle + hourglass, "支付已提交", primary "再次刷新订单" + text "返回订单详情". Click "再次刷新订单" → triggers onManualRefresh polling loop.
+  5. `/payments/<paid-orderNo>` — direct visit to PAID order: skip ready/submitting entirely, lands on already-paid screen. Static check (no animation), "该订单已完成支付", receipt rows, single primary "查看订单详情".
+  6. `/payments/<cancelled-orderNo>` — not-payable screen with neutral circle + info icon + "无法发起支付" + "当前订单状态为「已取消」，无法发起支付。" + ghost+primary actions.
+  7. `/payments/does-not-exist` — ErrorState notfound, "订单不存在", home-only "返回订单列表".
+  8. Stop order-service then reload — ErrorState error, retry + home buttons.
+  9. Resize <540px → 50/50 split actions collapse to single column with primary on top.
+  10. Enable `prefers-reduced-motion` at OS level → amount snaps to final value (no tween), success check appears without draw animation, stepper pulse disabled.
+  11. Race: open /payments/A in two tabs, pay in tab 1; in tab 2, click 确认支付 → backend returns PAYMENT_ALREADY_SUCCESS → ElMessage.warning "该订单已支付，已为你刷新最新状态" + page reloads to already-paid state.
+  12. Route reuse: from /payments/A click "返回订单详情" → /orders/A → from order detail navigate to /payments/B (via another order's payment link if available) → the same component instance reloads cleanly, new key generated, stale ORDER-A awaits dropped.
+- Issues: None observed during implementation. Tests passed on first run, confirming the state machine + idempotency-key contract preservation was correct. One minor: the breadcrumb currently shows the FULL orderNo (could be 32+ chars on UUIDs); on small screens this can wrap awkwardly. Acceptable because (a) wraps gracefully, (b) test contract requires the full string to be in `wrapper.text()`. If user feedback flags this we can use a `display: contents` span + a CSS truncation that doesn't affect text node content.
+- Next: B7 — Login + Register pages rewrite. Per redesign spec §5.x (need to re-read): replace el-form / el-input / el-button with Field atom + Button atom + the auth-hero side panel. AuthHero is a new component (per §3.3). Login and Register share the same shell; only the form fields and CTA differ. Existing auth store + validation logic + redirect-on-401 + redirect-after-success contract preserved verbatim. Will likely need a Field.vue atom inspection first (already exists per the atoms directory listing).
