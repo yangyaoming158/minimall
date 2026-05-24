@@ -7,6 +7,17 @@ import { useAuthStore } from '@/stores/auth'
 import { ApiError } from '@/types/api'
 import type { Product } from '@/types/product'
 import type { Inventory } from '@/types/inventory'
+import ProductCover from '@/components/ProductCover.vue'
+import ErrorState from '@/components/ErrorState.vue'
+import Pill from '@/components/atoms/Pill.vue'
+import PriceText from '@/components/atoms/PriceText.vue'
+import DotStatus from '@/components/atoms/DotStatus.vue'
+import QuantityStepper from '@/components/atoms/QuantityStepper.vue'
+import Button from '@/components/atoms/Button.vue'
+import Hairline from '@/components/atoms/Hairline.vue'
+import Notice from '@/components/atoms/Notice.vue'
+import Skeleton from '@/components/atoms/Skeleton.vue'
+import SkeletonText from '@/components/atoms/SkeletonText.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -61,7 +72,7 @@ async function loadAll(): Promise<void> {
   loading.value = false
 }
 
-// Clamp quantity so the input stays consistent with whatever stock value loaded.
+// Clamp quantity so the stepper stays consistent with whatever stock value loaded.
 watch(
   () => inventory.value?.availableStock ?? 0,
   (available) => {
@@ -93,21 +104,18 @@ watch(
 
 onMounted(loadAll)
 
-const priceText = computed(() =>
-  product.value ? `¥${product.value.price.toFixed(2)}` : '',
-)
-
 const isOffShelf = computed(() => product.value?.status === 'OFF_SHELF')
 
-const stockStateLabel = computed(() => {
+type StockTone = 'success' | 'danger' | 'neutral'
+const stockChip = computed<{ text: string; tone: StockTone } | null>(() => {
   if (!inventory.value) return null
   switch (inventory.value.stockState) {
     case 'IN_STOCK':
-      return { text: '有货', type: 'success' as const }
+      return { text: '有货', tone: 'success' }
     case 'OUT_OF_STOCK':
-      return { text: '无货', type: 'danger' as const }
+      return { text: '无货', tone: 'danger' }
     case 'INACTIVE':
-      return { text: '未上架', type: 'info' as const }
+      return { text: '未上架', tone: 'neutral' }
     default:
       return null
   }
@@ -115,8 +123,6 @@ const stockStateLabel = computed(() => {
 
 const maxQuantity = computed(() => {
   const available = inventory.value?.availableStock ?? 0
-  // el-input-number requires max >= min; keep max=1 when no stock so the input
-  // is bounded even though the order button will be disabled anyway.
   return available > 0 ? available : 1
 })
 
@@ -133,13 +139,17 @@ const canOrder = computed(() => {
   return quantityValid.value
 })
 
+const stepperDisabled = computed(
+  () => !inventory.value || isOffShelf.value || inventory.value.stockState !== 'IN_STOCK',
+)
+
 const disabledHint = computed(() => {
   if (!product.value) return ''
-  if (isOffShelf.value) return '该商品已下架，暂不可下单'
-  if (!inventory.value) return '库存信息暂不可用，无法下单'
-  if (inventory.value.stockState === 'INACTIVE') return '该商品未激活库存，暂不可下单'
+  if (isOffShelf.value) return '该商品已下架,暂不可下单'
+  if (!inventory.value) return '库存信息暂不可用,无法下单'
+  if (inventory.value.stockState === 'INACTIVE') return '该商品未激活库存,暂不可下单'
   if (inventory.value.stockState === 'OUT_OF_STOCK' || inventory.value.availableStock <= 0) {
-    return '库存不足，暂不可下单'
+    return '库存不足,暂不可下单'
   }
   if (!quantityValid.value) return `购买数量需为 1 ~ ${inventory.value.availableStock} 之间的整数`
   return ''
@@ -171,260 +181,312 @@ function goBackToList(): void {
 </script>
 
 <template>
-  <section v-loading="loading" class="page">
-    <!-- Product load failed: replace the whole layout. -->
-    <el-result
+  <section class="pdetail">
+    <ErrorState
       v-if="productError && productError.kind === 'not-found'"
-      icon="warning"
+      tone="notfound"
       title="商品不存在"
-      :sub-title="productError.message"
-    >
-      <template #extra>
-        <el-button type="primary" @click="goBackToList">返回商品列表</el-button>
-      </template>
-    </el-result>
+      :description="productError.message"
+      :show-home="true"
+      home-label="返回商品列表"
+      @home="goBackToList"
+    />
 
-    <el-result
+    <ErrorState
       v-else-if="productError && productError.kind === 'generic'"
-      icon="error"
+      tone="error"
       title="加载失败"
-      :sub-title="productError.message"
-    >
-      <template #extra>
-        <el-button type="primary" @click="loadAll">重试</el-button>
-        <el-button @click="goBackToList">返回商品列表</el-button>
-      </template>
-    </el-result>
+      :description="productError.message"
+      :show-retry="true"
+      :retry-loading="loading"
+      :show-home="true"
+      home-label="返回列表"
+      @retry="loadAll"
+      @home="goBackToList"
+    />
 
-    <!-- Success state: detail + inventory + order panel. -->
-    <el-row v-else-if="product" :gutter="24" class="content">
-      <el-col :xs="24" :md="14">
-        <div class="info-card">
-          <div class="info-head">
-            <h1 class="product-name" :title="product.name">{{ product.name }}</h1>
-            <el-tag
-              :type="isOffShelf ? 'info' : 'success'"
-              size="default"
-              effect="light"
-            >
-              {{ isOffShelf ? '已下架' : '在售' }}
-            </el-tag>
-          </div>
+    <div v-else-if="loading && !product" class="pdetail__layout pdetail__layout--skeleton">
+      <div class="pdetail__cover">
+        <Skeleton :width="'100%'" :height="'auto'" radius="lg" block class="pdetail__cover-art" />
+      </div>
+      <div class="pdetail__side">
+        <Skeleton :height="'18px'" :width="'72px'" block />
+        <Skeleton :height="'34px'" :width="'80%'" block />
+        <Skeleton :height="'40px'" :width="'45%'" block />
+        <Hairline />
+        <Skeleton :height="'16px'" :width="'60%'" block />
+        <Skeleton :height="'40px'" :width="'40%'" block />
+        <Skeleton :height="'48px'" :width="'100%'" block />
+        <Skeleton :height="'48px'" :width="'100%'" block />
+        <Hairline />
+        <SkeletonText :lines="3" :line-height="'13px'" :gap="'8px'" />
+      </div>
+    </div>
 
-          <div class="product-price">{{ priceText }}</div>
+    <div v-else-if="product" class="pdetail__layout">
+      <div class="pdetail__cover">
+        <ProductCover
+          :product-id="product.productId"
+          :name="product.name"
+          aspect="4:5"
+          grade="detail"
+          size="full"
+        />
+      </div>
 
-          <div class="meta">
-            <span class="meta-label">商品编号</span>
-            <span class="meta-value">{{ product.productId }}</span>
-          </div>
-
-          <el-divider />
-
-          <h2 class="section-title">商品描述</h2>
-          <p class="product-desc">{{ product.description || '暂无描述' }}</p>
+      <aside class="pdetail__side">
+        <div class="pdetail__status">
+          <Pill :tone="isOffShelf ? 'neutral' : 'success'" soft>
+            {{ isOffShelf ? '已下架' : '在售' }}
+          </Pill>
         </div>
-      </el-col>
 
-      <el-col :xs="24" :md="10">
-        <div class="order-card">
-          <h2 class="section-title">库存信息</h2>
+        <h1 class="pdetail__title" :title="product.name">{{ product.name }}</h1>
 
-          <div v-if="inventoryError" class="inventory-error">
-            <el-alert
-              type="warning"
-              :title="inventoryError"
-              :closable="false"
-              show-icon
-            />
-            <el-button
-              class="retry-btn"
-              size="small"
-              :loading="inventoryLoading"
-              @click="loadInventory"
-            >
-              重试加载库存
-            </el-button>
-          </div>
+        <div class="pdetail__price">
+          <PriceText :amount="product.price" size="lg" />
+        </div>
 
-          <template v-else-if="inventory">
-            <div class="stock-row">
-              <span class="stock-label">库存状态</span>
-              <el-tag
-                v-if="stockStateLabel"
-                :type="stockStateLabel.type"
-                size="small"
-                effect="light"
+        <Hairline />
+
+        <div class="pdetail__stock">
+          <Notice v-if="inventoryError" tone="warn" title="库存信息加载失败">
+            <div class="pdetail__stock-error">
+              <span>{{ inventoryError }}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                :loading="inventoryLoading"
+                @click="loadInventory"
               >
-                {{ stockStateLabel.text }}
-              </el-tag>
+                重试
+              </Button>
             </div>
-            <div class="stock-row">
-              <span class="stock-label">可售库存</span>
-              <span class="stock-value">{{ inventory.availableStock }}</span>
-            </div>
-            <div class="stock-row">
-              <span class="stock-label">已锁定</span>
-              <span class="stock-value muted">{{ inventory.lockedStock }}</span>
-            </div>
+          </Notice>
+
+          <template v-else-if="inventory && stockChip">
+            <DotStatus :tone="stockChip.tone">
+              {{ stockChip.text }}
+            </DotStatus>
+            <span class="pdetail__stock-count">
+              库存 <strong>{{ inventory.availableStock }}</strong>
+            </span>
           </template>
 
-          <el-divider />
+          <template v-else-if="inventoryLoading">
+            <Skeleton :height="'14px'" :width="'80px'" />
+          </template>
+        </div>
 
-          <h2 class="section-title">购买</h2>
+        <div class="pdetail__qty">
+          <span class="pdetail__qty-label">数量</span>
+          <QuantityStepper
+            v-model="quantity"
+            :min="1"
+            :max="maxQuantity"
+            :disabled="stepperDisabled"
+          />
+        </div>
 
-          <div class="qty-row">
-            <span class="qty-label">数量</span>
-            <el-input-number
-              v-model="quantity"
-              :min="1"
-              :max="maxQuantity"
-              :step="1"
-              :precision="0"
-              :disabled="!inventory || isOffShelf || inventory.stockState !== 'IN_STOCK'"
-              controls-position="right"
-            />
-          </div>
-
-          <el-button
-            class="order-btn"
-            type="primary"
-            size="large"
+        <div class="pdetail__cta">
+          <Button
+            variant="primary"
+            size="lg"
+            :full="true"
             :disabled="!canOrder"
             @click="onOrder"
           >
             立即下单
-          </el-button>
-
-          <p v-if="disabledHint" class="disabled-hint">{{ disabledHint }}</p>
+          </Button>
+          <Button
+            variant="ghost"
+            size="lg"
+            :full="true"
+            @click="goBackToList"
+          >
+            返回列表
+          </Button>
         </div>
-      </el-col>
-    </el-row>
+
+        <p v-if="disabledHint" class="pdetail__hint">{{ disabledHint }}</p>
+
+        <Hairline />
+
+        <section class="pdetail__desc">
+          <h2 class="pdetail__section-title">商品描述</h2>
+          <p class="pdetail__desc-body">{{ product.description || '暂无描述' }}</p>
+        </section>
+
+        <div class="pdetail__sku">
+          <span class="pdetail__sku-label">商品编号</span>
+          <span class="pdetail__sku-value">{{ product.productId }}</span>
+        </div>
+      </aside>
+    </div>
   </section>
 </template>
 
 <style scoped>
-.page {
-  min-height: 320px;
+.pdetail {
+  padding: 24px 0 40px;
 }
 
-.content {
-  margin: 0;
+.pdetail__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  gap: 40px;
+  align-items: start;
 }
 
-.info-card,
-.order-card {
-  background: #ffffff;
-  border-radius: 10px;
-  padding: 28px;
-  border: 1px solid #ebeef5;
-  height: 100%;
+.pdetail__cover {
+  width: 100%;
+  background: var(--canvas-darker);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--ink-100);
 }
 
-.info-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
+.pdetail__cover-art {
+  aspect-ratio: 4 / 5;
 }
 
-.product-name {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 600;
-  color: #1f2329;
-  line-height: 1.4;
-  word-break: break-word;
-}
-
-.product-price {
-  font-size: 28px;
-  font-weight: 700;
-  color: #f56c6c;
-  margin: 4px 0 16px;
-}
-
-.meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: #909399;
-}
-
-.meta-value {
-  color: #606266;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-}
-
-.section-title {
-  margin: 0 0 12px;
-  font-size: 15px;
-  font-weight: 600;
-  color: #1f2329;
-}
-
-.product-desc {
-  margin: 0;
-  color: #4e5969;
-  font-size: 14px;
-  line-height: 1.7;
-  white-space: pre-wrap;
-}
-
-.stock-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 6px 0;
-  font-size: 14px;
-}
-
-.stock-label {
-  color: #606266;
-}
-
-.stock-value {
-  color: #1f2329;
-  font-weight: 600;
-}
-
-.stock-value.muted {
-  color: #909399;
-  font-weight: 500;
-}
-
-.qty-row {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-.qty-label {
-  color: #606266;
-  font-size: 14px;
-}
-
-.order-btn {
+.pdetail__cover :deep(.cover) {
+  border-radius: 0;
   width: 100%;
 }
 
-.disabled-hint {
-  margin: 10px 0 0;
-  font-size: 13px;
-  color: #e6a23c;
-  text-align: center;
+.pdetail__side {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
 }
 
-.inventory-error {
+.pdetail__layout--skeleton .pdetail__side > * {
+  flex-shrink: 0;
+}
+
+.pdetail__status {
+  display: flex;
+}
+
+.pdetail__title {
+  margin: 0;
+  font-family: var(--font-display, var(--font-sans));
+  font-size: var(--t-display-size, 32px);
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--ink-900);
+  word-break: break-word;
+}
+
+.pdetail__price {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.pdetail__stock {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 20px;
+}
+
+.pdetail__stock-count {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--ink-500);
+  font-variant-numeric: tabular-nums;
+}
+
+.pdetail__stock-count strong {
+  color: var(--ink-900);
+  font-weight: 600;
+}
+
+.pdetail__stock-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.pdetail__qty {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.pdetail__qty-label {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--ink-500);
+}
+
+.pdetail__cta {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  align-items: flex-start;
+  margin-top: 4px;
 }
 
-.retry-btn {
-  align-self: flex-start;
+.pdetail__hint {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--warn, var(--ink-500));
+}
+
+.pdetail__section-title {
+  margin: 0 0 8px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-700);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.pdetail__desc {
+  display: flex;
+  flex-direction: column;
+}
+
+.pdetail__desc-body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--ink-700);
+  white-space: pre-wrap;
+}
+
+.pdetail__sku {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  color: var(--ink-500);
+}
+
+.pdetail__sku-label {
+  color: var(--ink-500);
+}
+
+.pdetail__sku-value {
+  color: var(--ink-700);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+
+@media (max-width: 960px) {
+  .pdetail__layout {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
 }
 </style>
