@@ -7,6 +7,16 @@ import { createOrder } from '@/api/order'
 import { ApiError } from '@/types/api'
 import type { Product } from '@/types/product'
 import type { Inventory } from '@/types/inventory'
+import ProductCover from '@/components/ProductCover.vue'
+import ErrorState from '@/components/ErrorState.vue'
+import Pill from '@/components/atoms/Pill.vue'
+import PriceText from '@/components/atoms/PriceText.vue'
+import DotStatus from '@/components/atoms/DotStatus.vue'
+import Button from '@/components/atoms/Button.vue'
+import Hairline from '@/components/atoms/Hairline.vue'
+import Notice from '@/components/atoms/Notice.vue'
+import Skeleton from '@/components/atoms/Skeleton.vue'
+import SkeletonText from '@/components/atoms/SkeletonText.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -53,8 +63,6 @@ function generateKey(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID()
   }
-  // Fallback: timestamp + random bits. Sufficient as an idempotency token
-  // for the few browsers that still lack crypto.randomUUID.
   return `${Date.now().toString(16)}-${Math.random().toString(16).slice(2)}-${Math.random().toString(16).slice(2)}`
 }
 
@@ -129,16 +137,10 @@ onBeforeUnmount(() => {
   activeRunId += 1
 })
 
-// Same-component navigation: /checkout?productId=A -> /checkout?productId=B
-// reuses the instance. Reset state, regenerate the idempotency key (a fresh
-// product/quantity is a fresh attempt), and trigger a new load. Invalid new
-// params skip the load entirely; the template's paramsValid branch renders
-// the "参数无效" el-result.
 watch(
   [productIdParam, quantityParam],
   ([nextPid, nextQty], [prevPid, prevQty]) => {
     if (nextPid === prevPid && nextQty === prevQty) return
-    // Bump runId immediately so any prev-run in-flight requests bail.
     activeRunId += 1
     resetForNewRun()
     idempotencyKey.value = generateKey()
@@ -152,17 +154,10 @@ watch(
 
 const isOffShelf = computed(() => product.value?.status === 'OFF_SHELF')
 
-const unitPriceText = computed(() =>
-  product.value ? `¥${product.value.price.toFixed(2)}` : '',
-)
-
 const totalAmount = computed(() => {
   if (!product.value || quantityParam.value === null) return 0
-  // Display only - the backend recomputes the authoritative total.
   return product.value.price * quantityParam.value
 })
-
-const totalText = computed(() => `¥${totalAmount.value.toFixed(2)}`)
 
 const quantityWithinStock = computed(() => {
   if (!inventory.value || quantityParam.value === null) return false
@@ -177,19 +172,34 @@ const canSubmit = computed(() => {
   return quantityWithinStock.value
 })
 
+type StockTone = 'success' | 'danger' | 'neutral'
+const stockChip = computed<{ text: string; tone: StockTone } | null>(() => {
+  if (!inventory.value) return null
+  switch (inventory.value.stockState) {
+    case 'IN_STOCK':
+      return { text: '有货', tone: 'success' }
+    case 'OUT_OF_STOCK':
+      return { text: '无货', tone: 'danger' }
+    case 'INACTIVE':
+      return { text: '未上架', tone: 'neutral' }
+    default:
+      return null
+  }
+})
+
 const disabledHint = computed(() => {
   if (!product.value) return ''
-  if (isOffShelf.value) return '该商品已下架，无法提交订单'
-  if (!inventory.value) return '库存信息暂不可用，无法提交订单'
-  if (inventory.value.stockState === 'INACTIVE') return '该商品未激活库存，无法提交订单'
+  if (isOffShelf.value) return '该商品已下架,无法提交订单'
+  if (!inventory.value) return '库存信息暂不可用,无法提交订单'
+  if (inventory.value.stockState === 'INACTIVE') return '该商品未激活库存,无法提交订单'
   if (
     inventory.value.stockState === 'OUT_OF_STOCK' ||
     inventory.value.availableStock <= 0
   ) {
-    return '库存不足，无法提交订单'
+    return '库存不足,无法提交订单'
   }
   if (!quantityWithinStock.value && quantityParam.value !== null) {
-    return `购买数量需为 1 ~ ${inventory.value.availableStock} 之间的整数（当前：${quantityParam.value}）`
+    return `购买数量需为 1 ~ ${inventory.value.availableStock} 之间的整数(当前:${quantityParam.value})`
   }
   return ''
 })
@@ -197,8 +207,6 @@ const disabledHint = computed(() => {
 async function onSubmit(): Promise<void> {
   if (!canSubmit.value || !product.value || quantityParam.value === null) return
 
-  // Guard against stale data: if a query change is in flight and product.value
-  // still holds the old SKU, refuse to submit. The watcher will reload shortly.
   if (product.value.productId !== productIdParam.value) return
 
   const myRun = activeRunId
@@ -212,8 +220,6 @@ async function onSubmit(): Promise<void> {
       idempotencyKey: idempotencyKey.value,
     })
     if (myRun !== activeRunId) return
-    // replace (not push) so the back button does not return to this page
-    // and risk a stale double-submit.
     router.replace({ name: 'order-detail', params: { orderNo: res.orderNo } })
   } catch (err) {
     if (myRun !== activeRunId) return
@@ -237,250 +243,383 @@ function goProductList(): void {
 </script>
 
 <template>
-  <section v-loading="loading" class="page">
-    <!-- Bad / missing query params -->
-    <el-result
+  <section class="ck">
+    <ErrorState
       v-if="!paramsValid"
-      icon="warning"
+      tone="error"
       title="参数无效"
-      sub-title="请从商品详情页发起结算"
-    >
-      <template #extra>
-        <el-button type="primary" @click="goProductList">返回商品列表</el-button>
-      </template>
-    </el-result>
+      description="请从商品详情页发起结算"
+      :show-home="true"
+      home-label="返回商品列表"
+      @home="goProductList"
+    />
 
-    <!-- Product 404 -->
-    <el-result
+    <ErrorState
       v-else-if="productError && productError.kind === 'not-found'"
-      icon="warning"
+      tone="notfound"
       title="商品不存在"
-      :sub-title="productError.message"
-    >
-      <template #extra>
-        <el-button type="primary" @click="goProductList">返回商品列表</el-button>
-      </template>
-    </el-result>
+      :description="productError.message"
+      :show-home="true"
+      home-label="返回商品列表"
+      @home="goProductList"
+    />
 
-    <!-- Product generic load error -->
-    <el-result
+    <ErrorState
       v-else-if="productError && productError.kind === 'generic'"
-      icon="error"
+      tone="error"
       title="加载失败"
-      :sub-title="productError.message"
-    >
-      <template #extra>
-        <el-button type="primary" @click="loadAll">重试</el-button>
-        <el-button @click="goProductList">返回商品列表</el-button>
-      </template>
-    </el-result>
+      :description="productError.message"
+      :show-retry="true"
+      :retry-loading="loading"
+      :show-home="true"
+      home-label="返回商品列表"
+      @retry="loadAll"
+      @home="goProductList"
+    />
 
-    <!-- Success layout -->
-    <div v-else-if="product" class="checkout">
-      <header class="checkout-head">
-        <h1 class="title">订单确认</h1>
-        <el-button link @click="goBack">← 返回商品详情</el-button>
-      </header>
-
-      <div class="summary-card">
-        <h2 class="section-title">商品信息</h2>
-
-        <div class="summary-row">
-          <span class="row-label">商品名称</span>
-          <span class="row-value">{{ product.name }}</span>
-        </div>
-        <div class="summary-row">
-          <span class="row-label">商品编号</span>
-          <span class="row-value mono">{{ product.productId }}</span>
-        </div>
-        <div class="summary-row">
-          <span class="row-label">单价</span>
-          <span class="row-value">{{ unitPriceText }}</span>
-        </div>
-        <div class="summary-row">
-          <span class="row-label">数量</span>
-          <span class="row-value">× {{ quantityParam }}</span>
-        </div>
-
-        <el-divider />
-
-        <h2 class="section-title">库存确认</h2>
-
-        <div v-if="inventoryError" class="inventory-error">
-          <el-alert
-            type="warning"
-            :title="inventoryError"
-            :closable="false"
-            show-icon
-          />
-          <el-button
-            class="retry-btn"
-            size="small"
-            :loading="inventoryLoading"
-            @click="loadInventory()"
-          >
-            重试加载库存
-          </el-button>
-        </div>
-
-        <template v-else-if="inventory">
-          <div class="summary-row">
-            <span class="row-label">可售库存</span>
-            <span class="row-value">{{ inventory.availableStock }}</span>
+    <div v-else-if="loading && !product" class="ck__shell">
+      <div class="ck__head">
+        <Skeleton :height="'28px'" :width="'120px'" block />
+      </div>
+      <div class="ck__card">
+        <div class="ck__product-row">
+          <Skeleton :width="'88px'" :height="'88px'" radius="md" />
+          <div class="ck__product-meta">
+            <Skeleton :height="'18px'" :width="'70%'" block />
+            <Skeleton :height="'14px'" :width="'40%'" block />
           </div>
-        </template>
-
-        <el-divider />
-
-        <div class="total-row">
-          <span class="total-label">合计</span>
-          <span class="total-amount">{{ totalText }}</span>
         </div>
-        <p class="total-hint">订单最终金额以后端结算为准</p>
+        <Hairline />
+        <SkeletonText :lines="2" :line-height="'14px'" :gap="'10px'" />
+        <Hairline />
+        <Skeleton :height="'40px'" :width="'40%'" block />
+      </div>
+    </div>
+
+    <div v-else-if="product" class="ck__shell">
+      <div class="ck__head">
+        <Button variant="text" size="sm" @click="goBack">
+          ← 返回商品详情
+        </Button>
+        <h1 class="ck__title">订单确认</h1>
       </div>
 
-      <el-alert
-        v-if="submitError"
-        class="submit-error"
-        type="error"
-        :title="submitError"
-        :closable="false"
-        show-icon
-      />
+      <div class="ck__card">
+        <div class="ck__product-row">
+          <div class="ck__cover">
+            <ProductCover
+              :product-id="product.productId"
+              :name="product.name"
+              aspect="1:1"
+              grade="list"
+              size="full"
+            />
+          </div>
+          <div class="ck__product-meta">
+            <div class="ck__name-row">
+              <h2 class="ck__name" :title="product.name">{{ product.name }}</h2>
+              <Pill :tone="isOffShelf ? 'neutral' : 'success'" soft>
+                {{ isOffShelf ? '已下架' : '在售' }}
+              </Pill>
+            </div>
+            <div class="ck__sku">
+              <span class="ck__sku-label">商品编号</span>
+              <span class="ck__sku-value">{{ product.productId }}</span>
+            </div>
+            <div class="ck__unit">
+              <span class="ck__unit-label">单价</span>
+              <PriceText :amount="product.price" size="md" />
+              <span class="ck__qty">× {{ quantityParam }}</span>
+            </div>
+          </div>
+        </div>
 
-      <div class="actions">
-        <el-button size="large" :disabled="submitting" @click="goBack">
+        <Hairline />
+
+        <div class="ck__stock">
+          <span class="ck__stock-label">库存确认</span>
+          <Notice v-if="inventoryError" tone="warn" title="库存信息加载失败">
+            <div class="ck__stock-error">
+              <span>{{ inventoryError }}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                :loading="inventoryLoading"
+                @click="loadInventory()"
+              >
+                重试
+              </Button>
+            </div>
+          </Notice>
+          <div v-else-if="inventory && stockChip" class="ck__stock-line">
+            <DotStatus :tone="stockChip.tone">{{ stockChip.text }}</DotStatus>
+            <span class="ck__stock-count">
+              可售库存 <strong>{{ inventory.availableStock }}</strong>
+            </span>
+          </div>
+          <Skeleton v-else :height="'14px'" :width="'120px'" />
+        </div>
+
+        <Hairline />
+
+        <div class="ck__total">
+          <span class="ck__total-label">合计</span>
+          <PriceText :amount="totalAmount" size="xl" />
+        </div>
+        <p class="ck__total-hint">订单最终金额以后端结算为准</p>
+      </div>
+
+      <Notice
+        v-if="submitError"
+        tone="danger"
+        title="订单提交失败"
+        class="ck__submit-error"
+      >
+        {{ submitError }}
+      </Notice>
+
+      <div class="ck__actions">
+        <Button
+          variant="ghost"
+          size="lg"
+          :disabled="submitting"
+          @click="goBack"
+        >
           取消
-        </el-button>
-        <el-button
-          type="primary"
-          size="large"
+        </Button>
+        <Button
+          variant="primary"
+          size="lg"
           :loading="submitting"
           :disabled="!canSubmit"
           @click="onSubmit"
         >
-          {{ submitting ? '提交中…' : '确认下单' }}
-        </el-button>
+          确认下单
+        </Button>
       </div>
 
-      <p v-if="disabledHint && !submitting" class="disabled-hint">{{ disabledHint }}</p>
+      <p v-if="disabledHint && !submitting" class="ck__hint">{{ disabledHint }}</p>
     </div>
   </section>
 </template>
 
 <style scoped>
-.page {
-  min-height: 320px;
+.ck {
+  padding: 24px 0 40px;
 }
 
-.checkout {
+.ck__shell {
   max-width: 720px;
   margin: 0 auto;
-}
-
-.checkout-head {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
+  flex-direction: column;
+  gap: 20px;
 }
 
-.title {
+.ck__head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ck__title {
   margin: 0;
-  font-size: 22px;
-  font-weight: 600;
-  color: #1f2329;
+  font-family: var(--font-sans);
+  font-size: var(--t-h1-size);
+  font-weight: var(--t-h1-weight);
+  line-height: var(--t-h1-lh);
+  color: var(--ink-900);
 }
 
-.summary-card {
-  background: #ffffff;
-  border-radius: 10px;
-  border: 1px solid #ebeef5;
-  padding: 28px;
+.ck__card {
+  background: var(--surface);
+  border: 1px solid var(--ink-100);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
-.section-title {
-  margin: 0 0 12px;
-  font-size: 15px;
-  font-weight: 600;
-  color: #1f2329;
+.ck__product-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
 }
 
-.summary-row {
+.ck__cover {
+  flex-shrink: 0;
+  width: 88px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--canvas-darker);
+  border: 1px solid var(--ink-100);
+}
+
+.ck__cover :deep(.cover) {
+  width: 100%;
+  border-radius: 0;
+}
+
+.ck__product-meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ck__name-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ck__name {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--t-h2-size);
+  font-weight: var(--t-h2-weight);
+  line-height: 1.35;
+  color: var(--ink-900);
+  word-break: break-word;
+  flex: 1;
+  min-width: 0;
+}
+
+.ck__sku {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 6px 0;
-  font-size: 14px;
+  gap: 8px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  color: var(--ink-500);
 }
 
-.row-label {
-  color: #606266;
-}
-
-.row-value {
-  color: #1f2329;
-  font-weight: 500;
-  text-align: right;
-  word-break: break-word;
-}
-
-.row-value.mono {
+.ck__sku-value {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-weight: 400;
-  color: #606266;
+  color: var(--ink-700);
 }
 
-.total-row {
+.ck__unit {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
+  gap: 10px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--ink-500);
+  font-variant-numeric: tabular-nums;
 }
 
-.total-label {
-  font-size: 16px;
-  color: #1f2329;
+.ck__unit-label {
+  color: var(--ink-500);
 }
 
-.total-amount {
-  font-size: 28px;
-  font-weight: 700;
-  color: #f56c6c;
+.ck__qty {
+  color: var(--ink-700);
+  font-weight: 500;
 }
 
-.total-hint {
-  margin: 6px 0 0;
-  font-size: 12px;
-  color: #909399;
-  text-align: right;
-}
-
-.inventory-error {
+.ck__stock {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  align-items: flex-start;
 }
 
-.retry-btn {
-  align-self: flex-start;
+.ck__stock-label {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-700);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
-.submit-error {
-  margin-top: 16px;
+.ck__stock-line {
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
 
-.actions {
+.ck__stock-count {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--ink-500);
+  font-variant-numeric: tabular-nums;
+}
+
+.ck__stock-count strong {
+  color: var(--ink-900);
+  font-weight: 600;
+}
+
+.ck__stock-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ck__total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.ck__total-label {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  color: var(--ink-500);
+}
+
+.ck__total-hint {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  color: var(--ink-500);
+  text-align: right;
+}
+
+.ck__submit-error {
+  margin: 0;
+}
+
+.ck__actions {
   display: flex;
   gap: 12px;
   justify-content: flex-end;
-  margin-top: 20px;
 }
 
-.disabled-hint {
-  margin: 12px 0 0;
-  font-size: 13px;
-  color: #e6a23c;
+.ck__actions .btn {
+  min-width: 140px;
+}
+
+.ck__hint {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--warn, var(--ink-500));
   text-align: right;
+}
+
+@media (max-width: 640px) {
+  .ck__product-row {
+    flex-direction: column;
+  }
+  .ck__cover {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 4 / 3;
+  }
+  .ck__actions {
+    flex-direction: column-reverse;
+  }
+  .ck__actions .btn {
+    width: 100%;
+  }
 }
 </style>
