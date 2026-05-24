@@ -2,6 +2,12 @@
 import { onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import ProductCard from '@/components/ProductCard.vue'
+import EmptyState from '@/components/EmptyState.vue'
+import ErrorState from '@/components/ErrorState.vue'
+import PillGroup from '@/components/atoms/PillGroup.vue'
+import Pager from '@/components/atoms/Pager.vue'
+import Skeleton from '@/components/atoms/Skeleton.vue'
+import SkeletonText from '@/components/atoms/SkeletonText.vue'
 import { listProducts } from '@/api/product'
 import { ApiError } from '@/types/api'
 import type { Product, ProductStatus } from '@/types/product'
@@ -13,14 +19,19 @@ const PAGE_SIZE = 12
 
 type StatusFilter = '' | ProductStatus
 
+const STATUS_OPTIONS = [
+  { value: '', label: '全部' },
+  { value: 'ON_SHELF', label: '在售' },
+  { value: 'OFF_SHELF', label: '已下架' },
+]
+
 const products = ref<Product[]>([])
 const total = ref(0)
-const currentPage = ref(1) // 1-based for el-pagination; backend is 0-based
+const currentPage = ref(1)
 const statusFilter = ref<StatusFilter>('')
 const loading = ref(false)
 const errored = ref(false)
 
-// Seed state from the URL so a refresh / shared link keeps page + filter.
 function seedFromQuery() {
   const page = Number(route.query.page)
   currentPage.value = Number.isInteger(page) && page > 0 ? page : 1
@@ -28,7 +39,6 @@ function seedFromQuery() {
   statusFilter.value = status === 'ON_SHELF' || status === 'OFF_SHELF' ? status : ''
 }
 
-// Reflect current state back into the URL without stacking history entries.
 function syncQuery() {
   router.replace({
     query: {
@@ -43,15 +53,13 @@ async function fetchProducts() {
   errored.value = false
   try {
     const res = await listProducts({
-      page: currentPage.value - 1, // 1-based UI -> 0-based backend
+      page: currentPage.value - 1,
       size: PAGE_SIZE,
       ...(statusFilter.value ? { status: statusFilter.value } : {}),
     })
     products.value = res.content
     total.value = res.totalElements
   } catch (err) {
-    // Network/429/500 already surfaced by the http interceptor; here we just
-    // flip to the error state so the user gets a retry affordance.
     errored.value = true
     if (err instanceof ApiError) {
       products.value = []
@@ -62,7 +70,8 @@ async function fetchProducts() {
   }
 }
 
-function onFilterChange() {
+function onFilterChange(value: string) {
+  statusFilter.value = value as StatusFilter
   currentPage.value = 1
   syncQuery()
   fetchProducts()
@@ -83,7 +92,6 @@ onMounted(() => {
   fetchProducts()
 })
 
-// Support back/forward navigation that only changes the query string.
 watch(
   () => route.query,
   () => {
@@ -101,105 +109,138 @@ watch(
 </script>
 
 <template>
-  <section class="product-list">
-    <header class="list-header">
-      <h1 class="list-title">商品列表</h1>
-      <el-select
-        v-model="statusFilter"
-        class="status-filter"
-        placeholder="全部状态"
-        @change="onFilterChange"
-      >
-        <el-option label="全部" value="" />
-        <el-option label="在售" value="ON_SHELF" />
-        <el-option label="已下架" value="OFF_SHELF" />
-      </el-select>
+  <section class="plist">
+    <header class="plist__header">
+      <div class="plist__heading">
+        <h1 class="plist__title">商品</h1>
+        <p v-if="!loading && !errored" class="plist__meta">
+          共 {{ total }} 件
+        </p>
+      </div>
+      <PillGroup
+        :options="STATUS_OPTIONS"
+        :model-value="statusFilter"
+        @update:model-value="onFilterChange"
+      />
     </header>
 
-    <!-- Error state with retry -->
-    <div v-if="errored" class="state-block">
-      <el-result icon="warning" title="加载失败" sub-title="无法获取商品列表，请稍后重试。">
-        <template #extra>
-          <el-button type="primary" @click="fetchProducts">重试</el-button>
-        </template>
-      </el-result>
+    <ErrorState
+      v-if="errored"
+      tone="error"
+      title="加载失败"
+      description="无法获取商品列表,请稍后重试。"
+      :show-retry="true"
+      retry-label="重试"
+      :retry-loading="loading"
+      @retry="fetchProducts"
+    />
+
+    <div v-else-if="loading" class="plist__grid" aria-busy="true">
+      <article v-for="i in 8" :key="`sk-${i}`" class="plist__skeleton">
+        <Skeleton :width="'100%'" :height="'auto'" radius="md" block class="plist__skeleton-cover" />
+        <div class="plist__skeleton-body">
+          <Skeleton :height="'18px'" :width="'80%'" block />
+          <SkeletonText :lines="2" :line-height="'12px'" :gap="'8px'" />
+          <Skeleton :height="'20px'" :width="'40%'" block />
+        </div>
+      </article>
     </div>
 
-    <!-- Loading state -->
-    <div v-else v-loading="loading" class="grid-wrap">
-      <!-- Empty state -->
-      <el-empty v-if="!loading && products.length === 0" description="暂无商品" />
+    <EmptyState
+      v-else-if="products.length === 0"
+      title="暂无商品"
+      :description="statusFilter ? '当前筛选条件下没有商品,试试切换筛选。' : '商品稍后上架,先去逛逛吧。'"
+    />
 
-      <el-row v-else :gutter="16">
-        <el-col
-          v-for="product in products"
-          :key="product.productId"
-          :xs="24"
-          :sm="12"
-          :md="8"
-          :lg="6"
-          class="grid-col"
-        >
-          <ProductCard :product="product" @view="goDetail" />
-        </el-col>
-      </el-row>
+    <div v-else class="plist__grid">
+      <ProductCard
+        v-for="product in products"
+        :key="product.productId"
+        :product="product"
+        @view="goDetail"
+      />
     </div>
 
-    <footer v-if="!errored && total > 0" class="list-footer">
-      <el-pagination
-        layout="prev, pager, next, total"
-        background
+    <footer v-if="!errored && !loading && total > 0" class="plist__footer">
+      <Pager
         :total="total"
         :page-size="PAGE_SIZE"
-        :current-page="currentPage"
-        @current-change="onPageChange"
+        :current="currentPage"
+        @change="onPageChange"
       />
     </footer>
   </section>
 </template>
 
 <style scoped>
-.product-list {
+.plist {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 24px;
+  padding: 24px 0 32px;
 }
 
-.list-header {
+.plist__header {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: 12px;
+  gap: 24px;
+  flex-wrap: wrap;
 }
 
-.list-title {
+.plist__heading {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.plist__title {
   margin: 0;
-  font-size: 22px;
-  font-weight: 600;
-  color: #1f2329;
+  font-family: var(--font-sans);
+  font-size: var(--t-h1-size);
+  font-weight: var(--t-h1-weight);
+  line-height: var(--t-h1-lh);
+  color: var(--ink-900);
 }
 
-.status-filter {
-  width: 160px;
+.plist__meta {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--t-caption-size);
+  line-height: var(--t-caption-lh);
+  color: var(--ink-500);
+  font-variant-numeric: tabular-nums;
 }
 
-.grid-wrap {
-  min-height: 200px;
+.plist__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 24px;
 }
 
-.grid-col {
-  margin-bottom: 16px;
+.plist__skeleton {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--ink-100);
+  border-radius: var(--radius-md);
+  overflow: hidden;
 }
 
-.state-block {
-  background: #ffffff;
-  border-radius: 10px;
-  padding: 24px;
+.plist__skeleton-cover {
+  aspect-ratio: 4 / 5;
 }
 
-.list-footer {
+.plist__skeleton-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+}
+
+.plist__footer {
   display: flex;
   justify-content: center;
-  padding: 8px 0 16px;
+  padding-top: 8px;
 }
 </style>
