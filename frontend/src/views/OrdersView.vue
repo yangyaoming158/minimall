@@ -4,8 +4,17 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { listMyOrders, cancelOrder } from '@/api/order'
 import { ApiError, ErrorCode } from '@/types/api'
-import type { Order } from '@/types/order'
-import { getOrderStatusMeta } from '@/utils/order-status'
+import type { Order, OrderStatus } from '@/types/order'
+import Button from '@/components/atoms/Button.vue'
+import DotStatus from '@/components/atoms/DotStatus.vue'
+import Hairline from '@/components/atoms/Hairline.vue'
+import Pager from '@/components/atoms/Pager.vue'
+import PriceText from '@/components/atoms/PriceText.vue'
+import Skeleton from '@/components/atoms/Skeleton.vue'
+import SkeletonText from '@/components/atoms/SkeletonText.vue'
+import ProductCover from '@/components/ProductCover.vue'
+import EmptyState from '@/components/EmptyState.vue'
+import ErrorState from '@/components/ErrorState.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -155,6 +164,14 @@ function productSummary(order: Order): string {
   return head
 }
 
+function firstItemProductId(order: Order): string | null {
+  return order.items[0]?.productId ?? null
+}
+
+function firstItemName(order: Order): string | null {
+  return order.items[0]?.productName ?? null
+}
+
 function formatDateTime(value: string | null | undefined): string {
   if (!value) return '—'
   // Backend serializes LocalDateTime as ISO without timezone.
@@ -163,13 +180,27 @@ function formatDateTime(value: string | null | undefined): string {
   return value.replace('T', ' ').slice(0, 19)
 }
 
-function formatAmount(value: number): string {
-  return `¥${value.toFixed(2)}`
+type DotTone = 'neutral' | 'terracotta' | 'success' | 'warn' | 'danger'
+
+const STATUS_DOT: Record<OrderStatus, { label: string; tone: DotTone }> = {
+  PENDING_PAYMENT: { label: '待支付', tone: 'warn' },
+  PAID: { label: '已支付', tone: 'success' },
+  CANCELLED: { label: '已取消', tone: 'neutral' },
+  CLOSED: { label: '已关闭', tone: 'neutral' },
+  REFUNDED: { label: '已退款', tone: 'danger' },
+}
+
+function statusDot(status: string): { label: string; tone: DotTone } {
+  return STATUS_DOT[status as OrderStatus] ?? { label: status, tone: 'neutral' }
 }
 
 const isEmpty = computed(
   () =>
     !loading.value && !errored.value && orders.value.length === 0,
+)
+
+const isInitialLoad = computed(
+  () => loading.value && orders.value.length === 0 && !errored.value,
 )
 
 function isPendingPayment(order: Order): boolean {
@@ -184,92 +215,121 @@ function isPendingPayment(order: Order): boolean {
       <span v-if="totalElements > 0" class="count">共 {{ totalElements }} 笔订单</span>
     </header>
 
+    <!-- Initial load: skeleton cards -->
+    <div v-if="isInitialLoad" class="orders" aria-busy="true">
+      <div v-for="i in 3" :key="i" class="order-card order-card--skeleton">
+        <div class="card-main">
+          <Skeleton width="96px" height="96px" radius="md" block />
+          <div class="card-mid">
+            <SkeletonText :lines="3" line-height="14px" gap="10px" />
+          </div>
+          <div class="card-right">
+            <Skeleton width="72px" height="14px" />
+            <Skeleton width="160px" height="12px" />
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Error -->
-    <el-result
-      v-if="errored"
-      icon="error"
+    <ErrorState
+      v-else-if="errored"
+      tone="error"
       title="加载失败"
-      :sub-title="errorMessage"
-    >
-      <template #extra>
-        <el-button type="primary" @click="load">重试</el-button>
-      </template>
-    </el-result>
+      :description="errorMessage"
+      show-retry
+      retry-label="重试"
+      @retry="load"
+    />
 
     <!-- Empty -->
-    <el-empty
+    <EmptyState
       v-else-if="isEmpty"
-      description="暂无订单"
-    >
-      <el-button type="primary" @click="goShopping">去逛逛</el-button>
-    </el-empty>
+      title="暂无订单"
+      description="去挑几件商品下单吧"
+      show-action
+      action-label="去逛逛"
+      @action="goShopping"
+    />
 
     <!-- List -->
-    <div v-else v-loading="loading" class="orders">
+    <div
+      v-else
+      class="orders"
+      :aria-busy="loading ? 'true' : 'false'"
+      :class="{ 'orders--dim': loading }"
+    >
       <article
         v-for="order in orders"
         :key="order.orderNo"
         class="order-card"
         @click="goDetail(order.orderNo)"
       >
-        <div class="card-head">
-          <span class="order-no" :title="order.orderNo">{{ order.orderNo }}</span>
-          <el-tag
-            :type="getOrderStatusMeta(order.status).type"
-            size="small"
-            effect="light"
-          >
-            {{ getOrderStatusMeta(order.status).label }}
-          </el-tag>
+        <div class="card-main">
+          <div class="card-cover">
+            <ProductCover
+              :product-id="firstItemProductId(order)"
+              :name="firstItemName(order)"
+              aspect="1:1"
+              grade="list"
+              size="full"
+            />
+          </div>
+
+          <div class="card-mid">
+            <span class="order-no" :title="order.orderNo">{{ order.orderNo }}</span>
+            <span class="product-summary">{{ productSummary(order) }}</span>
+            <PriceText :amount="order.totalAmount" size="lg" />
+          </div>
+
+          <div class="card-right">
+            <DotStatus :tone="statusDot(order.status).tone">
+              {{ statusDot(order.status).label }}
+            </DotStatus>
+            <span class="meta">下单 {{ formatDateTime(order.createdAt) }}</span>
+            <span v-if="isPendingPayment(order)" class="meta meta--warn">
+              支付截止 {{ formatDateTime(order.expireAt) }}
+            </span>
+          </div>
         </div>
 
-        <div class="card-body">
-          <span class="product-summary">{{ productSummary(order) }}</span>
-          <span class="amount">{{ formatAmount(order.totalAmount) }}</span>
-        </div>
-
-        <div class="card-meta">
-          <span>下单时间 {{ formatDateTime(order.createdAt) }}</span>
-          <span v-if="isPendingPayment(order)">
-            支付截止 {{ formatDateTime(order.expireAt) }}
-          </span>
-        </div>
+        <Hairline />
 
         <div class="card-actions">
           <template v-if="isPendingPayment(order)">
-            <el-button
-              size="small"
+            <Button
+              variant="ghost"
+              size="sm"
               :loading="cancellingOrderNo === order.orderNo"
               @click.stop="onCancel(order)"
             >
               取消订单
-            </el-button>
-            <el-button
-              type="primary"
-              size="small"
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
               @click.stop="goPay(order.orderNo)"
             >
               去支付
-            </el-button>
+            </Button>
           </template>
-          <el-button
+          <Button
             v-else
-            size="small"
+            variant="text"
+            size="sm"
             @click.stop="goDetail(order.orderNo)"
           >
-            查看详情
-          </el-button>
+            查看详情 →
+          </Button>
         </div>
       </article>
 
-      <div v-if="totalElements > PAGE_SIZE" class="pager">
-        <el-pagination
-          background
-          layout="prev, pager, next, jumper, total"
+      <div v-if="totalElements > PAGE_SIZE" class="pager-wrap">
+        <Pager
           :total="totalElements"
           :page-size="PAGE_SIZE"
-          :current-page="currentPage"
-          @current-change="onPageChange"
+          :current="currentPage"
+          @change="onPageChange"
         />
       </div>
     </div>
@@ -285,99 +345,149 @@ function isPendingPayment(order: Order): boolean {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  margin-bottom: 18px;
+  margin-bottom: 24px;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .title {
   margin: 0;
-  font-size: 22px;
-  font-weight: 600;
-  color: #1f2329;
+  font-family: var(--font-sans);
+  font-size: var(--t-h1-size);
+  font-weight: var(--t-h1-weight);
+  line-height: var(--t-h1-lh);
+  color: var(--ink-900);
 }
 
 .count {
+  font-family: var(--font-sans);
   font-size: 13px;
-  color: #909399;
+  color: var(--ink-500);
 }
 
 .orders {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
+  transition: opacity var(--dur-2) var(--ease);
+}
+
+.orders--dim {
+  opacity: 0.6;
+  pointer-events: none;
 }
 
 .order-card {
-  background: #ffffff;
-  border-radius: 10px;
-  border: 1px solid #ebeef5;
-  padding: 18px 20px;
+  background: var(--surface);
+  border: 1px solid var(--ink-100);
+  border-radius: var(--radius);
+  padding: 20px 20px 16px;
   cursor: pointer;
-  transition: box-shadow 0.2s, transform 0.2s;
+  transition: border-color var(--dur-2) var(--ease),
+    box-shadow var(--dur-2) var(--ease),
+    transform var(--dur-2) var(--ease);
 }
 
 .order-card:hover {
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+  border-color: var(--ink-300);
+  box-shadow: 0 8px 24px rgba(31, 35, 41, 0.06);
   transform: translateY(-1px);
 }
 
-.card-head {
+.order-card--skeleton {
+  cursor: default;
+}
+
+.order-card--skeleton:hover {
+  border-color: var(--ink-100);
+  box-shadow: none;
+  transform: none;
+}
+
+.card-main {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr) auto;
+  gap: 20px;
+  align-items: start;
+  margin-bottom: 14px;
+}
+
+.card-cover {
+  width: 96px;
+}
+
+.card-mid {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 10px;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
 }
 
 .order-no {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 13px;
-  color: #606266;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-500);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.card-body {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 8px;
 }
 
 .product-summary {
-  flex: 1;
+  font-family: var(--font-sans);
   font-size: 15px;
-  color: #1f2329;
+  font-weight: 500;
+  color: var(--ink-900);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.amount {
-  font-size: 18px;
-  font-weight: 700;
-  color: #f56c6c;
+.card-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  text-align: right;
+  white-space: nowrap;
 }
 
-.card-meta {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
+.meta {
+  font-family: var(--font-sans);
   font-size: 12px;
-  color: #909399;
-  margin-bottom: 12px;
+  color: var(--ink-500);
+  font-variant-numeric: tabular-nums;
+}
+
+.meta--warn {
+  color: var(--warn);
 }
 
 .card-actions {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+  margin-top: 14px;
 }
 
-.pager {
-  margin-top: 16px;
+.pager-wrap {
+  margin-top: 24px;
   display: flex;
   justify-content: center;
+}
+
+@media (max-width: 640px) {
+  .card-main {
+    grid-template-columns: 64px minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    gap: 14px;
+  }
+  .card-cover {
+    width: 64px;
+  }
+  .card-right {
+    grid-column: 1 / -1;
+    align-items: flex-start;
+    text-align: left;
+  }
 }
 </style>
