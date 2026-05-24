@@ -1,0 +1,112 @@
+/*
+ * MiniMall Phase 1 — Global base layer
+ *
+ * Resets, body typography defaults, focus ring, selection, scrollbar.
+ * Per docs/phase1-ui-redesign.md §2.
+ *
+ * Scope: visual baseline only. Existing pages still render via their own
+ * inline styles + Element Plus chrome, so this file does NOT visually
+ * change any current page (the body's --canvas background is fully covered
+ * by DefaultLayout's #f5f6f8 until A2 replaces the shell).
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--t-body-size);
+  line-height: var(--t-body-lh);
+  color: var(--ink-700);
+  background: var(--canvas);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Inherit-friendly defaults so utility classes and component-scoped
+ * styles can override without specificity battles. */
+h1, h2, h3, h4, h5, h6, p, figure, blockquote, dl, dd {
+  margin: 0;
+}
+
+ul, ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+img, svg, video, canvas, audio, iframe, embed, object {
+  display: block;
+  max-width: 100%;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Accessible focus ring — applies to keyboard nav only, not mouse clicks.
+ * Atom components in Phase A3 will pick this up automatically. */
+:focus-visible {
+  outline: 0;
+  box-shadow: var(--shadow-press);
+  border-radius: 4px;
+}
+
+/* Text selection uses the brand accent at low intensity. */
+::selection {
+  background: var(--accent-terracotta-soft);
+  color: var(--ink-900);
+}
+
+/* Quiet scrollbar (webkit + firefox). */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--ink-300) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--ink-300);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-500);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+}
