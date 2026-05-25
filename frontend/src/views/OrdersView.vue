@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { listMyOrders, cancelOrder } from '@/api/order'
+import { useConfirm } from '@/composables/useConfirm'
 import { ApiError, ErrorCode } from '@/types/api'
 import type { Order, OrderStatus } from '@/types/order'
 import Button from '@/components/atoms/Button.vue'
@@ -18,6 +19,7 @@ import ErrorState from '@/components/ErrorState.vue'
 
 const route = useRoute()
 const router = useRouter()
+const confirm = useConfirm()
 
 const PAGE_SIZE = 10
 
@@ -115,20 +117,14 @@ function goShopping(): void {
 }
 
 async function onCancel(order: Order): Promise<void> {
-  try {
-    await ElMessageBox.confirm(
-      `确定要取消订单 ${order.orderNo} 吗？此操作无法恢复。`,
-      '取消订单',
-      {
-        type: 'warning',
-        confirmButtonText: '确认取消',
-        cancelButtonText: '再想想',
-      },
-    )
-  } catch {
-    // user dismissed the dialog
-    return
-  }
+  const ok = await confirm({
+    title: '取消订单',
+    body: `确定要取消订单 ${order.orderNo} 吗？此操作无法恢复。`,
+    confirmLabel: '确认取消',
+    cancelLabel: '再想想',
+    tone: 'danger',
+  })
+  if (!ok) return
 
   cancellingOrderNo.value = order.orderNo
   try {

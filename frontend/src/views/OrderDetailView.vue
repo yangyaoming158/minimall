@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { getOrder, cancelOrder } from '@/api/order'
+import { useConfirm } from '@/composables/useConfirm'
 import { ApiError, ErrorCode } from '@/types/api'
 import type { Order } from '@/types/order'
 import Button from '@/components/atoms/Button.vue'
@@ -16,6 +17,7 @@ import OrderStepper from '@/components/OrderStepper.vue'
 
 const route = useRoute()
 const router = useRouter()
+const confirm = useConfirm()
 
 const orderNo = computed(() => String(route.params.orderNo ?? ''))
 
@@ -70,19 +72,14 @@ async function onCancel(): Promise<void> {
   if (!order.value) return
   const target = order.value.orderNo
 
-  try {
-    await ElMessageBox.confirm(
-      `确定要取消订单 ${target} 吗？此操作无法恢复。`,
-      '取消订单',
-      {
-        type: 'warning',
-        confirmButtonText: '确认取消',
-        cancelButtonText: '再想想',
-      },
-    )
-  } catch {
-    return
-  }
+  const ok = await confirm({
+    title: '取消订单',
+    body: `确定要取消订单 ${target} 吗？此操作无法恢复。`,
+    confirmLabel: '确认取消',
+    cancelLabel: '再想想',
+    tone: 'danger',
+  })
+  if (!ok) return
 
   cancelling.value = true
   try {
