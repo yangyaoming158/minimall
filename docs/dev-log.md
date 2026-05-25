@@ -1656,3 +1656,80 @@ Append one entry per implementation task so future sessions can recover project 
   5. Both pages sit inside the global AppHeader + AppFooter — confirm the in-content BrandMark + the AppFooter MiniMall line don't fight visually (the in-content one is small + opacity 0.6, the footer is its normal scale).
 - Issues: None observed. Build + tests pass first run.
 - Next: B-phase done. Remaining work per the spec implementation plan: Phase C — motion polish & Element Plus cleanup (sweep remaining ElMessage/ElMessageBox calls in OrdersView/OrderDetailView/PaymentView + remove EP full-import from main.ts once nothing references EP component instances). Phase D — verification gate (lint, type-check, e2e smoke). Could also consider a small atom-test pass on StatusPage to lock the API surface, but the surface is so simple (4 props, no logic) that the build itself catches the regressions.
+
+## 2026-05-25 · Phase C — Motion polish audit + close-out
+
+- Date: 2026-05-25
+- Status: audit complete; one timing fix shipped; 33/33 vitest pass; build clean
+- Branch: feature/phase1-customer-frontend
+- Scope: Phase C per spec §8 — confirm each motion piece (page transition, skeleton shimmer, amount tween, success check draw) matches §7's table; remove design-probe scaffolding if any survived; ship the closing dev-log entry. Earlier B7 entry's framing of Phase C as "ElMessage cleanup" was a misread of spec §10 R1, which *explicitly allows* ElMessage, ElMessageBox.confirm, el-form/el-form-item validation messages, and el-input wrapped inside Field. None of those are anti-patterns; they stay.
+- Implemented:
+  - **C2 — Skeleton shimmer timing alignment**: changed `frontend/src/components/atoms/Skeleton.vue:46` from `animation: skeleton-shimmer 1.6s ease-in-out infinite` → `linear infinite`. §7 reads "Skeleton shimmer | sweep gradient, **1.6s linear infinite**". The old `ease-in-out` made the gradient sweep accelerate/decelerate, producing a slightly more "alive" but less metronomic feel — which is exactly what spec didn't want. Linear gives a steady, sober sweep. 1-line change.
+  - **Audit table** (no code change needed):
+    - C1 — Page transition wired in DefaultLayout. `<Transition name="page" mode="out-in">` with `opacity 0→1 + translateY 8→0` over `var(--dur-2)` (220ms) on enter and 120ms fade on leave. Matches §7 row 1. ✅
+    - C3 — AmountDisplay number tween. PaymentView.vue `startAmountTween()` uses RAF + ease-out cubic over 420ms (TWEEN_MS constant). `prefers-reduced-motion: reduce` snaps to final value. Matches §7 row 6. ✅
+    - C4 — Success check stroke-dashoffset. PaymentView.vue's `.terminal__check` keyframe `terminal-draw` runs `stroke-dashoffset: 36 → 0` over 0.6s ease-out with 0.1s delay (after the terracotta circle settles). `prefers-reduced-motion` disables the keyframe and renders the check at offset 0 statically. Matches §7 row 9. ✅
+    - C5 — Design-probe route. `git grep probe|sandbox|debug|playground` returns 0 hits in src/router and src/views; no probe view file in src/views/ (verified via `ls`). Nothing to remove. ✅
+  - **R1–R12 final compliance grep**:
+    - R1 — No EP visible to user except whitelisted: `grep -rn 'el-button|el-tag|el-icon|el-result|el-empty|el-table|el-pagination|el-divider|el-link|el-alert' src` returns 0 (excluding __tests__). Remaining EP usage is exactly the whitelist: ElMessage (8 sites: http.ts × 4, OrdersView × 4, OrderDetailView × 4, PaymentView × 1, LoginView × 2, RegisterView × 2), ElMessageBox.confirm (2 sites: OrdersView, OrderDetailView), el-form/el-form-item in LoginView + RegisterView for validation engine. No el-input anywhere (auth views use native `<input>` instead — over-delivers on R1's "el-input wrapped in Field" allowance).
+    - R2 — No v-loading anywhere customer-facing. 0 grep hits.
+    - R3 — No `type="primary"` (EP-blue button). 0 grep hits. All primaries are `<Button variant="primary">` (ink-900 fill).
+    - R4 — No red price. PriceText hard-codes `color: var(--ink-900)`. No `--danger` color on any price.
+    - R5 — No "label : value" form-style rows. Order/payment/product info uses editorial layout (hero, headline, prose, summary, hairline) per §5 page-by-page specs.
+    - R6 — Same productId → same cover. ProductCover uses fnv1a hash → palette index + variant rotation; both deterministic on productId. Verified by reading the cover atom during B1.
+    - R7 — Container widths follow §5 per page (Auth 55/45 grid, Product list 1280, Product detail two-col, Checkout 720, Orders list 720, Order detail 720, Payment 480, Status pages full canvas).
+    - R8 — Motion specs shipped with their page: Button press scale (Button atom, B0), card hover lift (ProductCard, B1), variant cross-fade (ProductDetail, B2), pending-payment dot pulse (OrderStepper, B5), amount tween + check draw (PaymentView, B6), page transition (DefaultLayout, pre-existing). All landed in the same commit as the page that uses them.
+    - R9 — src/api, src/stores, src/router untouched in all Phase B commits. Auth-store login/register signatures byte-identical. http.ts interceptor unchanged. Router routes/guards unchanged across A1-C. ✅
+    - R10 — Every commit builds clean. Per-task dev-log entry recorded. Per-task user "go" before commit (per [[feedback-commit-authorization]] memory rule). 14 Phase 1 commits all check out.
+    - R11 — No fabricated features. No fake reviews, no fake "trending", no fake "you may also like", no carousels. Variant thumbnails on product detail are explicitly decorative per spec §4.7 and aria-labeled accordingly.
+    - R12 — Never triggered (no design-flow conflicts encountered).
+- Decisions:
+  - **Phase C did not remove ElMessage/ElMessageBox/el-form**, despite my earlier B7 entry implying it would. Re-reading §10 R1 carefully ("No EP component visible to the user … except: ElMessage toast, ElMessageBox.confirm, el-form/el-form-item validation messages, el-input wrapped inside Field"), these are explicitly permitted. Removing them would be over-shooting the spec. They are not anti-patterns; they are sanctioned service-layer/validation-layer EP usage. Future bundle-size work may switch from `app.use(ElementPlus)` global registration to on-demand imports of just ElMessage + ElMessageBox + ElForm + ElFormItem to shrink the EP CSS bundle (~369 kB) — that's a perf optimization, not a spec compliance issue, and it's out of Phase 1 scope.
+  - **Skeleton shimmer ease curve change was a 1-line fix**, not a redesign. The visual delta is subtle (most users won't notice ease-in-out vs linear on a 1.6s gradient sweep), but the spec is explicit and "rules are rules" — fixing it costs nothing and keeps the audit honest.
+  - **No new tests added**. Phase C is policy + audit; the existing 33-test suite covers the contract surfaces (CheckoutView × 18, PaymentView × 4, PriceText × 4, QuantityStepper × 7). Adding "skeleton uses linear timing" as a vitest is below the value bar — CSS audit belongs in visual review.
+  - **No "design-probe route to remove" was found**. C5 is a spec-defined cleanup step assuming probe scaffolding might have been left behind during the foundation pass; in our case the foundation work didn't create one, so C5 is a no-op for this branch.
+- Changed files:
+  - M frontend/src/components/atoms/Skeleton.vue (1-line: ease-in-out → linear in `.skeleton`'s animation property)
+  - M docs/dev-log.md (this entry + the final summary entry below)
+- Commands run: `grep -rn` for el-* components, v-loading, type="primary", probe/sandbox/debug; read of DefaultLayout.vue / Skeleton.vue / PaymentView.vue / §7 & §10 spec sections; `npm run test -- --run` (4 spec files, 33 tests, 1.26s, all pass); `npm run build` (vue-tsc + vite, exit 0, 4.03s).
+- Test result: 33/33 vitest pass. `npm run build` clean (only the pre-existing EP full-import warning persists — see "future perf" decision above).
+- Visual smoke: NOT performed by Claude. Single visual delta to verify: skeleton shimmers now sweep at constant speed instead of accelerating/decelerating. Most easily seen on a slow network throttle (DevTools "Slow 3G") on /products or /orders so the skeleton is rendered for more than one sweep cycle (>1.6s). Verify the gradient moves at uniform velocity; previously the midpoint of each sweep was faster than the edges.
+- Issues: None. Audit found exactly one motion timing miss (the shimmer ease curve), zero EP visibility violations, zero probe scaffolding, zero forbidden artifacts.
+- Next: Phase D — verification gate. Per spec §8 Phase D: (D1) full smoke per §9.4, (D2) visual audit per §10, (D3) `npm run build` final, (D4) branch summary in dev-log. D1+D2 are user-driven (browser test pass); D3 already green; D4 is the summary entry below.
+
+## 2026-05-25 · Phase 1 UI rework — complete
+
+- Date: 2026-05-25
+- Status: All Phase 1 UI redesign work landed on branch `feature/phase1-customer-frontend`. Build green, 33/33 vitest pass, R1–R12 audit clean, smoke flow available for user verification on http://localhost:5173/.
+- Scope shipped (per docs/phase1-ui-redesign.md §8):
+  - **Phase A — Foundation** (5 commits):
+    - A1 (`c981014`) — design tokens (color/type/spacing/radius/motion), global base styles, typography utilities.
+    - A2 (`e5e593d`) — AppShell rewrite: scroll-aware AppHeader (72→56 px collapse + backdrop-blur), AppFooter, DefaultLayout with page transitions, BrandMark molecule.
+    - A3 (`c13a2db`) — atom library: Button, DotStatus, Field, Hairline, Notice, Pager, Pill, PillGroup, PriceText, QuantityStepper, Skeleton, SkeletonText.
+    - A4 (`7ffd029`) — deterministic ProductCover system (fnv1a hash → 8 boutique palettes × 6 SVG primitives × initial mark + variant rotation; aspect-ratios per placement).
+    - A5 (`ce4bf90`) — EmptyState + ErrorState molecules.
+  - **Phase B — Page vertical slices** (8 commits, one per page):
+    - B1 (`59ca2de`) — Product list + ProductCard rewrite. PillGroup filter (在售/已下架), 4-col responsive grid, editorial Shop header.
+    - B2 (`6b77b6e`) — Product detail two-column rewrite (left ProductHero + variant thumbs, right sticky PurchasePanel with QuantityStepper).
+    - B3 (`671084f`) — Checkout page rewrite. 720 px max-width, OrderItemRow + OrderSummary, single-step submit with idempotency key generation per route mount.
+    - B4 (`b32974b`) — Orders list rewrite. 96 px ProductCover thumbs, DotStatus chips, conditional 支付截止 meta, dual ghost/primary actions for PENDING orders.
+    - B5 (`f24b7e3`) — Order detail rewrite + OrderStepper molecule. Stepper drives status visualization; CANCELLED/CLOSED/REFUNDED render as terminal pill; PAID → "查看支付凭证" routes to PaymentView's already-paid branch.
+    - B6 (`3a2bec8`) — Payment page rewrite. AmountDisplay with RAF tween 0→total over 420 ms ease-out cubic, mock-method card with terracotta check icon, success ceremony (96 px circle + stroke-dashoffset draw), 4 terminal screens (success / success-pending / already-paid / not-payable). State machine + idempotency-key contract + run-id tracking preserved byte-identical (PaymentView.spec.ts 4 tests pass first run).
+    - B7 (`e3ee37d`) — Login + Register rewrite + AuthHero molecule (55/45 hero side panel). el-form + Field-wrapped native input; re-entry guard on onSubmit defends against double-fire.
+    - B8 (`db7f0bf`) — 404 + 403 rewrite + StatusPage molecule. Full canvas, display-xl decorative code (ink-300), h1 + body + primary CTA + quiet BrandMark footer.
+  - **Phase C — Motion polish audit** (this commit):
+    - Skeleton shimmer timing: ease-in-out → linear (§7 row 5 compliance).
+    - C1/C3/C4 verified: page transition, amount tween, check draw all already match §7 from Phase A/B work.
+    - C5: no design-probe scaffolding present.
+- Final R1–R12 compliance: all rules pass. Remaining EP touch points are exactly §10 R1's whitelist (ElMessage × 17, ElMessageBox.confirm × 2, el-form/el-form-item × 2 views for validation engine). Zero forbidden visible components (el-button, el-tag, el-icon, el-result, el-empty, el-table, el-pagination, el-divider, el-link, el-alert all return 0 grep hits in non-test code). Zero v-loading. Zero type="primary" blue buttons. Zero red prices. Zero "label : value" form rows on user-facing pages. Same productId always renders the same cover. Container widths follow §5 per page. Motion specs ship with their pages. `src/api`, `src/stores`, `src/router` untouched across all 14 redesign commits. Every commit builds clean. Per-task dev-log entry. Per-task user authorization before commit.
+- Bundle deltas vs pre-redesign (Phase 0):
+  - Main bundle (index-*.js): ~1080 → 1087 kB (flat; EP full-import dominates).
+  - Per-view JS chunks: each grew by net ~1–3 kB from atom imports replacing el-* component imports; some chunks (OrderDetailView) net shrank after OrderStepper extraction.
+  - CSS: ~369 kB total (EP CSS dominates; scoped per-view chunks add ~2–4 kB each).
+  - Note: bundle size optimization (switching `app.use(ElementPlus)` to on-demand ElMessage/ElMessageBox/ElForm imports) is identified as future perf work, not a Phase 1 deliverable; would likely drop the index CSS by 300+ kB.
+- Outstanding items (not in Phase 1 scope):
+  - On-demand ElementPlus import to shrink bundle.
+  - `<Toast>` / `<ConfirmModal>` atoms (would replace ElMessage / ElMessageBox if a future spec revision tightens R1).
+  - Atom-level vitest coverage for AuthHero, OrderStepper, StatusPage (currently covered by view-level + build).
+- Phase D verification gate: D3 (`npm run build`) green this commit. D1 (full smoke per §9.4) + D2 (visual audit per §10) are user-driven and pending; dev server on http://localhost:5173/ is the verification surface. D4 is this entry.
+- Phase 1 UI rework — complete.

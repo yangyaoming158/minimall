@@ -43,7 +43,7 @@ const style = computed(() => ({
     var(--ink-100) 100%
   );
   background-size: 200% 100%;
-  animation: skeleton-shimmer 1.6s ease-in-out infinite;
+  animation: skeleton-shimmer 1.6s linear infinite;
   border-radius: var(--radius-sm);
 }
 
