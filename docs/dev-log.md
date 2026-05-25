@@ -1534,3 +1534,83 @@ Append one entry per implementation task so future sessions can recover project 
   12. Route reuse: from /payments/A click "返回订单详情" → /orders/A → from order detail navigate to /payments/B (via another order's payment link if available) → the same component instance reloads cleanly, new key generated, stale ORDER-A awaits dropped.
 - Issues: None observed during implementation. Tests passed on first run, confirming the state machine + idempotency-key contract preservation was correct. One minor: the breadcrumb currently shows the FULL orderNo (could be 32+ chars on UUIDs); on small screens this can wrap awkwardly. Acceptable because (a) wraps gracefully, (b) test contract requires the full string to be in `wrapper.text()`. If user feedback flags this we can use a `display: contents` span + a CSS truncation that doesn't affect text node content.
 - Next: B7 — Login + Register pages rewrite. Per redesign spec §5.x (need to re-read): replace el-form / el-input / el-button with Field atom + Button atom + the auth-hero side panel. AuthHero is a new component (per §3.3). Login and Register share the same shell; only the form fields and CTA differ. Existing auth store + validation logic + redirect-on-401 + redirect-after-success contract preserved verbatim. Will likely need a Field.vue atom inspection first (already exists per the atoms directory listing).
+
+## 2026-05-25 · B7 — Login + Register pages rewrite
+
+- Date: 2026-05-25
+- Status: implementation complete; visual smoke pending user verification; 33/33 vitest pass; build clean
+- Branch: feature/phase1-customer-frontend
+- Scope: B7 — Replace LoginView and RegisterView's Element Plus-driven look (el-form-item labels, el-input, el-button, el-link, hosted-form aesthetic) with the storefront Phase A vocabulary. Introduce a new molecule `AuthHero` per spec §3.3 (left/right side panel) and apply it to both pages in a 55/45 grid. Existing auth-store contract (`login` / `register` / token storage / 401 redirect), `safeRedirect` open-redirect guard, and the redirect-query roundtrip between /login and /register are preserved byte-identical.
+- Implemented:
+  - **AuthHero.vue (new molecule)** — `<aside>` container, 100% min-height, vertically centered.
+    - Props: `headline: string`, `subtitle: string`.
+    - Top-left absolute `<BrandMark dot />` (32/32 inset).
+    - Decorative `::before`-style div: 320×320 circle, `var(--canvas-darker)` background, `filter: blur(60px)`, absolute behind text. `aria-hidden`.
+    - Headline: `var(--t-display-xl-*)` tokens — 48/700/1.1 with -0.02em tracking, ink-900, font-display. Max-width 480px so it wraps at large widths instead of running edge-to-edge.
+    - Subtitle: body 14/400/1.7, ink-500, max-width 36ch.
+    - Mobile (<900px): collapses to 120px banner; headline shrinks to 28px; subtitle hidden; brandmark inset reduced to 20/24; blob halved to 200×200 and re-positioned.
+  - **LoginView rewrite**:
+    - Top-level `<section class="auth">` is a CSS grid `55% 45%` with `min-height: 640px`. Uses negative margin `-32px -24px` (and `-24px -16px` on mobile) to break out of `DefaultLayout`'s `.app-main` padding so the hero feels page-wide while still living inside the standard router-view container. No layout/router change needed.
+    - Left column: `<AuthHero headline="Welcome back." subtitle="Sign in to continue shopping at MiniMall." />`.
+    - Right column: `<div class="auth__panel">` with `align-items: center; justify-content: center` so the 420px-max form sits in the visual middle of the right column.
+    - Form structure (per row):
+      ```
+      <el-form-item prop="username" :show-message="false">
+        <Field label="用户名" :error="errors.username">
+          <input v-model.trim="form.username" type="text" class="auth-input" ... />
+        </Field>
+      </el-form-item>
+      ```
+      `el-form` + `el-form-item` are retained purely as the validation engine (rules trigger on blur, formRef.value.validate() exposes results). The visible label + error helper come from `<Field>`; the visible input is a plain styled `<input>`. `:show-message="false"` and a `:deep(.el-form-item__error) { display: none }` reset hide EP's own error renderer so nothing double-prints.
+    - `errors` is a reactive `Record<FieldKey, string>` initialized to empty strings. On submit, `validate()` calls `formRef.value.validate((valid, fields) => {...})` and writes each field's first error message into `errors`. On each `<input @input>`, `clearFieldError(key)` zeroes that field's error so the helper text vanishes the moment the user starts editing. (Trigger-on-blur is el-form-item's default, so blur-triggered messages won't appear here — only the submit-time aggregate validation populates `errors`. Acceptable trade-off: simpler API, no field-by-field validation timing puzzle. If we later want blur validation, we can call `formRef.value.validateField('username', cb)` from a `@blur` handler.)
+    - CTA: `<Button variant="primary" size="lg" full :loading="submitting" type="submit">登录</Button>`. Note `type="submit"` ensures Enter-in-input still submits the form (the `<el-form @submit.prevent="onSubmit">` handler catches it).
+    - Footer: `还没有账号？` + a real `<button type="button" class="text-link">立即注册</button>` (no `el-link`). The text-link is a button so it carries keyboard focus + Enter activation natively.
+  - **RegisterView rewrite**: identical shell + form pattern; five rows (username / password / confirmPassword / email / phone), all rules preserved verbatim including `validateConfirm` and the optional-only `email`/`phone` regex/format validators. Below the CTA: small ink-500 13/1.5 caption "演示账号，不会发送短信或邮件验证。" Footer "已有账号？去登录" using the same text-link button. Min-height bumped to 720px (taller form) to give the hero room to feel proportional.
+  - **`.auth-input` styling**: 1px solid ink-100 box (radius `var(--radius)`), 44px height, 12px horizontal padding, 15/400 font-sans ink-900. Focus → border ink-700, no shadow. Placeholder ink-300. Disabled bg ink-100. No `:hover` color change — focus is the affordance.
+  - **`.text-link`**: text-button reset with `text-decoration: underline; text-underline-offset: 3px`. Hover transitions color to terracotta. No external link icon (these are internal route pushes, not external nav).
+  - **Mobile responsive** (<900px): grid collapses to single column with a 120px banner row + form column below. <639px: negative margins update to match DefaultLayout's 16px gutter, panel padding tightens.
+- Decisions:
+  - **Kept el-form/el-form-item as the validation engine** instead of hand-rolling validators. The five rules in RegisterView (required + length + custom matcher + email + phone regex) total ~30 LoC and replicating them lossless including the trigger model would be busywork. Hiding EP's renderer with `:show-message="false"` + the `:deep` reset is a one-line cost. When Phase C finalizes the Element Plus removal, we'll port these rules to a tiny `validate()` util — but doing it now would couple B7 to that cleanup and bloat the diff.
+  - **Native `<input>` instead of `<el-input>`**. Per spec: "the visible input is ours". This drops EP's wrapper chrome (suffix slots, clearable button, etc.) — none of which we use here. `type="password"`'s native UA-styling is acceptable (no built-in show/hide eye, which is fine for a demo).
+  - **Dropped `show-password` toggle entirely**. Original used `<el-input show-password>` (3 password fields total across both views). Replicating it with native input would need 3× a `showPassword` ref + a toggle button + a focus-trap concern (focus moves to the toggle button mid-field, awkward). The demo doesn't need it; users typing demo creds aren't trying to verify a 24-char password. If a real auth flow ever needs this, we add a single `<PasswordField>` molecule that wraps `<input>` + a toggle button.
+  - **Dropped `clearable` on inputs**. Same logic: it's a 24px ✕ icon at the right of EP's wrapper. Marginal UX gain for the demo, costs us native rendering.
+  - **`errors` reactive map populated on submit only**, not field-by-field on blur. Per-field blur validation is a UX nicety but requires wiring `@blur` handlers + tracking which fields have been "touched" + suppressing errors on never-touched fields. For a 2-field login and 5-field register, on-submit aggregate validation is good enough and the codepath is simpler.
+  - **Negative-margin breakout instead of moving the auth pages out of `DefaultLayout`**. Spec says hero is two-column 55/45 panel — implies edge-to-edge feel. Two clean paths existed: (a) create an `AuthLayout` and register it on the auth routes; (b) keep the routes in `DefaultLayout` and use a negative margin to neutralize `.app-main`'s padding. Chose (b) because (a) requires a router-level decision (which layout per route), adds a layout file, and changes the AppHeader visibility surface — but AppHeader on auth pages is fine (it shows the brand which the hero already shows, but it also shows the cart/account chip which is useful for logged-in users who land on /login by mistake). (b) is local to two files. If we ever want auth pages without the header, we'll lift to (a) cleanly.
+  - **No-show-message + deep reset, not slot override**. Element Plus's el-form-item provides a `#error` slot, but the slot still wraps in its own `.el-form-item__error` div with its own positioning. Hiding via `:show-message="false"` + display:none on the residual is cleaner and matches how `<Field>`'s helper line owns the vertical rhythm.
+  - **AuthHero is a standalone molecule, not inlined per page**. Two callers with identical structure (the only differences are headline/subtitle text strings); inlining would duplicate ~90 LoC of styles and the responsive collapse behavior across both views. Standalone component lets the responsive breakpoints stay in one place. Cost: one new file + one import per view.
+  - **AuthHero stripped down to `headline` + `subtitle` props** — no `side` prop yet (spec mentions `side="left | right"` in §3.3 but both current callers use left-side). YAGNI: if we ever need right-side (RTL or A/B), we add it then. Surface stays minimal.
+  - **`label-position="top"` on el-form removed**. With the visible label rendered by Field (above its own slot), there's no EP label slot anymore — the prop becomes vestigial.
+  - **`size="large"` on el-form removed**. EP sizing only affected EP children; we have none rendered.
+  - **Form action button is `type="submit"`** so Enter inside any input fires the form's `@submit.prevent="onSubmit"`. The Button atom forwards the `type` prop to its `<button>` root, so this works through the wrapper.
+  - **Kept ElMessage success/error toasts**. PaymentView/OrdersView/OrderDetailView all still use ElMessage; consolidating to a Toast atom is a Phase C sweep. Doing it here would couple B7 to that cleanup.
+- Changed files:
+  - A frontend/src/components/AuthHero.vue (new, ~90 lines)
+  - M frontend/src/views/LoginView.vue (full rewrite — script preserved byte-identical for: useAuthStore, ApiError handling, safeRedirect with `startsWith('/') && !startsWith('//')` open-redirect guard, redirect-query roundtrip in toRegister, ElMessage.success on success + ElMessage.error on ApiError, submitting ref, form reactive shape, rules object. Additions: `errors` reactive, `clearFieldError`, `validate()` Promise wrapper around formRef.validate callback. Removals: `validateAll` direct return, label/clearable/show-password props.)
+  - M frontend/src/views/RegisterView.vue (full rewrite — script preserved byte-identical for: useAuthStore, ApiError handling, RegisterForm interface, form reactive shape with email/phone defaults, rules including validateConfirm + email + phone, optional-field payload trimming in onSubmit, toLogin redirect-query roundtrip, ElMessage.success → toLogin chain. Additions: `errors` reactive, `clearFieldError`, `validate()` Promise wrapper. Removals: label-position/size props, clearable/show-password.)
+  - M docs/dev-log.md (this entry)
+- Commands run: read of LoginView.vue + RegisterView.vue + Field.vue + Button.vue + BrandMark.vue + Notice.vue + the §5.2/§5.3/§3.3 spec sections + tokens.css for typography variables + App.vue/DefaultLayout.vue for shell context; `npm run test -- --run` (4 spec files, 33 tests, 1.43s, all pass — no LoginView/RegisterView spec exists so this validates B7 didn't break unrelated views); `npm run build` (vue-tsc + vite, exit 0, 4.92s — see size deltas below).
+- Test result: 33/33 vitest pass (CheckoutView + PaymentView + 2 atom spec files). `npm run build` clean.
+- Build deltas vs B6 (commit 3a2bec8):
+  - LoginView JS chunk: ~1.4 → 2.88 kB (+1.5 kB) — adds AuthHero + Button + Field imports; replaces el-input/el-button/el-link.
+  - LoginView CSS chunk: ~0.8 → 2.05 kB (+1.2 kB) — auth grid, auth-input styles, text-link, responsive breakpoints.
+  - RegisterView JS chunk: ~1.7 → 4.70 kB (+3.0 kB) — same atom imports as Login + the 5-field validate() wrapper.
+  - RegisterView CSS chunk: ~0.9 → 2.22 kB (+1.3 kB) — same shell plus the demo caption.
+  - New AuthHero is bundled into each view's chunk (single-importer chunk extraction threshold not met for 2 importers — bundler decision). Together ~1 kB of duplicated style across both chunks; acceptable for a styles-heavy component with no shared logic.
+  - Main bundle index-*.js: 1087.23 → 1087.42 kB (essentially flat).
+  - index CSS unchanged at 369.34 kB.
+- Visual smoke: NOT performed by Claude (no browser access). Checklist for the user to exercise against http://localhost:5173/:
+  1. `/login` cold load — left 55% hero with "Welcome back." display-xl + "Sign in to continue shopping at MiniMall." body + faded blob behind text + BrandMark top-left. Right 45% form panel with h1 "登录" + two Field rows + primary full-width "登录" button + footer "还没有账号？立即注册".
+  2. Click "登录" with both fields empty → both rows show red helper "请输入用户名" / "请输入密码".
+  3. Type into username field → its error helper disappears immediately. Type into password → same.
+  4. Submit valid credentials → ElMessage success "登录成功" + redirect to `/products` (or to `?redirect=…` if present).
+  5. Submit wrong credentials → ElMessage error with backend message, errors stay cleared (since validation already passed), submitting flag clears.
+  6. Click "立即注册" → routes to /register, redirect query preserved if originally present in /login URL.
+  7. `/register` cold load — hero "Create your MiniMall account." / "Takes less than a minute." + h1 "注册" + 5 Field rows + "注册" CTA + demo caption + "已有账号？去登录" footer.
+  8. Submit empty → all required rows red. Type into username (3-32 char range) → checks length on submit. Mismatched passwords → confirmPassword shows "两次输入的密码不一致". Invalid email/phone → only validates when provided.
+  9. Successful register → ElMessage "注册成功，请登录" + auto-route to /login.
+  10. Resize <900px → grid collapses to vertical: 120px banner row (just headline + brandmark, subtitle hidden) + form column below.
+  11. Resize <640px → margins/padding tighten further; form still readable.
+  12. Tab through form → focus rings visible on inputs (focus border ink-700) and on text-link buttons (UA outline).
+  13. Enter key in any input → form submits.
+- Issues: None observed. Build + tests pass first run. Spec §5.2 mentions "paper-thin underline-style OR 1px ink-100 box" — chose the box variant for cleaner read across optional fields in RegisterView.
+- Next: B8 — NotFoundView + ForbiddenView rewrite per spec §5.10. Per the listing: existing files at frontend/src/views/NotFoundView.vue + ForbiddenView.vue (~0.5 kB each, likely el-result-based stubs). §5.10 spec: display-xl ink-300 "404"/"403", h1 message, body explainer, primary CTA (back home or login), BrandMark footer. Smaller scope than B7 (~50 LoC per view); could also be bundled together since they share structure.
