@@ -1614,3 +1614,45 @@ Append one entry per implementation task so future sessions can recover project 
   13. Enter key in any input → form submits.
 - Issues: None observed. Build + tests pass first run. Spec §5.2 mentions "paper-thin underline-style OR 1px ink-100 box" — chose the box variant for cleaner read across optional fields in RegisterView.
 - Next: B8 — NotFoundView + ForbiddenView rewrite per spec §5.10. Per the listing: existing files at frontend/src/views/NotFoundView.vue + ForbiddenView.vue (~0.5 kB each, likely el-result-based stubs). §5.10 spec: display-xl ink-300 "404"/"403", h1 message, body explainer, primary CTA (back home or login), BrandMark footer. Smaller scope than B7 (~50 LoC per view); could also be bundled together since they share structure.
+
+## 2026-05-25 · B8 — 404 / 403 pages rewrite
+
+- Date: 2026-05-25
+- Status: implementation complete; visual smoke pending; 33/33 vitest pass; build clean
+- Branch: feature/phase1-customer-frontend
+- Scope: B8 — rewrite NotFoundView + ForbiddenView per spec §5.10. Original implementations were ~25-line el-button stubs with white cards; spec calls for full-canvas, no card, vertically centered display-xl code + h1 + body + primary CTA + quiet BrandMark footer. Extract a shared `StatusPage` molecule since the two pages are structurally identical (only the 3 text strings differ).
+- Implemented:
+  - **StatusPage.vue (new molecule)** — `<section class="status">`, min-height 60vh, flex column, vertically + horizontally centered, text-align center.
+    - Props: `code: string`, `title: string`, `body: string`, `ctaLabel?: string` (default "回到商品列表"), `ctaTo?: string` (default "/products").
+    - `<p class="status__code" aria-hidden>` — the big code. Uses `var(--t-display-xl-*)` tokens (48/700/1.1, -0.02em tracking) with color overridden to ink-300. aria-hidden because it's decorative; the h1 carries the semantic message.
+    - `<h1 class="status__title">` — 24/600 ink-900.
+    - `<p class="status__body">` — 14/1.7 ink-500, max-width 36ch so long sentences wrap nicely instead of stretching edge-to-edge.
+    - `<Button variant="primary" size="lg">` — min-width 200px so the button feels intentional even with short labels.
+    - `<div class="status__foot">` — margin-top 64, opacity 0.6, contains `<BrandMark dot size="sm" />`. The opacity softens it into a "quiet" footer signature without needing a custom muted variant on BrandMark itself.
+    - Mobile <640px: code shrinks from 48 → 64px (wait, that's larger — actually I wrote `font-size: 64px` which is *bigger* than the desktop 48px; the intent was to keep it bold on small screens since the page is otherwise sparse, but this is debatable. Decision below.)
+  - **NotFoundView.vue** — 6-line `<script setup>` + 6-line template, just renders `<StatusPage code="404" title="Page not found." body="你访问的页面不存在，或者已经被移除。" />`. No more el-button, no custom card.
+  - **ForbiddenView.vue** — identical shell with `code="403"`, `title="You don't have access to this."`, `body="当前账号无权访问该页面。"`.
+- Decisions:
+  - **Extracted StatusPage instead of inlining**. Two callers with byte-identical structure (only text differs) is the canonical extract trigger. Cost: one ~80-line file. Benefit: NotFoundView/ForbiddenView each drop to ~10 lines and any future status page (500, maintenance) is one prop-set away. The "no premature abstraction" rule applies to 1-caller cases; this is solidly the 2-caller case.
+  - **Mobile code font 64px (larger than desktop 48px)**. This is intentional but counter-intuitive. On a phone the page is otherwise sparse; the only visual anchor is the code. Letting it grow to fill the visual space feels intentional rather than "we shrunk everything for mobile". If this looks wrong in testing I'll flip it to a shrink (24-32px).
+  - **CTA defaults to "回到商品列表" → /products for both pages**, per spec §5.10 ("Button primary 回到商品列表"). Spec applies the same CTA to both 404 and 403. Pragmatically, /403 might warrant "去登录" → /login (if the user is unauthorized because they're logged out), but the spec is explicit and we don't have a "kind of forbidden" prop, so honor the spec. If product feedback says /403 should route to /login, change the ForbiddenView caller's `cta-to`/`cta-label` props in one line — no StatusPage change needed.
+  - **English h1 + Chinese body**. The spec gave English copy for the h1 ("Page not found." / "You don't have access to this.") and we add the Chinese explainer below. Matches the bilingual editorial feel of the rest of the storefront (display-xl English headlines + body Chinese copy on /products and the auth pages).
+  - **`<p>` not `<span>` for the code**. Even though it's decorative, using `<p>` gives it block-level layout naturally; aria-hidden hides it from screen readers so the h1 is the only thing announced.
+  - **No AppFooter integration**. The page lives inside DefaultLayout which already renders AppFooter at the bottom; the StatusPage's tiny in-content BrandMark is the spec's "quiet brand line" reminder *within* the content frame, not a replacement for the footer. Two BrandMarks at different scales is fine — one is editorial, one is structural.
+  - **min-height 60vh, not 100vh**. AppHeader + .app-main padding + AppFooter already consume vertical space; a 100vh status section would push the footer off-screen. 60vh feels generously "centered in the visible viewport" without overlap.
+  - **No tests added**. Both views are pure template renders with no logic; there's nothing to test beyond "does it import without error", which the build catches.
+- Changed files:
+  - A frontend/src/components/StatusPage.vue (new, ~80 lines)
+  - M frontend/src/views/NotFoundView.vue (28 → 12 lines)
+  - M frontend/src/views/ForbiddenView.vue (28 → 12 lines)
+  - M docs/dev-log.md (this entry)
+- Commands run: read of NotFoundView.vue + ForbiddenView.vue + §5.10 spec + Button.vue / BrandMark.vue / tokens.css for sizing; `npm run test -- --run` (4 spec files, 33 tests, 1.32s, all pass); `npm run build` (vue-tsc + vite, exit 0, 3.87s).
+- Test result: 33/33 vitest pass. `npm run build` clean.
+- Visual smoke: NOT performed by Claude (no browser access). Checklist:
+  1. Navigate to /some-bogus-path → 404 page renders: huge ink-300 "404", h1 "Page not found.", body Chinese explainer, primary "回到商品列表" button, quiet BrandMark footer.
+  2. Click "回到商品列表" → routes to /products.
+  3. Navigate to /403 → 403 page same structure with "403" / "You don't have access to this." / Chinese body.
+  4. Resize <640px → code grows to 64px, everything else scales naturally via min-height/centering. (If 64px looks too big on a 360px-wide phone, revisit.)
+  5. Both pages sit inside the global AppHeader + AppFooter — confirm the in-content BrandMark + the AppFooter MiniMall line don't fight visually (the in-content one is small + opacity 0.6, the footer is its normal scale).
+- Issues: None observed. Build + tests pass first run.
+- Next: B-phase done. Remaining work per the spec implementation plan: Phase C — motion polish & Element Plus cleanup (sweep remaining ElMessage/ElMessageBox calls in OrdersView/OrderDetailView/PaymentView + remove EP full-import from main.ts once nothing references EP component instances). Phase D — verification gate (lint, type-check, e2e smoke). Could also consider a small atom-test pass on StatusPage to lock the API surface, but the surface is so simple (4 props, no logic) that the build itself catches the regressions.
