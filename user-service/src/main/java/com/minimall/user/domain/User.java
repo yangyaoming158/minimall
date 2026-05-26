@@ -39,6 +39,10 @@ public class User {
     @Column(nullable = false, length = 32)
     private UserStatus status = UserStatus.ACTIVE;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 32)
+    private UserRole role = UserRole.USER;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
@@ -64,6 +68,9 @@ public class User {
         updatedAt = now;
         if (status == null) {
             status = UserStatus.ACTIVE;
+        }
+        if (role == null) {
+            role = UserRole.USER;
         }
     }
 
@@ -96,6 +103,10 @@ public class User {
         return status;
     }
 
+    public UserRole getRole() {
+        return role;
+    }
+
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
@@ -106,5 +117,9 @@ public class User {
 
     public void setStatus(UserStatus status) {
         this.status = status;
+    }
+
+    public void setRole(UserRole role) {
+        this.role = role;
     }
 }
