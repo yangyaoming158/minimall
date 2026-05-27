@@ -131,6 +131,7 @@ async function onSubmit(): Promise<void> {
       class="auth__hero"
       headline="Create your MiniMall account."
       subtitle="Takes less than a minute."
+      reel-seed="register"
     />
 
     <div class="auth__panel">

@@ -104,6 +104,7 @@ async function onSubmit(): Promise<void> {
       class="auth__hero"
       headline="Welcome back."
       subtitle="Sign in to continue shopping at MiniMall."
+      reel-seed="login"
     />
 
     <div class="auth__panel">
