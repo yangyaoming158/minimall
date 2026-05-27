@@ -27,6 +27,11 @@ During implementation:
 - Do not manually edit `.taskmaster/tasks/tasks.json` unless TaskMaster CLI/MCP is unavailable.
 - Use TaskMaster commands whenever possible.
 - In the current WSL Codex environment, if global `task-master` is unavailable, use the project-local CLI: `node node_modules/task-master-ai/dist/task-master.js COMMAND`, replacing `COMMAND` with `next --tag=phase0-api-polish`, `show 1 --tag=phase0-api-polish`, `set-status --id=1 --status=in-progress --tag=phase0-api-polish`, etc.
+- TaskMaster CLI nuances (project-local CLI):
+  - `--tag=<tag>` is accepted on `next`, `list`, `add-subtask`.
+  - `--tag` is NOT accepted on `show` or `set-status`. For those, ensure the desired tag is current first (`use-tag <tag>`, verify with `tags`), then run the bare command.
+  - `expand --id=<id> --num=<n>` has historically hung or failed in this WSL/Codex sandbox. If it errors or does not return promptly, fall back to manual `add-subtask --parent=<id>` for each subtask. Do not retry `expand` in a loop.
+  - Do not hand-edit `.taskmaster/tasks/tasks.json` unless the CLI is fully unavailable.
 
 After implementation:
 1. Run the task's testStrategy.
