@@ -23,7 +23,11 @@ Frame every new TaskMaster task with the same opening: confirm phase + branch, r
    - `CLAUDE.md` "Current phase" line (or other phase markers in CLAUDE.md)
    - TaskMaster `(current)` tag
    - git branch prefix (e.g. `codex/phase2-…`, or a recorded override like `feature/phase1-customer-frontend`)
-   If they disagree, print a single warning line that names the mismatch. Do NOT auto-fix CLAUDE.md.
+   Specifically extract a phase number from each where possible:
+   - Tag: leading `phaseN` in the tag name (e.g. `phase2-admin-platform` → `2`)
+   - Branch: first `phase(\d+)` match in the branch name (e.g. `codex/phase2-admin-task1` → `2`)
+   - CLAUDE.md: first `Phase\s*(\d+)` match
+   If the extracted phase numbers disagree (or any source has no detectable phase), print a single warning line that names the specific mismatch — e.g. `drift: branch=phase2, tag=phase3 (consider git checkout -b codex/phase3-…)`. Soft warning only — do NOT auto-create branches, do NOT auto-fix CLAUDE.md, do NOT block. The user decides whether to switch branch before continuing.
 4. `node node_modules/task-master-ai/dist/task-master.js next --tag=<current>`.
 5. `node node_modules/task-master-ai/dist/task-master.js show <id>` (note: `show` does not accept `--tag`; rely on `(current)`).
 6. Read in this order, only if not already in context:
