@@ -10,10 +10,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.minimall.common.auth.constants.AuthHeaders;
+import com.minimall.common.auth.context.AuthRole;
 import com.minimall.common.auth.context.UserContextHolder;
 import com.minimall.common.auth.jwt.JwtUtils;
 import com.minimall.common.core.exception.ErrorCode;
 import com.minimall.user.domain.User;
+import com.minimall.user.domain.UserRole;
 import com.minimall.user.dto.LoginRequest;
 import com.minimall.user.dto.RegisterRequest;
 import com.minimall.user.repository.UserRepository;
@@ -100,7 +102,7 @@ class UserAuthControllerTest {
         userRepository.saveAndFlush(new User("alice", passwordEncoder.encode("password123"), null, null));
         LoginRequest request = new LoginRequest("alice", "password123");
 
-        mockMvc.perform(post("/api/users/login")
+        String responseBody = mockMvc.perform(post("/api/users/login")
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -110,7 +112,35 @@ class UserAuthControllerTest {
                 .andExpect(jsonPath("$.data.tokenType").value("Bearer"))
                 .andExpect(jsonPath("$.data.id").doesNotExist())
                 .andExpect(jsonPath("$.data.userId").exists())
-                .andExpect(jsonPath("$.data.username").value("alice"));
+                .andExpect(jsonPath("$.data.username").value("alice"))
+                .andExpect(jsonPath("$.data.role").value("USER"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String token = objectMapper.readTree(responseBody).get("data").get("token").asText();
+        assertThat(jwtUtils.parseToken(token).getRole()).isEqualTo(AuthRole.USER);
+    }
+
+    @Test
+    void loginReturnsAdminRoleInTokenAndResponse() throws Exception {
+        User admin = new User("admin", passwordEncoder.encode("password123"), null, null);
+        admin.setRole(UserRole.ADMIN);
+        userRepository.saveAndFlush(admin);
+        LoginRequest request = new LoginRequest("admin", "password123");
+
+        String responseBody = mockMvc.perform(post("/api/users/login")
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.username").value("admin"))
+                .andExpect(jsonPath("$.data.role").value("ADMIN"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String token = objectMapper.readTree(responseBody).get("data").get("token").asText();
+        assertThat(jwtUtils.parseToken(token).getRole()).isEqualTo(AuthRole.ADMIN);
     }
 
     @Test
@@ -131,14 +161,15 @@ class UserAuthControllerTest {
                 .andExpect(jsonPath("$.code").value(ErrorCode.SUCCESS.getCode()))
                 .andExpect(jsonPath("$.data.id").doesNotExist())
                 .andExpect(jsonPath("$.data.userId").value(42))
-                .andExpect(jsonPath("$.data.username").value("alice"));
+                .andExpect(jsonPath("$.data.username").value("alice"))
+                .andExpect(jsonPath("$.data.role").value("USER"));
 
         assertThat(UserContextHolder.hasContext()).isFalse();
     }
 
     @Test
     void meReturnsUserFromBearerToken() throws Exception {
-        String token = jwtUtils.generateToken(43L, "bob");
+        String token = jwtUtils.generateToken(43L, "bob", AuthRole.ADMIN);
 
         mockMvc.perform(get("/api/users/me")
                         .header("Authorization", "Bearer " + token))
@@ -147,7 +178,8 @@ class UserAuthControllerTest {
                 .andExpect(jsonPath("$.code").value(ErrorCode.SUCCESS.getCode()))
                 .andExpect(jsonPath("$.data.id").doesNotExist())
                 .andExpect(jsonPath("$.data.userId").value(43))
-                .andExpect(jsonPath("$.data.username").value("bob"));
+                .andExpect(jsonPath("$.data.username").value("bob"))
+                .andExpect(jsonPath("$.data.role").value("ADMIN"));
 
         assertThat(UserContextHolder.hasContext()).isFalse();
     }

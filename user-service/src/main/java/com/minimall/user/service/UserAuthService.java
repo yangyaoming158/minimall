@@ -1,5 +1,6 @@
 package com.minimall.user.service;
 
+import com.minimall.common.auth.context.AuthRole;
 import com.minimall.common.auth.jwt.JwtUtils;
 import com.minimall.common.core.exception.BusinessException;
 import com.minimall.common.core.exception.ErrorCode;
@@ -58,8 +59,8 @@ public class UserAuthService {
             throw badCredentials();
         }
 
-        String token = jwtUtils.generateToken(user.getId(), user.getUsername());
-        return new LoginResponse(token, "Bearer", user.getId(), user.getUsername());
+        String token = jwtUtils.generateToken(user.getId(), user.getUsername(), AuthRole.valueOf(user.getRole().name()));
+        return new LoginResponse(token, "Bearer", user.getId(), user.getUsername(), user.getRole());
     }
 
     private BusinessException badCredentials() {

@@ -1592,7 +1592,7 @@
   "phase2-admin-platform": {
     "tasks": [
       {
-        "id": 1,
+        "id": "1",
         "title": "Review admin API contract and current capabilities",
         "description": "Audit existing backend, gateway, frontend, and documentation against the Phase 2 PRD, then lock the admin-safe API contract before implementation.",
         "details": "Read phase2 PRD, frontend integration guide, gateway contract, phase0 acceptance, phase1 acceptance, and README. Produce docs/phase2-admin-api-contract.md covering admin route ownership, auth behavior, DTO envelope rules, audit ownership, non-goals, and regression boundaries. Do not implement business logic in this task.",
@@ -1604,7 +1604,7 @@
         "updatedAt": "2026-05-26T11:19:45.518Z"
       },
       {
-        "id": 2,
+        "id": "2",
         "title": "Implement users.role admin identity and admin seed",
         "description": "Add the simplified USER ADMIN role model, expose role in auth responses, and create an environment-driven initial admin seed.",
         "details": "Add UserRole enum and users.role migration/default. Existing users default to USER. Login JWT claims and /api/users/me include role. Add /api/admin/login and /api/admin/me in user-service with ADMIN enforcement and ApiResponse errors. Seed initial admin from environment variables only when configured, never hardcode passwords or secrets. Tests cover default USER role, admin login success, USER admin login forbidden, /api/admin/me authorization, and seed behavior.",
@@ -1631,12 +1631,13 @@
             "title": "Expose role in user auth responses and JWT claims",
             "description": "Include user role in customer login token claims and current-user response contracts.",
             "details": "Update LoginResponse, CurrentUserResponse, JwtUtils claim handling usage, and user auth service/controller tests so /api/users/login and /api/users/me expose stable role data while preserving ApiResponse contracts.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "2.1"
             ],
             "parentTaskId": 2,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-27T15:22:32.970Z"
           },
           {
             "id": 3,
@@ -1663,10 +1664,10 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-05-26T11:44:21.714Z"
+        "updatedAt": "2026-05-27T15:22:32.970Z"
       },
       {
-        "id": 3,
+        "id": "3",
         "title": "Protect admin routes in gateway and trusted role headers",
         "description": "Extend common-auth and api-gateway so /api/admin/** requires ADMIN and downstream services receive trusted role context.",
         "details": "Add X-User-Role to AuthHeaders and UserContext parsing. Strip browser supplied X-User-Id, X-Username, and X-User-Role before auth. Parse JWT role, inject trusted role header, protect every /api/admin/** route, and return ApiResponse 401 for missing auth and 403 for USER. Route admin prefixes to the fixed downstream owners from the PRD. Tests cover unauthenticated, USER, ADMIN, forged headers, OPTIONS, and existing public catalog reads.",
@@ -1679,7 +1680,7 @@
         "subtasks": []
       },
       {
-        "id": 4,
+        "id": "4",
         "title": "Implement admin operation audit log infrastructure",
         "description": "Create the shared admin audit model, table, enums, writer API, and user-service query endpoint for audit logs.",
         "details": "Add admin_operation_logs migration owned by user-service query API. Add common-core audit action and resource enums plus shared DTOs or helper interfaces. Implement a small reusable audit writer pattern usable from product, inventory, and notification services without MQ. /api/admin/audit-logs supports adminUserId, action, resourceType, resourceId, createdFrom, createdTo, page, size. Tests cover persistence, filtering, pagination, ApiResponse envelope, and ADMIN enforcement.",
@@ -1692,7 +1693,7 @@
         "subtasks": []
       },
       {
-        "id": 5,
+        "id": "5",
         "title": "Implement Product admin API and imageUrl support",
         "description": "Add product imageUrl persistence and admin-safe product management APIs while protecting legacy product write routes.",
         "details": "Add products.image_url migration, domain field, request validation, responses, and frontend-compatible fallback behavior. Implement AdminProductController for list, detail, create, update, and PUT status. Require ADMIN on existing /api/products write endpoints until removed in a later phase. Record audit logs for create, update, on shelf, and off shelf. Tests cover imageUrl save/return, status enum validation, USER forbidden, ADMIN success, legacy write protection, audit records, and Phase 1 product read compatibility.",
@@ -1706,7 +1707,7 @@
         "subtasks": []
       },
       {
-        "id": 6,
+        "id": "6",
         "title": "Implement Inventory admin API with idempotent adjustments",
         "description": "Add admin-safe inventory initialization, adjustment, and record query APIs with mandatory requestId idempotency and audit logging.",
         "details": "Implement AdminInventoryController for list, detail, initialize, adjust, and records. Do not expose or reuse internal deduct/release semantics as UI APIs. Require requestId for adjustments and guarantee duplicate requestId behavior. Prevent negative available stock, record inventory_records with admin context and reason, and write audit logs. Tests cover initialization conflict, positive and negative adjustments, negative stock rejection, duplicate requestId, records query, USER forbidden, ADMIN success, and audit persistence.",
@@ -1721,7 +1722,7 @@
         "subtasks": []
       },
       {
-        "id": 7,
+        "id": "7",
         "title": "Implement Order admin query API and event timeline",
         "description": "Add admin order list, filter, detail, and event timeline APIs without allowing manual order status mutation.",
         "details": "Implement AdminOrderController for /api/admin/orders, /api/admin/orders/{orderNo}, and /api/admin/orders/{orderNo}/events. Support filters for orderNo, username or userId, status, productId, createdFrom, createdTo, page, and size. Use existing order_events when available and otherwise return a minimal timeline from order state data. Do not add admin status write APIs. Tests cover filters, detail, event timeline, enum validation, pagination, USER forbidden, ADMIN success, and no regression to /api/orders/my.",
@@ -1735,7 +1736,7 @@
         "subtasks": []
       },
       {
-        "id": 8,
+        "id": "8",
         "title": "Implement Payment admin query API",
         "description": "Add admin payment list, filter, detail, and order lookup APIs for operational visibility without refund or reconciliation features.",
         "details": "Implement AdminPaymentController for /api/admin/payments, /api/admin/payments/{paymentNo}, and /api/admin/payments/order/{orderNo}. Support filters for paymentNo, orderNo, status, paidFrom, paidTo, page, and size. Do not add refund, callback, or reconciliation behavior. Tests cover filtering, payment detail, lookup by orderNo, status enum handling, pagination, USER forbidden, ADMIN success, and existing customer mock payment regression.",
@@ -1749,7 +1750,7 @@
         "subtasks": []
       },
       {
-        "id": 9,
+        "id": "9",
         "title": "Implement Notification admin log query API",
         "description": "Add admin notification log list and detail APIs only, explicitly excluding resend from Phase 2 MVP.",
         "details": "Implement AdminNotificationController for /api/admin/notifications and /api/admin/notifications/{id}. Support eventId, orderNo, status, channel, createdFrom, createdTo, page, and size filters. Do not add /resend or notification mutation behavior. Tests cover filtering, detail, pagination, status and channel handling, USER forbidden, ADMIN success, and notification consumer regression.",
@@ -1763,7 +1764,7 @@
         "subtasks": []
       },
       {
-        "id": 10,
+        "id": "10",
         "title": "Initialize independent admin-frontend routing layout guards and API clients",
         "description": "Create a separate Vue admin frontend project with its own route shell, guards, role-aware auth state, and admin API clients.",
         "details": "Create an independent admin-frontend directory with its own package.json, Vite config, TypeScript config, README, app entry, router, Pinia setup, Axios client, and Element Plus setup. Do not add admin routes, menus, login, or pages to the Phase 1 customer frontend. Add admin-frontend routes /login, / redirecting to /products, and protected /products, /inventories, /orders, /payments, /notifications, /audit-logs. Add AdminLayout with side menu and top bar. Add role-aware auth store, /api/admin/me guard, 403 handling, and API clients for all admin endpoints through the gateway only. Tests or build checks cover route guards, direct service port absence, no /internal calls, no forged X-User-* headers, and admin-frontend npm run build.",
@@ -1776,7 +1777,7 @@
         "subtasks": []
       },
       {
-        "id": 11,
+        "id": "11",
         "title": "Implement admin login page and admin shell behavior",
         "description": "Build the admin login flow and usable admin frame on top of the protected admin routes.",
         "details": "Implement admin-frontend /login using /api/admin/login. USER accounts must show permission failure. Successful ADMIN login stores token and enters /products. Admin shell shows current admin identity from /api/admin/me and supports local logout by clearing token. Preserve the separate Phase 1 customer frontend login and routes without adding admin entry points there. Tests or verification cover admin success, USER rejection, unauthenticated redirect, forbidden route behavior, and admin-frontend npm run build.",
@@ -1790,7 +1791,7 @@
         "subtasks": []
       },
       {
-        "id": 12,
+        "id": "12",
         "title": "Implement admin product management page and customer image display",
         "description": "Build the admin product table and form workflows, and surface imageUrl in the customer storefront.",
         "details": "Implement admin-frontend /products with pagination, keyword search, status filter, create, edit, imageUrl editing, status mutation, detail view, and confirmations for on shelf and off shelf. Use only /api/admin/products/** from the admin UI. Update the separate Phase 1 customer frontend product list and detail to render imageUrl with existing placeholder fallback, without adding admin navigation or admin behavior to the customer app. Tests or verification cover create, edit, status changes, image preview, USER route rejection, no /internal calls, admin-frontend npm run build, and frontend npm run build for the image display regression.",
@@ -1805,7 +1806,7 @@
         "subtasks": []
       },
       {
-        "id": 13,
+        "id": "13",
         "title": "Implement admin inventory management page",
         "description": "Build the admin inventory list, initialization, adjustment, and record timeline workflows.",
         "details": "Implement admin-frontend /inventories with pagination, product search, stock state filtering, inventory initialization, adjustment dialog, mandatory reason, generated requestId per submit attempt, and inventory record view. Use only /api/admin/inventories/** through gateway. Show clear conflict and insufficient stock errors from ApiResponse. Tests or verification cover initialize, adjust positive and negative, duplicate submit guard, records view, reason required, no /internal calls, and admin-frontend npm run build.",
@@ -1820,7 +1821,7 @@
         "subtasks": []
       },
       {
-        "id": 14,
+        "id": "14",
         "title": "Implement admin operations query pages",
         "description": "Build admin pages for orders, payments, notifications, and audit logs using the completed admin query APIs.",
         "details": "Implement admin-frontend /orders with filters, details, and event timeline. Implement /payments with paymentNo/orderNo filters and detail. Implement /notifications with eventId/orderNo filters and detail, no resend UI. Implement /audit-logs with adminUserId, action, resourceType, resourceId, and time filters plus detail view. Use tables, filter bars, pagination, and concise status tags in the independent admin app. Tests or verification cover page loading, filtering, detail drawers, no direct service ports, no /internal calls, and admin-frontend npm run build.",
@@ -1838,7 +1839,7 @@
         "subtasks": []
       },
       {
-        "id": 15,
+        "id": "15",
         "title": "Complete Phase 2 integration regression and acceptance docs",
         "description": "Run full backend and frontend verification, protect Phase 1 purchase flow, and document Phase 2 acceptance results.",
         "details": "Run focused module tests from each completed backend task, then mvn test where feasible, mvn clean package -DskipTests, docker compose config, admin-frontend npm run build, and frontend npm run build. Manually verify admin auth 401/403, forged role header stripping, product imageUrl, inventory adjustment idempotency, order/payment/notification/audit pages in the independent admin app, and Phase 1 customer flow register/login/products/detail/order/pay/PAID in the separate customer app. Create docs/phase2-admin-acceptance.md with commands, results, changed scope, known limitations, and final checklist.",
@@ -1855,15 +1856,12 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-26T11:44:21.717Z",
+      "lastModified": "2026-05-27T15:22:32.971Z",
       "taskCount": 15,
       "completedCount": 1,
       "tags": [
         "phase2-admin-platform"
-      ],
-      "created": "2026-05-26T11:53:39.730Z",
-      "description": "Tasks for phase2-admin-platform context",
-      "updated": "2026-05-26T11:53:39.730Z"
+      ]
     }
   }
 }

@@ -3,6 +3,7 @@ package com.minimall.common.auth.jwt;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.minimall.common.auth.config.JwtProperties;
+import com.minimall.common.auth.context.AuthRole;
 import com.minimall.common.auth.context.UserContext;
 import com.minimall.common.core.exception.BusinessException;
 import com.minimall.common.core.exception.ErrorCode;
@@ -29,6 +30,19 @@ class JwtUtilsTest {
         assertThat(token).isNotBlank();
         assertThat(userContext.getUserId()).isEqualTo(1001L);
         assertThat(userContext.getUsername()).isEqualTo("alice");
+        assertThat(userContext.getRole()).isEqualTo(AuthRole.USER);
+    }
+
+    @Test
+    void generatesAndParsesTokenWithExplicitRole() {
+        JwtUtils jwtUtils = new JwtUtils(properties(3600));
+
+        String token = jwtUtils.generateToken(1001L, "alice", AuthRole.ADMIN);
+        UserContext userContext = jwtUtils.parseToken(token);
+
+        assertThat(userContext.getUserId()).isEqualTo(1001L);
+        assertThat(userContext.getUsername()).isEqualTo("alice");
+        assertThat(userContext.getRole()).isEqualTo(AuthRole.ADMIN);
     }
 
     @Test
@@ -70,6 +84,19 @@ class JwtUtilsTest {
     }
 
     @Test
+    void rejectsTokenWithInvalidRoleClaim() {
+        JwtUtils jwtUtils = new JwtUtils(properties(3600));
+        String token = JWT.create()
+                .withClaim("userId", 1001L)
+                .withClaim("username", "alice")
+                .withClaim("role", "ROOT")
+                .withExpiresAt(new Date(System.currentTimeMillis() + 60_000))
+                .sign(Algorithm.HMAC256(SECRET));
+
+        assertUnauthorized(() -> jwtUtils.parseToken(token), "Invalid token claims");
+    }
+
+    @Test
     void rejectsMissingToken() {
         JwtUtils jwtUtils = new JwtUtils(properties(3600));
 
@@ -96,6 +123,9 @@ class JwtUtilsTest {
         assertThatNullPointerException()
                 .isThrownBy(() -> jwtUtils.generateToken(1001L, null))
                 .withMessage("username must not be null");
+        assertThatNullPointerException()
+                .isThrownBy(() -> jwtUtils.generateToken(1001L, "alice", null))
+                .withMessage("role must not be null");
     }
 
     private static JwtProperties properties(long expireSeconds) {
