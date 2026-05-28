@@ -1,4 +1,4 @@
-# Phase 3 PRD: AI Product Inventory Operations Assistant
+# Phase 3 PRD: LLM-Driven AI Product Inventory Operations Assistant
 
 Suggested file:
 
@@ -59,9 +59,10 @@ review UI, and integration with the Phase 2.5 business workflow.
 
 ## 2. Product Goal
 
-Build an AI Product Inventory Operations Assistant for MiniMall administrators.
-The assistant uses structured product, order, inventory, inventory record, and
-operation statistics data to provide:
+Build an LLM-driven AI Product Inventory Operations Assistant for MiniMall
+administrators. Administrators use natural-language instructions in the admin
+frontend, and the assistant uses product, order, inventory, inventory record,
+and operation statistics data to provide:
 
 1. Inventory Q&A.
 2. Low-stock analysis.
@@ -72,6 +73,13 @@ operation statistics data to provide:
 7. Admin-reviewed inventory execution through the inventory service.
 8. Daily inventory operations report.
 
+The assistant is intelligent, not template-only. The LLM is responsible for
+understanding administrator intent, requesting relevant structured data,
+performing inventory and sales analysis, and generating operational
+recommendations. The backend is responsible for permissions, structured data
+access, tool execution, output validation, suggestion persistence, draft
+creation, and formal inventory execution after administrator confirmation.
+
 The assistant must remain advisory. It must not directly update inventory.
 
 ## 3. Core Principles
@@ -79,7 +87,8 @@ The assistant must remain advisory. It must not directly update inventory.
 1. AI does not directly modify inventory.
 2. AI does not directly execute SQL.
 3. AI does not bypass backend business services.
-4. AI only generates analysis, operation suggestions, and document drafts.
+4. AI analyzes structured system data and generates analysis, operation
+   suggestions, and document drafts.
 5. After administrator confirmation, inventory-service executes the formal
    inventory change.
 6. Every inventory change must write inventory records and admin operation
@@ -89,6 +98,8 @@ The assistant must remain advisory. It must not directly update inventory.
 8. `/internal/**` remains blocked for browser and AI-facing callers.
 9. All admin-facing APIs return `ApiResponse`.
 10. Status fields use enums.
+11. Backend validates model outputs before saving suggestions or creating
+    drafts.
 
 ## 4. Phase 2.5 Entry Gate
 
@@ -118,59 +129,68 @@ it inside Phase 3.
 
 ### 5.1 Inventory Q&A And Query
 
-The assistant supports these structured questions:
+The assistant supports administrator natural-language questions and maps them to
+controlled inventory analysis intents.
 
 1. Query current inventory.
 2. Query low-stock products.
 3. Query a specific product's inventory status.
+4. Explain a product's recent inventory changes when record data exists.
 
 Acceptance criteria:
 
-1. Answers cite the queried product, current stock, locked stock, safety stock,
-   and stock state when available.
-2. Unsupported questions return a controlled message, not a fabricated answer.
-3. Answers include the data time range or query time.
-4. The assistant uses only structured backend APIs.
+1. The administrator can ask in natural language, for example "哪些商品库存有风险"
+   or "分析 SKU-001 当前库存状态".
+2. The backend creates a controlled tool plan and provides the LLM only the
+   relevant structured data.
+3. Answers cite the queried product, current stock, locked stock, safety stock,
+   sales window, inventory records, and stock state when available.
+4. Unsupported questions return a controlled unsupported-intent response, not a
+   fabricated answer.
+5. Answers include the data time range or query time.
+6. The assistant uses only structured backend APIs and admin-safe logical tools.
 
 ### 5.2 Low-Stock Analysis
 
-The assistant identifies products below safety stock and combines near-term
-sales signals.
+The LLM analyzes low-stock products using backend-provided current inventory,
+safety stock, near-term sales, and inventory records.
 
 Rules:
 
-1. Low-stock product: `availableStock < safetyStock`.
-2. Near-term sales window: last 7 days.
-3. Suggested replenishment quantity is calculated by backend rule, not by the
-   language model.
-
-Recommended minimum replenishment rule:
-
-`max(safetyStock - availableStock, soldQuantityLast7Days)`
+1. The backend supplies low-stock candidates from structured queries.
+2. Near-term sales window defaults to last 7 days.
+3. The LLM proposes replenishment reason, risk level, and suggested quantity
+   based on the structured input.
+4. The backend validates that suggested quantities are positive integers and
+   referenced products exist in the input data.
 
 Acceptance criteria:
 
 1. Output includes product, current stock, safety stock, last 7-day sales,
    suggested quantity, reason, and risk level.
-2. Products without sales data still produce a deterministic suggestion based
-   on safety stock gap.
+2. Products without sales data are marked with clear limitations instead of
+   invented trends.
 3. Products without safety stock are excluded or marked as not analyzable.
+4. Model output that references unknown products, invalid quantities, or invalid
+   risk levels is rejected and not saved.
 
 ### 5.3 Hot-Product Analysis
 
-The assistant reports hot products for last 7 days and last 30 days.
+The LLM analyzes hot products for last 7 days and last 30 days using backend
+sales aggregation and current inventory data.
 
 Acceptance criteria:
 
 1. Output includes product id, product name, sold quantity, order count, sales
    amount, current stock, safety stock, and inventory risk.
-2. Risk level is computed by backend rule.
+2. Risk level is generated by the LLM and validated against the allowed enum.
 3. Time window can be `7` or `30` days.
+4. The assistant explains why a hot product is or is not at inventory risk.
 
 ### 5.4 Replenishment Suggestion Generation
 
-The assistant generates a replenishment suggestion list from low-stock and
-hot-product analysis.
+The LLM generates a replenishment suggestion list from low-stock, hot-product,
+sales, and inventory-record evidence supplied by backend tools.
 
 Suggestion item fields:
 
@@ -189,7 +209,10 @@ Acceptance criteria:
 1. Creating a suggestion does not change inventory.
 2. Suggestion results are saved as `ai_operation_suggestion`.
 3. Suggestion input snapshot is saved so the result can be reviewed later.
-4. Risk level is stable and enum-backed.
+4. Model output is validated before persistence.
+5. The persisted suggestion stores provider, model, prompt version, input
+   snapshot, validated output, and validation status.
+6. Risk level is enum-backed.
 
 ### 5.5 AI Suggestion Records
 
@@ -403,6 +426,10 @@ Fields:
 14. `created_at TIMESTAMP`
 15. `reviewed_at TIMESTAMP`
 16. `updated_at TIMESTAMP`
+17. `prompt_version VARCHAR(64)`
+18. `output_schema_version VARCHAR(64)`
+19. `validation_status VARCHAR(32)`
+20. `validation_error VARCHAR(512)`
 
 Statuses:
 
@@ -460,18 +487,23 @@ These must exist before Phase 3 starts:
 Inventory ask:
 
 1. Accepts a question string and optional product id.
-2. Maps question to a whitelist intent.
-3. Runs structured data queries for the matched intent.
-4. Returns answer text plus structured evidence.
+2. Uses an LLM intent-planning step constrained by a whitelist of allowed
+   inventory operations.
+3. Executes backend-owned logical tools for the matched intent.
+4. Sends tool results to the LLM for analysis and natural-language response.
+5. Returns answer text plus structured evidence.
 
 Replenishment generation:
 
 1. Reads low-stock products.
 2. Reads last 7-day sales statistics.
-3. Computes suggested replenishment quantity with backend rules.
-4. Optionally asks the model to generate human-readable reasons from the
-   structured result.
-5. Saves an `ai_operation_suggestion`.
+3. Reads hot-product statistics and optional inventory records.
+4. Sends structured evidence to the LLM.
+5. The LLM generates suggested quantities, reasons, risk levels, and
+   limitations.
+6. The backend validates the model JSON output against the Phase 3 output
+   schema.
+7. Saves an `ai_operation_suggestion` only after validation passes.
 
 Suggestion confirm:
 
@@ -534,13 +566,34 @@ UI rules:
 
 ### 11.1 Provider Strategy
 
-Support two providers:
+Default provider:
 
-1. `MOCK`: deterministic provider for tests and demo fallback.
-2. `OPENAI` or external provider: enabled only through environment
+1. `DEEPSEEK` with `deepseek-v4-flash`.
+
+Enhanced analysis model:
+
+1. `DEEPSEEK` with `deepseek-v4-pro`.
+
+Optional provider:
+
+1. `MINIMAX` with `MiniMax-M2.7`.
+
+Fallback provider:
+
+1. `MOCK`, used only for tests, local development without network, and demo
+   fallback when external providers are unavailable.
+
+Default configuration:
+
+1. `AI_PROVIDER=deepseek`
+2. `AI_MODEL=deepseek-v4-flash`
+3. `AI_BASE_URL=https://api.deepseek.com`
+4. `AI_MODEL_STRICT_JSON=true`
+5. `AI_API_KEY` must come from environment variables or external secret
    configuration.
 
-No API keys or secrets may be hardcoded.
+No API keys or secrets may be hardcoded. Browser code must never call model
+providers directly.
 
 ### 11.2 System Prompt Rules
 
@@ -556,34 +609,100 @@ The system prompt must require:
 
 ### 11.3 Tool Boundary
 
-The AI orchestration layer may use these logical tools only:
+The LLM may request these logical tools only. The backend owns actual execution:
 
 1. `getInventory(productId)`
 2. `listLowStockProducts()`
 3. `getSalesStats(days)`
 4. `getHotProducts(days)`
 5. `getInventoryRecords(productId)`
-6. `createSuggestionRecord(payload)`
-7. `createInboundDraftFromSuggestion(suggestionNo)`
+6. `getOperationSummary(days)`
+7. `createSuggestionRecord(payload)`
+8. `createInboundDraftFromSuggestion(suggestionNo)`
 
 These logical tools must call application services or admin-safe APIs. They must
 not execute SQL directly.
 
-### 11.4 Deterministic Computation
+Tool execution rules:
 
-The backend, not the model, owns:
+1. Read tools can return only structured product, inventory, order, sales,
+   inventory record, and operation summary data.
+2. `createSuggestionRecord` can persist validated suggestions but cannot change
+   inventory.
+3. `createInboundDraftFromSuggestion` can create an inbound draft but cannot
+   confirm it or change inventory.
+4. Inventory changes remain exclusive to the Phase 2.5 inbound confirmation
+   workflow.
 
-1. Low-stock classification.
-2. Hot-product ranking.
+### 11.4 LLM Analysis With Backend Guardrails
+
+The LLM owns:
+
+1. Administrator intent interpretation.
+2. Inventory and sales analysis based on tool results.
 3. Suggested replenishment quantity.
-4. Risk level.
+4. Risk level and reason.
+5. Daily report prose.
+6. Natural-language inventory answers.
+
+The backend owns:
+
+1. ADMIN authorization.
+2. Logical tool execution.
+3. Product and inventory existence checks.
+4. Output schema validation.
 5. Suggestion status transitions.
+6. Inbound draft creation.
+7. Formal inventory execution after administrator confirmation.
 
-The model may generate:
+Backend validation rules:
 
-1. Human-readable explanation.
-2. Daily report prose.
-3. Natural-language inventory answer based on structured evidence.
+1. Product ids in model output must exist in the structured input data.
+2. `suggestedQuantity` must be a positive integer when present.
+3. `riskLevel` must be one of `LOW`, `MEDIUM`, or `HIGH`.
+4. The model must not claim inventory has already been changed.
+5. The model must not output SQL.
+6. The model must not cite products, sales values, stock values, or dates that
+   are absent from the structured input.
+7. Invalid model output is rejected and not saved as a confirmed suggestion.
+
+### 11.5 Model Output Schema
+
+The backend asks the model to return JSON compatible with this shape:
+
+```json
+{
+  "summary": "string",
+  "analysisType": "LOW_STOCK | HOT_PRODUCTS | DAILY_REPORT | INVENTORY_QA | REPLENISHMENT",
+  "timeRange": {
+    "from": "string",
+    "to": "string"
+  },
+  "items": [
+    {
+      "productId": "string",
+      "productName": "string",
+      "availableStock": 0,
+      "lockedStock": 0,
+      "safetyStock": 0,
+      "soldQuantityLast7Days": 0,
+      "suggestedQuantity": 0,
+      "riskLevel": "LOW | MEDIUM | HIGH",
+      "reason": "string"
+    }
+  ],
+  "limitations": ["string"]
+}
+```
+
+Validation acceptance criteria:
+
+1. JSON must parse successfully.
+2. `analysisType` and `riskLevel` values must map to enums.
+3. Every `productId` must come from the input snapshot.
+4. Numeric fields must be non-negative.
+5. Replenishment suggestions with `suggestedQuantity <= 0` are rejected unless
+   the item is explicitly reported as a limitation rather than a suggestion.
 
 ## 12. Demo Data
 
@@ -633,41 +752,52 @@ Acceptance criteria:
 3. Low-stock, hot-product, and inventory query responses contain structured
    evidence.
 
-### Task 3: Implement Replenishment Rule Engine
+### Task 3: Implement LLM Analysis Orchestrator
 
 Goal:
 
-Generate deterministic replenishment suggestion items.
+Coordinate administrator intent, backend logical tools, model calls, and output
+validation for inventory analysis.
 
 Acceptance criteria:
 
-1. Computes safety stock gap and last 7-day sales.
-2. Computes suggested quantity using the documented rule.
-3. Computes enum risk level.
-4. Unit tests cover no sales, low stock, hot product, and missing safety stock.
+1. Recognizes supported natural-language intents for inventory Q&A, low-stock
+   analysis, hot-product analysis, daily report, and replenishment suggestions.
+2. Builds structured model context from backend tool results.
+3. Calls the configured LLM provider.
+4. Parses and validates model JSON output.
+5. Rejects invalid output without saving suggestions.
 
-### Task 4: Implement AI Provider And Prompt Templates
+### Task 4: Implement DeepSeek Provider, Prompt Templates, And Output Schema Validation
 
 Goal:
 
-Add mock and configurable model provider support.
+Add DeepSeek as the default provider, reserve MiniMax adapter capability, and
+make model output validation explicit.
 
 Acceptance criteria:
 
-1. `MOCK` provider works without network.
-2. Real provider is configured only through environment variables.
-3. Prompt prevents invented facts, SQL, and inventory execution claims.
-4. Model failure returns controlled `ApiResponse` error.
+1. DeepSeek provider works through environment configuration.
+2. Default model is `deepseek-v4-flash`; enhanced model can be
+   `deepseek-v4-pro`.
+3. MiniMax provider interface is reserved for `MiniMax-M2.7`.
+4. `MOCK` provider works without network for tests and demo fallback.
+5. Prompt requires analysis based only on provided JSON data.
+6. Output schema validation prevents invented facts, SQL, invalid products,
+   invalid quantities, and inventory execution claims.
+7. Model failure returns controlled `ApiResponse` error.
 
 ### Task 5: Implement AI Inventory Q&A APIs
 
 Goal:
 
-Answer inventory questions through whitelisted intents.
+Answer inventory questions through LLM interpretation and whitelisted backend
+tools.
 
 Acceptance criteria:
 
-1. Supports current stock, low-stock list, and product inventory status.
+1. Supports current stock, low-stock list, product inventory status, and recent
+   inventory change explanation when records exist.
 2. Unsupported questions return an unsupported-intent response.
 3. Response includes answer and structured evidence.
 
@@ -675,26 +805,30 @@ Acceptance criteria:
 
 Goal:
 
-Expose AI-ready analysis endpoints.
+Expose LLM-driven low-stock and hot-product analysis endpoints.
 
 Acceptance criteria:
 
-1. Low-stock analysis includes reasons and suggested quantities.
+1. Low-stock analysis includes LLM-generated reasons and suggested quantities.
 2. Hot-product analysis supports 7-day and 30-day windows.
-3. Responses include data time range and risk level.
+3. Responses include data time range, structured evidence, limitations, and
+   risk level.
+4. Invalid model output is rejected with a controlled error.
 
 ### Task 7: Implement AI Suggestion Generation And Persistence
 
 Goal:
 
-Generate and save replenishment suggestions.
+Generate and save model-produced replenishment suggestions.
 
 Acceptance criteria:
 
 1. `POST /api/admin/ai/replenishment-suggestions/generate` saves a suggestion.
 2. Suggestion stores input snapshot and result JSON.
-3. Suggestion status starts as `DRAFT`.
-4. Inventory is not changed.
+3. Suggestion stores provider, model, prompt version, schema version, and
+   validation status.
+4. Suggestion status starts as `DRAFT`.
+5. Inventory is not changed.
 
 ### Task 8: Implement Suggestion Review And Draft Conversion
 
@@ -784,7 +918,8 @@ Day 1:
 
 1. Lock Phase 3 contract.
 2. Confirm Phase 2.5 entry gate.
-3. Create AI API skeleton and mock provider contract.
+3. Create AI API skeleton, provider abstraction, and DeepSeek configuration
+   contract.
 
 Day 2:
 
@@ -793,18 +928,19 @@ Day 2:
 
 Day 3:
 
-1. Implement replenishment rule engine.
-2. Add unit tests for deterministic suggestions.
+1. Implement LLM analysis orchestrator.
+2. Add tests for intent planning, context assembly, and invalid-output
+   rejection.
 
 Day 4:
 
-1. Implement AI provider abstraction.
-2. Add mock provider and prompt templates.
+1. Implement DeepSeek provider and mock provider.
+2. Add prompt templates and output schema validation.
 
 Day 5:
 
 1. Implement inventory Q&A APIs.
-2. Implement low-stock and hot-product AI analysis APIs.
+2. Implement LLM-driven low-stock and hot-product AI analysis APIs.
 
 Day 6:
 
@@ -855,11 +991,14 @@ Day 14:
 
 Backend:
 
-1. Unit tests for rule engine.
+1. Unit tests for LLM orchestration, output validation, and fallback handling.
 2. Controller tests for `/api/admin/ai/**` authorization.
 3. Service tests for suggestion lifecycle.
 4. Transaction tests for inbound confirmation and duplicate confirmation.
-5. Provider tests for `MOCK` behavior and failure mapping.
+5. Provider tests for DeepSeek request mapping, `MOCK` behavior, and failure
+   mapping.
+6. Guardrail tests for unknown product ids, invalid quantities, invalid risk
+   levels, SQL output, and false inventory execution claims.
 
 Frontend:
 
@@ -883,12 +1022,12 @@ Integration:
 | Risk | Impact | Mitigation |
 | --- | --- | --- |
 | Phase 2.5 prerequisites are incomplete | Phase 3 scope expands beyond two weeks | Treat Phase 2.5 entry gate as mandatory |
-| AI hallucination | Wrong operational advice | Backend computes numeric suggestions; model only explains structured data |
+| AI hallucination | Wrong operational advice | Give the model only structured data, require JSON schema output, validate product ids, quantities, risk levels, and forbidden claims before persistence |
 | Duplicate inbound execution | Inventory over-counting | Use inbound status, request id, transaction, and idempotency checks |
 | Missing statistics data | Weak analysis quality | Add demo data generator and required aggregation APIs |
-| Provider instability | Demo failure | Default to `MOCK` provider; real provider is optional |
+| Provider instability | Demo failure | Default implementation uses DeepSeek with `MOCK` fallback; MiniMax remains a provider adapter option |
 | Frontend/backend contract drift | Integration delay | Keep Phase 3 APIs under one contract and add typed admin API clients |
-| Overbuilding Agent behavior | Schedule failure | Avoid multi-tool autonomous Agent; use deterministic workflows |
+| Overbuilding Agent behavior | Schedule failure | Use LLM-planned, backend-executed whitelist tools instead of autonomous multi-agent behavior |
 
 ## 17. Recommended TaskMaster Parsing
 
