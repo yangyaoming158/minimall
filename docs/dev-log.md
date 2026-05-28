@@ -1788,3 +1788,14 @@ Append one entry per implementation task so future sessions can recover project 
 - Test result: Documentation verification passed. The Phase 2.5 PRD exists, is non-empty, includes the expected title and final acceptance task heading, and `git diff --check` found no whitespace errors. No Maven or frontend builds were run because this is documentation-only; follow-up verification should parse the PRD with TaskMaster in a separate `phase2-5-ai-inventory-readiness` tag when the team is ready to start Phase 2.5.
 - Issues: None.
 - Next: Continue current Phase 2 Task 2.3 unless the team explicitly switches to Phase 2.5 planning execution.
+
+## Phase 2 AI Inventory Risk Register
+- Date: 2026-05-28
+- Status: Done
+- TaskMaster tag: `phase2-admin-platform`
+- Implemented: Added `.taskmaster/docs/phase2-ai-inventory-risk-register.md` to preserve the risk points from the first Phase 2 / Phase 3 AI inventory assistant readiness discussion. The register groups risks into P0, P1, and P2, records trigger conditions, impact, cleanup entry points, closing standards, recommended cleanup order, and current coverage by Phase 2 supplemented tasks plus the Phase 2.5 PRD.
+- Changed files: `.taskmaster/docs/phase2-ai-inventory-risk-register.md`; `docs/dev-log.md`
+- Commands run: `git status --short --branch`; `grep -R "风险" -n .taskmaster/docs docs`; `node node_modules/task-master-ai/dist/task-master.js tags`; `node node_modules/task-master-ai/dist/task-master.js next --tag=phase2-admin-platform`; `test -s .taskmaster/docs/phase2-ai-inventory-risk-register.md`; `grep -n "R-P0-001" .taskmaster/docs/phase2-ai-inventory-risk-register.md`; `grep -n "建议清扫顺序" .taskmaster/docs/phase2-ai-inventory-risk-register.md`; `git diff --check`.
+- Test result: Documentation verification passed. The risk register exists, is non-empty, includes P0 risk identifiers and the cleanup order section, and `git diff --check` found no whitespace errors. No Maven or frontend builds were run because this is documentation-only.
+- Issues: None.
+- Next: Continue current Phase 2 Task 2.3 unless the team explicitly switches to Phase 2.5 risk cleanup.
