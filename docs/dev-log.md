@@ -1777,3 +1777,14 @@ Append one entry per implementation task so future sessions can recover project 
 - Test result: TaskMaster dependency validation passed for 15 tasks and 12 subtasks. `next --tag=phase2-admin-platform` still points to Task 2.3, so the current Phase 2 execution path was not disrupted. No Maven or frontend builds were run because this change only updates TaskMaster planning metadata and this dev-log entry.
 - Issues: TaskMaster read commands normalized Phase 2 top-level IDs from string form back to numeric form and added tag metadata timestamps before the supplement was added. This is the same CLI rewrite behavior seen in earlier Phase 2 status updates; dependency validation and next-task lookup remain valid.
 - Next: Task 2.3 - Add admin login and current admin endpoints.
+
+## Phase 2.5 AI Inventory Readiness PRD
+- Date: 2026-05-28
+- Status: Done
+- TaskMaster tag: `phase2-admin-platform`
+- Implemented: Added `.taskmaster/docs/phase2-5-ai-inventory-readiness-prd.txt` as a standalone Phase 2.5 planning PRD. The document keeps Phase 2 admin development unchanged while defining the AI inventory readiness goals, non-goals, eight TaskMaster-ready tasks, inputs/outputs, acceptance criteria, Phase 2 dependencies, Phase 3 handoff, and recommended development order. It explicitly preserves the boundary that AI may only consume structured admin APIs and create suggestions or drafts; confirmed stock changes must still be executed by inventory-service after administrator confirmation.
+- Changed files: `.taskmaster/docs/phase2-5-ai-inventory-readiness-prd.txt`; `docs/dev-log.md`
+- Commands run: `git status --short --branch`; `ls -la .taskmaster/docs`; `test -e .taskmaster/docs/phase2-5-ai-inventory-readiness-prd.txt`; `tail -n 60 docs/dev-log.md`; `test -s .taskmaster/docs/phase2-5-ai-inventory-readiness-prd.txt`; `grep -n "Phase 2.5 PRD" .taskmaster/docs/phase2-5-ai-inventory-readiness-prd.txt`; `grep -n "Task 8: Phase 2.5 Acceptance" .taskmaster/docs/phase2-5-ai-inventory-readiness-prd.txt`; `git diff --check`.
+- Test result: Documentation verification passed. The Phase 2.5 PRD exists, is non-empty, includes the expected title and final acceptance task heading, and `git diff --check` found no whitespace errors. No Maven or frontend builds were run because this is documentation-only; follow-up verification should parse the PRD with TaskMaster in a separate `phase2-5-ai-inventory-readiness` tag when the team is ready to start Phase 2.5.
+- Issues: None.
+- Next: Continue current Phase 2 Task 2.3 unless the team explicitly switches to Phase 2.5 planning execution.
