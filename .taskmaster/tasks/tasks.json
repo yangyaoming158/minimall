@@ -1696,12 +1696,13 @@
             "title": "Protect admin routes in gateway",
             "description": "Require ADMIN tokens for /api/admin/** and inject trusted role headers downstream.",
             "details": "Update GatewayAuthenticationFilter to strip X-User-Role, bypass POST /api/admin/login, require valid ADMIN context for other /api/admin/** paths, inject X-User-Role, and preserve existing public catalog behavior. Add route predicates for admin prefixes to their downstream owners.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "3.1"
             ],
             "parentTaskId": 3,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-29T13:55:34.752Z"
           },
           {
             "id": 3,
@@ -1716,7 +1717,7 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-05-29T13:32:50.786Z"
+        "updatedAt": "2026-05-29T13:55:34.752Z"
       },
       {
         "id": "4",
@@ -1981,7 +1982,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-29T13:32:50.786Z",
+      "lastModified": "2026-05-29T13:55:34.752Z",
       "taskCount": 15,
       "completedCount": 2,
       "tags": [

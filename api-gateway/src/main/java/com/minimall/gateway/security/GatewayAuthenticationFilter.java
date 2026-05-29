@@ -1,6 +1,7 @@
 package com.minimall.gateway.security;
 
 import com.minimall.common.auth.constants.AuthHeaders;
+import com.minimall.common.auth.context.AuthRole;
 import com.minimall.common.auth.context.UserContext;
 import com.minimall.common.auth.jwt.JwtUtils;
 import com.minimall.common.core.exception.BusinessException;
@@ -23,6 +24,9 @@ public class GatewayAuthenticationFilter implements GlobalFilter, Ordered {
     private static final String BEARER_PREFIX = "Bearer ";
     private static final String USER_LOGIN_PATH = "/api/users/login";
     private static final String USER_REGISTER_PATH = "/api/users/register";
+    private static final String ADMIN_PATH = "/api/admin";
+    private static final String ADMIN_PATH_PREFIX = "/api/admin/";
+    private static final String ADMIN_LOGIN_PATH = "/api/admin/login";
     private static final String PRODUCTS_PATH = "/api/products";
     private static final String PRODUCTS_PATH_PREFIX = "/api/products/";
     private static final String INVENTORIES_PATH_PREFIX = "/api/inventories/";
@@ -54,10 +58,15 @@ public class GatewayAuthenticationFilter implements GlobalFilter, Ordered {
 
         try {
             UserContext userContext = jwtUtils.parseToken(authorization);
+            if (isAdminPath(sanitizedRequest.getURI().getPath()) && !AuthRole.ADMIN.equals(userContext.getRole())) {
+                return errorResponseWriter.forbidden(sanitizedExchange, ErrorCode.FORBIDDEN.getMessage());
+            }
+
             ServerHttpRequest authenticatedRequest = sanitizedRequest.mutate()
                     .headers(headers -> {
                         headers.set(AuthHeaders.USER_ID, String.valueOf(userContext.getUserId()));
                         headers.set(AuthHeaders.USERNAME, userContext.getUsername());
+                        headers.set(AuthHeaders.USER_ROLE, userContext.getRole().name());
                     })
                     .build();
             return chain.filter(sanitizedExchange.mutate().request(authenticatedRequest).build());
@@ -77,6 +86,7 @@ public class GatewayAuthenticationFilter implements GlobalFilter, Ordered {
                 .headers(headers -> {
                     headers.remove(AuthHeaders.USER_ID);
                     headers.remove(AuthHeaders.USERNAME);
+                    headers.remove(AuthHeaders.USER_ROLE);
                 })
                 .build();
     }
@@ -95,7 +105,15 @@ public class GatewayAuthenticationFilter implements GlobalFilter, Ordered {
             return true;
         }
 
+        if (ADMIN_LOGIN_PATH.equals(path) && HttpMethod.POST.equals(request.getMethod())) {
+            return true;
+        }
+
         return isPublicCatalogRead(request, path);
+    }
+
+    private boolean isAdminPath(String path) {
+        return ADMIN_PATH.equals(path) || path.startsWith(ADMIN_PATH_PREFIX);
     }
 
     // Guests may browse the product catalog and check stock without a token

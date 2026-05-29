@@ -320,6 +320,7 @@ services:
       INVENTORY_SERVICE_BASE_URL: http://inventory-service:8103
       ORDER_SERVICE_BASE_URL: http://order-service:8104
       PAYMENT_SERVICE_BASE_URL: http://payment-service:8105
+      NOTIFICATION_SERVICE_BASE_URL: http://notification-service:8106
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
       SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
@@ -351,6 +352,8 @@ services:
       order-service:
         condition: service_healthy
       payment-service:
+        condition: service_healthy
+      notification-service:
         condition: service_healthy
     healthcheck: *java-service-healthcheck
     networks:

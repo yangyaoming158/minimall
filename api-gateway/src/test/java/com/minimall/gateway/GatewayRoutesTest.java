@@ -22,6 +22,7 @@ import org.springframework.test.context.TestPropertySource;
         "INVENTORY_SERVICE_BASE_URL=http://inventory-service.test",
         "ORDER_SERVICE_BASE_URL=http://order-service.test",
         "PAYMENT_SERVICE_BASE_URL=http://payment-service.test",
+        "NOTIFICATION_SERVICE_BASE_URL=http://notification-service.test",
         "minimall.auth.jwt.secret=test-gateway-route-jwt-secret",
         "minimall.auth.jwt.expire-seconds=3600"
 })
@@ -34,11 +35,18 @@ class GatewayRoutesTest {
     void configuresFrontendServiceRoutesWithEnvironmentDrivenUris() {
         Map<String, RouteDefinition> routes = routesById();
 
-        assertRoute(routes, "user-service", "http://user-service.test", "/api/users/**");
-        assertRoute(routes, "product-service", "http://product-service.test", "/api/products/**");
-        assertRoute(routes, "inventory-service", "http://inventory-service.test", "/api/inventories/**");
-        assertRoute(routes, "order-service", "http://order-service.test", "/api/orders/**");
-        assertRoute(routes, "payment-service", "http://payment-service.test", "/api/payments/**");
+        assertRoute(routes, "user-service", "http://user-service.test",
+                "/api/users/**", "/api/admin/login", "/api/admin/me", "/api/admin/audit-logs/**");
+        assertRoute(routes, "product-service", "http://product-service.test",
+                "/api/products/**", "/api/admin/products/**");
+        assertRoute(routes, "inventory-service", "http://inventory-service.test",
+                "/api/inventories/**", "/api/admin/inventories/**");
+        assertRoute(routes, "order-service", "http://order-service.test",
+                "/api/orders/**", "/api/admin/orders/**");
+        assertRoute(routes, "payment-service", "http://payment-service.test",
+                "/api/payments/**", "/api/admin/payments/**");
+        assertRoute(routes, "notification-service", "http://notification-service.test",
+                "/api/admin/notifications/**");
     }
 
     @Test
@@ -50,6 +58,7 @@ class GatewayRoutesTest {
         assertNoRewrite(routes, "inventory-service");
         assertNoRewrite(routes, "order-service");
         assertNoRewrite(routes, "payment-service");
+        assertNoRewrite(routes, "notification-service");
     }
 
     @Test
@@ -84,11 +93,11 @@ class GatewayRoutesTest {
             Map<String, RouteDefinition> routes,
             String routeId,
             String uri,
-            String pathPattern) {
+            String... pathPatterns) {
         RouteDefinition route = routes.get(routeId);
         assertThat(route).as("route " + routeId).isNotNull();
         assertThat(route.getUri()).isEqualTo(URI.create(uri));
-        assertThat(pathPredicateArgs(route)).contains(pathPattern);
+        assertThat(pathPredicateArgs(route)).contains(pathPatterns);
     }
 
     private void assertNoRewrite(
