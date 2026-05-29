@@ -2,6 +2,7 @@ package com.minimall.common.auth.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.minimall.common.auth.constants.AuthHeaders;
+import com.minimall.common.auth.context.AuthRole;
 import com.minimall.common.auth.context.UserContext;
 import com.minimall.common.auth.context.UserContextHolder;
 import com.minimall.common.auth.jwt.JwtUtils;
@@ -68,19 +69,22 @@ public class UserContextFilter extends OncePerRequestFilter {
     private UserContext resolveFromHeaders(HttpServletRequest request) {
         String userIdHeader = request.getHeader(AuthHeaders.USER_ID);
         String username = request.getHeader(AuthHeaders.USERNAME);
+        String roleHeader = request.getHeader(AuthHeaders.USER_ROLE);
         boolean hasUserId = userIdHeader != null && !userIdHeader.isBlank();
         boolean hasUsername = username != null && !username.isBlank();
+        boolean hasRole = roleHeader != null && !roleHeader.isBlank();
 
-        if (!hasUserId && !hasUsername) {
+        if (!hasUserId && !hasUsername && roleHeader == null) {
             return null;
         }
-        if (!hasUserId || !hasUsername) {
+        if (!hasUserId || !hasUsername || (roleHeader != null && !hasRole)) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED, "Invalid user propagation headers");
         }
 
         try {
-            return UserContext.of(Long.valueOf(userIdHeader), username);
-        } catch (NumberFormatException exception) {
+            AuthRole role = hasRole ? AuthRole.fromClaim(roleHeader) : AuthRole.USER;
+            return UserContext.of(Long.valueOf(userIdHeader), username, role);
+        } catch (IllegalArgumentException exception) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED, "Invalid user propagation headers", exception);
         }
     }

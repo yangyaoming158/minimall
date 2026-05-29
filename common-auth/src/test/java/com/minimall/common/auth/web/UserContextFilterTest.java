@@ -50,6 +50,23 @@ class UserContextFilterTest {
     }
 
     @Test
+    void readsAdminRoleFromPropagationHeadersAndClearsAfterRequest() throws Exception {
+        UserContextFilter filter = new UserContextFilter(null);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        AtomicBoolean contextWasAvailableInChain = new AtomicBoolean(false);
+        request.addHeader(AuthHeaders.USER_ID, "1001");
+        request.addHeader(AuthHeaders.USERNAME, "alice");
+        request.addHeader(AuthHeaders.USER_ROLE, "ADMIN");
+
+        filter.doFilter(request, response, chainAssertingContext(1001L, "alice", AuthRole.ADMIN, contextWasAvailableInChain));
+
+        assertThat(contextWasAvailableInChain).isTrue();
+        assertThat(UserContextHolder.hasContext()).isFalse();
+        assertThat(response.getStatus()).isEqualTo(200);
+    }
+
+    @Test
     void prefersPropagationHeadersOverJwt() throws Exception {
         JwtUtils jwtUtils = new JwtUtils(properties());
         UserContextFilter filter = new UserContextFilter(jwtUtils);
@@ -58,9 +75,10 @@ class UserContextFilterTest {
         AtomicBoolean contextWasAvailableInChain = new AtomicBoolean(false);
         request.addHeader(AuthHeaders.USER_ID, "1001");
         request.addHeader(AuthHeaders.USERNAME, "alice");
+        request.addHeader(AuthHeaders.USER_ROLE, "ADMIN");
         request.addHeader(HttpHeaders.AUTHORIZATION, "Bearer " + jwtUtils.generateToken(2002L, "bob"));
 
-        filter.doFilter(request, response, chainAssertingContext(1001L, "alice", AuthRole.USER, contextWasAvailableInChain));
+        filter.doFilter(request, response, chainAssertingContext(1001L, "alice", AuthRole.ADMIN, contextWasAvailableInChain));
 
         assertThat(contextWasAvailableInChain).isTrue();
         assertThat(UserContextHolder.hasContext()).isFalse();
@@ -106,6 +124,40 @@ class UserContextFilterTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
         request.addHeader(AuthHeaders.USER_ID, "not-a-number");
         request.addHeader(AuthHeaders.USERNAME, "alice");
+
+        filter.doFilter(request, response, new MockFilterChain());
+
+        assertThat(response.getStatus()).isEqualTo(401);
+        assertThat(UserContextHolder.hasContext()).isFalse();
+        JsonNode body = objectMapper.readTree(response.getContentAsString());
+        assertThat(body.get("code").asText()).isEqualTo(ErrorCode.UNAUTHORIZED.getCode());
+        assertThat(body.get("message").asText()).isEqualTo("Invalid user propagation headers");
+    }
+
+    @Test
+    void returnsUnauthorizedApiResponseForInvalidRolePropagationHeader() throws Exception {
+        UserContextFilter filter = new UserContextFilter(null);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        request.addHeader(AuthHeaders.USER_ID, "1001");
+        request.addHeader(AuthHeaders.USERNAME, "alice");
+        request.addHeader(AuthHeaders.USER_ROLE, "ROOT");
+
+        filter.doFilter(request, response, new MockFilterChain());
+
+        assertThat(response.getStatus()).isEqualTo(401);
+        assertThat(UserContextHolder.hasContext()).isFalse();
+        JsonNode body = objectMapper.readTree(response.getContentAsString());
+        assertThat(body.get("code").asText()).isEqualTo(ErrorCode.UNAUTHORIZED.getCode());
+        assertThat(body.get("message").asText()).isEqualTo("Invalid user propagation headers");
+    }
+
+    @Test
+    void returnsUnauthorizedApiResponseForPartialRolePropagationHeaders() throws Exception {
+        UserContextFilter filter = new UserContextFilter(null);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        request.addHeader(AuthHeaders.USER_ROLE, "ADMIN");
 
         filter.doFilter(request, response, new MockFilterChain());
 
