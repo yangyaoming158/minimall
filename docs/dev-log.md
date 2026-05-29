@@ -1821,3 +1821,14 @@ Append one entry per implementation task so future sessions can recover project 
 - Test result: Documentation verification passed. The refactored Phase 3 PRD exists, is non-empty, includes the LLM-driven title, DeepSeek default model references, backend guardrails section, model output schema section, and LLM orchestrator task. `git diff --check` found no whitespace errors. No Maven or frontend builds were run because this is documentation-only.
 - Issues: None.
 - Next: Continue current Phase 2 Task 2.3 unless the team explicitly switches to Phase 2.5 or Phase 3 planning execution.
+
+## Task 2.3 - Add admin login and current admin endpoints
+- Date: 2026-05-29
+- Status: Done
+- TaskMaster tag: `phase2-admin-platform`
+- Implemented: Added user-service admin identity APIs `POST /api/admin/login` and `GET /api/admin/me`. Admin login reuses the existing username/password authentication path but returns `FORBIDDEN` for valid non-admin credentials and only issues admin-usable JWTs for `ADMIN` users. The current admin endpoint reads `UserContextHolder`, returns `UNAUTHORIZED` when no context exists, rejects non-admin contexts with `FORBIDDEN`, and returns the existing stable `CurrentUserResponse` contract for ADMIN contexts. Added focused MockMvc coverage for admin login success, USER credential rejection, bad credentials, admin `/me`, USER `/me`, missing auth, and USER propagation headers.
+- Changed files: `.taskmaster/tasks/tasks.json`; `docs/dev-log.md`; `user-service/src/main/java/com/minimall/user/service/UserAuthService.java`; `user-service/src/main/java/com/minimall/user/web/AdminAuthController.java`; `user-service/src/test/java/com/minimall/user/web/AdminAuthControllerTest.java`
+- Commands run: `node node_modules/task-master-ai/dist/task-master.js tags`; `node node_modules/task-master-ai/dist/task-master.js next --tag=phase2-admin-platform`; `node node_modules/task-master-ai/dist/task-master.js show 2.3`; `git status --short --branch`; source and contract reads with `sed` and `rg`; `node node_modules/task-master-ai/dist/task-master.js set-status --id=2.3 --status=in-progress`; `mvn -pl user-service -am test`; `git diff --check`; `mvn clean package -DskipTests`; `node node_modules/task-master-ai/dist/task-master.js set-status --id=2.3 --status=done`.
+- Test result: `mvn -pl user-service -am test` succeeded with common-core 24 tests, common-auth 29 tests, and user-service 20 tests passing. `git diff --check` succeeded. `mvn clean package -DskipTests` succeeded for the full 10-module reactor.
+- Issues: The TaskMaster CLI still only accepts `--tag` on some commands; `show/set-status` were run in the verified current `phase2-admin-platform` context. Gateway admin route protection and trusted role header propagation remain in Task 3, so this subtask verifies user-service admin identity endpoints directly.
+- Next: Task 2.4 - Seed initial admin from environment.
