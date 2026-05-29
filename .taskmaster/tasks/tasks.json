@@ -1674,7 +1674,7 @@
         "description": "Extend common-auth and api-gateway so /api/admin/** requires ADMIN and downstream services receive trusted role context.",
         "details": "Add X-User-Role to AuthHeaders and UserContext parsing. Strip browser supplied X-User-Id, X-Username, and X-User-Role before auth. Parse JWT role, inject trusted role header, protect every /api/admin/** route, and return ApiResponse 401 for missing auth and 403 for USER. Route admin prefixes to the fixed downstream owners from the PRD. Tests cover unauthenticated, USER, ADMIN, forged headers, OPTIONS, and existing public catalog reads.",
         "testStrategy": "",
-        "status": "in-progress",
+        "status": "done",
         "dependencies": [
           "2"
         ],
@@ -1709,15 +1709,16 @@
             "title": "Verify gateway admin auth regression",
             "description": "Add and run gateway tests for admin 401/403/ADMIN success, forged role header stripping, OPTIONS bypass, and public catalog regression.",
             "details": "Extend GatewayAuthenticationFilter tests and integration coverage after route protection is implemented. Run api-gateway tests and full package verification.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "3.2"
             ],
             "parentTaskId": 3,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-29T14:04:52.979Z"
           }
         ],
-        "updatedAt": "2026-05-29T13:55:34.752Z"
+        "updatedAt": "2026-05-29T14:04:52.979Z"
       },
       {
         "id": "4",
@@ -1982,9 +1983,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-29T13:55:34.752Z",
+      "lastModified": "2026-05-29T14:04:52.979Z",
       "taskCount": 15,
-      "completedCount": 2,
+      "completedCount": 3,
       "tags": [
         "phase2-admin-platform"
       ]

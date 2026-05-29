@@ -1865,3 +1865,14 @@ Append one entry per implementation task so future sessions can recover project 
 - Test result: `mvn -pl api-gateway -am test` succeeded with common-core 24 tests, common-auth 32 tests, and api-gateway 34 tests passing. `mvn clean package -DskipTests` succeeded for the full 10-module reactor. `docker compose --env-file .env.example config --quiet` and `git diff --check` succeeded.
 - Issues: Gateway Spring tests still log sandbox network-interface warnings from Netty/Spring Cloud, but the Maven command exited 0 and all tests passed. Task 3.3 remains pending for broader gateway admin auth regression verification.
 - Next: Task 3.3 - Verify gateway admin auth regression.
+
+## Task 3.3 - Verify gateway admin auth regression
+- Date: 2026-05-29
+- Status: Done
+- TaskMaster tag: `phase2-admin-platform`
+- Implemented: Extended `GatewayIntegrationRegressionTest` with end-to-end gateway regression coverage for Phase 2 admin auth. The regression now verifies unauthenticated `/api/admin/products` returns 401 before rate limiting, valid USER JWT returns 403 before rate limiting, ADMIN JWT routes `/api/admin/me`, audit logs, products, inventories, orders, payments, and notifications to their fixed downstream owners, and spoofed `X-User-Id`, `X-Username`, and `X-User-Role` headers are replaced by trusted ADMIN context. Added admin CORS preflight coverage and strengthened existing public user/catalog and protected customer route checks to assert trusted role header behavior. TaskMaster now shows Task 3 and all subtasks done.
+- Changed files: `.taskmaster/tasks/tasks.json`; `api-gateway/src/test/java/com/minimall/gateway/GatewayIntegrationRegressionTest.java`; `docs/dev-log.md`
+- Commands run: `node node_modules/task-master-ai/dist/task-master.js tags`; `node node_modules/task-master-ai/dist/task-master.js next`; `node node_modules/task-master-ai/dist/task-master.js show 3.3`; `node node_modules/task-master-ai/dist/task-master.js set-status --id=3.3 --status=in-progress`; source/test reads with `sed`; `mvn -pl api-gateway -am test`; `mvn clean package -DskipTests`; `git diff --check`; `node node_modules/task-master-ai/dist/task-master.js set-status --id=3.3 --status=done`; `node node_modules/task-master-ai/dist/task-master.js show 3`.
+- Test result: `mvn -pl api-gateway -am test` succeeded with common-core 24 tests, common-auth 32 tests, and api-gateway 37 tests passing. `mvn clean package -DskipTests` succeeded for the full 10-module reactor. `git diff --check` succeeded.
+- Issues: Gateway Spring tests still log sandbox network-interface warnings from Netty/Spring Cloud, but the Maven command exited 0 and all tests passed.
+- Next: Continue with TaskMaster next after committing Task 3.3.
