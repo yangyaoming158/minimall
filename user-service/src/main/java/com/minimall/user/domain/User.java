@@ -122,4 +122,18 @@ public class User {
     public void setRole(UserRole role) {
         this.role = role;
     }
+
+    public void updatePasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
+
+    public void updateContact(String email, String phone) {
+        this.email = email;
+        this.phone = phone;
+    }
+
+    public void promoteToAdmin() {
+        this.role = UserRole.ADMIN;
+        this.status = UserStatus.ACTIVE;
+    }
 }
