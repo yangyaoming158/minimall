@@ -1759,10 +1759,11 @@
             "title": "Implement reusable admin audit writer",
             "description": "Add the reusable audit writer API and service-side writer implementation so admin write operations can persist audit records without MQ.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 4,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-30T02:53:46.994Z"
           },
           {
             "id": 4,
@@ -1775,7 +1776,7 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-05-30T02:32:15.699Z"
+        "updatedAt": "2026-05-30T02:53:46.994Z"
       },
       {
         "id": "5",
@@ -2016,7 +2017,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-30T02:32:15.699Z",
+      "lastModified": "2026-05-30T02:53:46.994Z",
       "taskCount": 15,
       "completedCount": 3,
       "tags": [
