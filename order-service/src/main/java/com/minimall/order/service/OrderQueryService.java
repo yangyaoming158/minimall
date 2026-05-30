@@ -5,18 +5,22 @@ import com.minimall.common.core.exception.BusinessException;
 import com.minimall.common.core.exception.ErrorCode;
 import com.minimall.common.core.response.PageResponse;
 import com.minimall.order.domain.Order;
+import com.minimall.order.domain.OrderEvent;
 import com.minimall.order.domain.OrderStatus;
 import com.minimall.order.dto.AdminOrderResponse;
 import com.minimall.order.dto.OrderDetailResponse;
+import com.minimall.order.dto.OrderEventResponse;
 import com.minimall.order.dto.OrderItemSummary;
 import com.minimall.order.dto.OrderSummaryResponse;
 import com.minimall.order.dto.ProductSalesAggregationResponse;
+import com.minimall.order.repository.OrderEventRepository;
 import com.minimall.order.repository.ProductSalesAggregation;
 import com.minimall.order.repository.OrderRepository;
 import jakarta.persistence.criteria.Predicate;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -33,9 +37,11 @@ public class OrderQueryService {
     private static final int MAX_ADMIN_ORDER_PAGE_SIZE = 100;
 
     private final OrderRepository orderRepository;
+    private final OrderEventRepository orderEventRepository;
 
-    public OrderQueryService(OrderRepository orderRepository) {
+    public OrderQueryService(OrderRepository orderRepository, OrderEventRepository orderEventRepository) {
         this.orderRepository = orderRepository;
+        this.orderEventRepository = orderEventRepository;
     }
 
     @Transactional(readOnly = true)
@@ -56,6 +62,43 @@ public class OrderQueryService {
         Order order = orderRepository.findByOrderNo(orderNo)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Order not found"));
         return AdminOrderResponse.from(order);
+    }
+
+    @Transactional(readOnly = true)
+    public List<OrderEventResponse> adminOrderEvents(String orderNo) {
+        Order order = orderRepository.findByOrderNo(orderNo)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Order not found"));
+
+        List<OrderEventResponse> timeline = new ArrayList<>();
+        // The order placement itself is never persisted to order_events, so it always anchors the timeline.
+        timeline.add(OrderEventResponse.derived(null, OrderStatus.PENDING_PAYMENT, order.getCreatedAt()));
+
+        boolean paidRecorded = false;
+        for (OrderEvent event : orderEventRepository.findByOrderNoOrderByCreatedAtAscIdAsc(orderNo)) {
+            timeline.add(new OrderEventResponse(
+                    event.getEventType().name(),
+                    event.getFromStatus(),
+                    event.getToStatus(),
+                    event.getCreatedAt(),
+                    event.getEventId(),
+                    event.getPayload()));
+            if (event.getToStatus() == OrderStatus.PAID) {
+                paidRecorded = true;
+            }
+        }
+
+        // Minimal fallback: fill lifecycle transitions that no recorded event covers.
+        if (order.getPaidAt() != null && !paidRecorded) {
+            timeline.add(OrderEventResponse.derived(OrderStatus.PENDING_PAYMENT, OrderStatus.PAID, order.getPaidAt()));
+        }
+        if (order.getClosedAt() != null
+                && (order.getStatus() == OrderStatus.CANCELLED || order.getStatus() == OrderStatus.CLOSED)) {
+            OrderStatus fromStatus = order.getPaidAt() != null ? OrderStatus.PAID : OrderStatus.PENDING_PAYMENT;
+            timeline.add(OrderEventResponse.derived(fromStatus, order.getStatus(), order.getClosedAt()));
+        }
+
+        timeline.sort(Comparator.comparing(OrderEventResponse::occurredAt));
+        return timeline;
     }
 
     @Transactional(readOnly = true)

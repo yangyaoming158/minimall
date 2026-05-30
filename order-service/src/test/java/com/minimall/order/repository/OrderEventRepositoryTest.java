@@ -77,6 +77,38 @@ class OrderEventRepositoryTest {
     }
 
     @Test
+    void findsByOrderNoOrderedByCreatedAtAscThenIdAsc() {
+        orderEventRepository.saveAndFlush(new OrderEvent(
+                "evt-order-a-1",
+                "ORD-EVT-A",
+                OrderEventType.PAYMENT_SUCCESS,
+                OrderStatus.PENDING_PAYMENT,
+                OrderStatus.PAID,
+                "{\"seq\":1}"));
+        orderEventRepository.saveAndFlush(new OrderEvent(
+                "evt-order-a-2",
+                "ORD-EVT-A",
+                OrderEventType.PAYMENT_SUCCESS,
+                OrderStatus.PENDING_PAYMENT,
+                OrderStatus.PAID,
+                "{\"seq\":2}"));
+        // A different order's event must be excluded.
+        orderEventRepository.saveAndFlush(new OrderEvent(
+                "evt-order-b-1",
+                "ORD-EVT-B",
+                OrderEventType.PAYMENT_SUCCESS,
+                OrderStatus.PENDING_PAYMENT,
+                OrderStatus.PAID,
+                "{\"seq\":1}"));
+
+        assertThat(orderEventRepository.findByOrderNoOrderByCreatedAtAscIdAsc("ORD-EVT-A"))
+                .extracting(OrderEvent::getEventId)
+                .containsExactly("evt-order-a-1", "evt-order-a-2");
+        assertThat(orderEventRepository.findByOrderNoOrderByCreatedAtAscIdAsc("ORD-EVT-UNKNOWN"))
+                .isEmpty();
+    }
+
+    @Test
     void rejectsDuplicateEventIdForIdempotency() {
         orderEventRepository.saveAndFlush(new OrderEvent(
                 "pay-event-duplicate",

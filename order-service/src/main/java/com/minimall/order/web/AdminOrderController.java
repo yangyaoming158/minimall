@@ -6,9 +6,11 @@ import com.minimall.common.core.response.ApiResponse;
 import com.minimall.common.core.response.PageResponse;
 import com.minimall.order.domain.OrderStatus;
 import com.minimall.order.dto.AdminOrderResponse;
+import com.minimall.order.dto.OrderEventResponse;
 import com.minimall.order.dto.ProductSalesAggregationResponse;
 import com.minimall.order.service.OrderQueryService;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Locale;
 import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -52,6 +54,12 @@ public class AdminOrderController {
     public ApiResponse<AdminOrderResponse> detail(@PathVariable("orderNo") String orderNo) {
         AdminAccess.requireAdmin();
         return ApiResponse.success(orderQueryService.adminDetail(orderNo));
+    }
+
+    @GetMapping("/{orderNo}/events")
+    public ApiResponse<List<OrderEventResponse>> events(@PathVariable("orderNo") String orderNo) {
+        AdminAccess.requireAdmin();
+        return ApiResponse.success(orderQueryService.adminOrderEvents(orderNo));
     }
 
     @GetMapping("/product-sales")

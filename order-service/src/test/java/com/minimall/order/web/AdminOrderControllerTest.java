@@ -12,8 +12,11 @@ import com.minimall.common.core.exception.ErrorCode;
 import com.minimall.order.client.inventory.InventoryClient;
 import com.minimall.order.client.product.ProductValidationService;
 import com.minimall.order.domain.Order;
+import com.minimall.order.domain.OrderEvent;
+import com.minimall.order.domain.OrderEventType;
 import com.minimall.order.domain.OrderStateMachine;
 import com.minimall.order.domain.OrderStatus;
+import com.minimall.order.repository.OrderEventRepository;
 import com.minimall.order.repository.OrderRepository;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
@@ -26,9 +29,12 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
+import java.util.EnumSet;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -51,6 +57,12 @@ class AdminOrderControllerTest {
     private OrderRepository orderRepository;
 
     @Autowired
+    private OrderEventRepository orderEventRepository;
+
+    @Autowired
+    private RequestMappingHandlerMapping requestMappingHandlerMapping;
+
+    @Autowired
     private JdbcTemplate jdbcTemplate;
 
     @MockBean
@@ -67,6 +79,7 @@ class AdminOrderControllerTest {
 
     @BeforeEach
     void setUp() {
+        orderEventRepository.deleteAll();
         orderRepository.deleteAll();
         reset(productValidationService, inventoryClient, redisTemplate, redisValueOperations);
         given(redisTemplate.opsForValue()).willReturn(redisValueOperations);
@@ -425,6 +438,96 @@ class AdminOrderControllerTest {
                 .andExpect(jsonPath("$.code").value(ErrorCode.FORBIDDEN.getCode()));
     }
 
+    @Test
+    void adminOrderEventsRequiresAuthentication() throws Exception {
+        mockMvc.perform(get("/api/admin/orders/ORD-ANY/events"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value(ErrorCode.UNAUTHORIZED.getCode()));
+    }
+
+    @Test
+    void adminOrderEventsRejectsUserRole() throws Exception {
+        mockMvc.perform(get("/api/admin/orders/ORD-ANY/events")
+                        .header(AuthHeaders.USER_ID, "501")
+                        .header(AuthHeaders.USERNAME, "operator")
+                        .header(AuthHeaders.USER_ROLE, "USER"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value(ErrorCode.FORBIDDEN.getCode()));
+    }
+
+    @Test
+    void adminOrderEventsReturnsNotFoundForUnknownOrder() throws Exception {
+        mockMvc.perform(get("/api/admin/orders/ORD-NO-SUCH/events")
+                        .header(AuthHeaders.USER_ID, "900")
+                        .header(AuthHeaders.USERNAME, "admin")
+                        .header(AuthHeaders.USER_ROLE, "ADMIN"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value(ErrorCode.NOT_FOUND.getCode()))
+                .andExpect(jsonPath("$.message").value("Order not found"));
+    }
+
+    @Test
+    void adminOrderEventsUsesRecordedEventsForPaidOrder() throws Exception {
+        saveOrder(namedOrder("ORD-EVT-PAID-1001", 851L, "kate", "SKU-EVT-A", OrderStatus.PAID),
+                LocalDateTime.of(2026, 5, 20, 8, 0));
+        saveEvent("pay-evt-1001", "ORD-EVT-PAID-1001", OrderStatus.PENDING_PAYMENT, OrderStatus.PAID,
+                "{\"handleResult\":\"processed\"}", LocalDateTime.of(2026, 5, 20, 9, 0));
+
+        mockMvc.perform(get("/api/admin/orders/ORD-EVT-PAID-1001/events")
+                        .header(AuthHeaders.USER_ID, "900")
+                        .header(AuthHeaders.USERNAME, "admin")
+                        .header(AuthHeaders.USER_ROLE, "ADMIN"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.length()").value(2))
+                .andExpect(jsonPath("$.data[0].toStatus").value("PENDING_PAYMENT"))
+                .andExpect(jsonPath("$.data[0].eventType").doesNotExist())
+                .andExpect(jsonPath("$.data[1].eventType").value("PAYMENT_SUCCESS"))
+                .andExpect(jsonPath("$.data[1].fromStatus").value("PENDING_PAYMENT"))
+                .andExpect(jsonPath("$.data[1].toStatus").value("PAID"))
+                .andExpect(jsonPath("$.data[1].eventId").value("pay-evt-1001"))
+                .andExpect(jsonPath("$.data[1].payload").value("{\"handleResult\":\"processed\"}"));
+    }
+
+    @Test
+    void adminOrderEventsFallsBackToOrderStateWhenNoRecordedEvents() throws Exception {
+        saveOrder(namedOrder("ORD-EVT-CANCEL-1001", 852L, "leo", "SKU-EVT-B", OrderStatus.CANCELLED),
+                LocalDateTime.of(2026, 5, 20, 8, 0));
+
+        mockMvc.perform(get("/api/admin/orders/ORD-EVT-CANCEL-1001/events")
+                        .header(AuthHeaders.USER_ID, "900")
+                        .header(AuthHeaders.USERNAME, "admin")
+                        .header(AuthHeaders.USER_ROLE, "ADMIN"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(2))
+                .andExpect(jsonPath("$.data[0].toStatus").value("PENDING_PAYMENT"))
+                .andExpect(jsonPath("$.data[1].fromStatus").value("PENDING_PAYMENT"))
+                .andExpect(jsonPath("$.data[1].toStatus").value("CANCELLED"))
+                .andExpect(jsonPath("$.data[1].eventType").doesNotExist())
+                .andExpect(jsonPath("$.data[1].eventId").doesNotExist());
+    }
+
+    @Test
+    void adminOrderRoutesAreReadOnly() {
+        // Phase 2 forbids admin order status mutation: every /api/admin/orders route must be read-only.
+        EnumSet<RequestMethod> writeMethods =
+                EnumSet.of(RequestMethod.POST, RequestMethod.PUT, RequestMethod.PATCH, RequestMethod.DELETE);
+
+        requestMappingHandlerMapping.getHandlerMethods().forEach((info, handlerMethod) -> {
+            var pathPatterns = info.getPathPatternsCondition();
+            if (pathPatterns == null) {
+                return;
+            }
+            boolean touchesAdminOrders = pathPatterns.getPatternValues().stream()
+                    .anyMatch(pattern -> pattern.startsWith("/api/admin/orders"));
+            if (touchesAdminOrders) {
+                assertThat(info.getMethodsCondition().getMethods())
+                        .as("admin order route %s must be read-only", pathPatterns.getPatternValues())
+                        .doesNotContainAnyElementsOf(writeMethods);
+            }
+        });
+    }
+
     private Order order(
             String orderNo,
             Long userId,
@@ -475,5 +578,20 @@ class AdminOrderControllerTest {
                 Timestamp.valueOf(createdAt),
                 order.getOrderNo());
         assertThat(orderRepository.findByOrderNo(order.getOrderNo())).isPresent();
+    }
+
+    private void saveEvent(
+            String eventId,
+            String orderNo,
+            OrderStatus fromStatus,
+            OrderStatus toStatus,
+            String payload,
+            LocalDateTime createdAt) {
+        OrderEvent event = orderEventRepository.saveAndFlush(new OrderEvent(
+                eventId, orderNo, OrderEventType.PAYMENT_SUCCESS, fromStatus, toStatus, payload));
+        jdbcTemplate.update(
+                "update order_events set created_at = ? where event_id = ?",
+                Timestamp.valueOf(createdAt),
+                event.getEventId());
     }
 }

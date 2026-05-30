@@ -1900,7 +1900,7 @@
         "description": "Add admin order list, filter, detail, and event timeline APIs without allowing manual order status mutation.",
         "details": "Implement AdminOrderController for /api/admin/orders, /api/admin/orders/{orderNo}, and /api/admin/orders/{orderNo}/events. Support filters for orderNo, username or userId, status, productId, createdFrom, createdTo, page, and size. Use existing order_events when available and otherwise return a minimal timeline from order state data. Do not add admin status write APIs. Tests cover filters, detail, event timeline, enum validation, pagination, USER forbidden, ADMIN success, and no regression to /api/orders/my.",
         "testStrategy": "",
-        "status": "in-progress",
+        "status": "done",
         "dependencies": [
           "3",
           "4",
@@ -1937,15 +1937,16 @@
             "title": "Implement admin order event timeline regression",
             "description": "Expose /api/admin/orders/{orderNo}/events using order_events when available and a minimal fallback from order state data, then add regression coverage for ADMIN success USER forbidden enum validation and no manual status mutation APIs.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "7.2"
             ],
             "parentTaskId": 7,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-30T16:35:42.697Z"
           }
         ],
-        "updatedAt": "2026-05-30T16:24:28.020Z"
+        "updatedAt": "2026-05-30T16:35:42.697Z"
       },
       {
         "id": "8",
@@ -2116,9 +2117,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-30T16:24:28.021Z",
+      "lastModified": "2026-05-30T16:35:42.697Z",
       "taskCount": 15,
-      "completedCount": 6,
+      "completedCount": 7,
       "tags": [
         "phase2-admin-platform"
       ]
