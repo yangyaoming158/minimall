@@ -1920,3 +1920,14 @@ Append one entry per implementation task so future sessions can recover project 
 - Test result: `mvn -pl user-service -am test` succeeded with common-core 38 tests, common-auth 32 tests, and user-service 34 tests passing. `git diff --check` succeeded. `mvn clean package -DskipTests` succeeded for the full 10-module reactor.
 - Issues: None.
 - Next: Task 10 - Initialize independent admin-frontend routing layout guards and API clients.
+
+## Phase 2 dependency ordering update
+- Date: 2026-05-30
+- Status: Done
+- TaskMaster tag: `phase2-admin-platform`
+- Implemented: Tightened Phase 2 TaskMaster dependencies so the remaining work follows a single non-skipping execution path. Added dependencies to enforce `5 -> 6 -> 7 -> 8 -> 9 -> 10 -> 11 -> 12 -> 13 -> 14 -> 15`, keeping backend admin APIs and contracts ahead of the independent admin frontend shell and pages. This prevents `task-master next` from jumping from completed Task 4 directly to Task 10 while Product admin API work is still pending.
+- Changed files: `.taskmaster/tasks/tasks.json`; `docs/dev-log.md`
+- Commands run: `node node_modules/task-master-ai/dist/task-master.js tags`; `node node_modules/task-master-ai/dist/task-master.js list --with-subtasks --tag=phase2-admin-platform`; `node node_modules/task-master-ai/dist/task-master.js add-dependency --id=7 --depends-on=6`; `node node_modules/task-master-ai/dist/task-master.js add-dependency --id=8 --depends-on=7`; `node node_modules/task-master-ai/dist/task-master.js add-dependency --id=9 --depends-on=8`; `node node_modules/task-master-ai/dist/task-master.js add-dependency --id=10 --depends-on=9`; `node node_modules/task-master-ai/dist/task-master.js add-dependency --id=13 --depends-on=12`; `node node_modules/task-master-ai/dist/task-master.js add-dependency --id=14 --depends-on=13`; `node node_modules/task-master-ai/dist/task-master.js validate-dependencies --tag=phase2-admin-platform`; `node node_modules/task-master-ai/dist/task-master.js next --tag=phase2-admin-platform`.
+- Test result: TaskMaster dependency validation passed for 15 tasks and 18 subtasks with 43 dependencies verified. `task-master next --tag=phase2-admin-platform` now returns Task 5, and the task list reports only one ready task.
+- Issues: No code changed, so Maven was not run.
+- Next: Task 5 - Implement Product admin API and imageUrl support.
