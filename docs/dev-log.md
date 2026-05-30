@@ -1942,3 +1942,14 @@ Append one entry per implementation task so future sessions can recover project 
 - Test result: `mvn -pl product-service -am test` succeeded with common-core 38 tests, common-auth 32 tests, and product-service 14 tests passing. `git diff --check` succeeded. TaskMaster JSON parsed successfully. `mvn clean package -DskipTests` succeeded for the full 10-module reactor.
 - Issues: `task-master expand` failed because Codex CLI could not initialize its rollout recorder on the read-only filesystem, so subtasks were added with TaskMaster CLI. The V4 MySQL migration was not executed against live MySQL in this WSL environment; JPA mapping and API behavior were verified with H2 tests, and the migration follows the same information_schema dynamic pattern as V2.
 - Next: Task 5.2 - Implement admin product APIs and legacy write protection.
+
+## Task 5.1 - Supplemental Docker MySQL migration verification
+- Date: 2026-05-30
+- Status: Done
+- TaskMaster tag: `phase2-admin-platform`
+- Implemented: After Docker was started, executed `V4__add_product_image_url.sql` against the live local MySQL `minimall_order` database. Verified `products.image_url` was absent before the migration, present after the migration with `varchar(512) NULL`, and that rerunning the migration is idempotent. Confirmed `task-master next --tag=phase2-admin-platform` still returns Task 5.2.
+- Changed files: `docs/dev-log.md`
+- Commands run: `docker compose ps`; `docker compose exec -T mysql mysql ... -e "SHOW COLUMNS FROM products LIKE 'image_url'"`; `docker compose cp docs/sql/migrations/V4__add_product_image_url.sql mysql:/tmp/V4__add_product_image_url.sql`; `docker compose exec -T mysql mysql ... -e "source /tmp/V4__add_product_image_url.sql"` twice; `docker compose exec -T mysql mysql ... -e "SELECT COUNT(*) ..."`; `node node_modules/task-master-ai/dist/task-master.js next --tag=phase2-admin-platform`.
+- Test result: Live MySQL migration succeeded. `SHOW COLUMNS` reported `image_url varchar(512) YES`, and `information_schema.columns` reported one matching column after the idempotency rerun.
+- Issues: None.
+- Next: Task 5.2 - Implement admin product APIs and legacy write protection.
