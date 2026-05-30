@@ -1726,7 +1726,7 @@
         "description": "Create the shared admin audit model, table, enums, writer API, and user-service query endpoint for audit logs.",
         "details": "Add admin_operation_logs migration owned by user-service query API. Add common-core audit action and resource enums plus shared DTOs or helper interfaces. Implement a small reusable audit writer pattern usable from product, inventory, and notification services without MQ. /api/admin/audit-logs supports adminUserId, action, resourceType, resourceId, createdFrom, createdTo, page, size. Tests cover persistence, filtering, pagination, ApiResponse envelope, and ADMIN enforcement.",
         "testStrategy": "",
-        "status": "in-progress",
+        "status": "done",
         "dependencies": [
           "2"
         ],
@@ -1770,13 +1770,14 @@
             "title": "Implement admin audit log query API",
             "description": "Add GET /api/admin/audit-logs in user-service with ADMIN enforcement, filters, pagination, ApiResponse envelope, and tests.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 4,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-30T03:25:57.639Z"
           }
         ],
-        "updatedAt": "2026-05-30T02:53:46.994Z"
+        "updatedAt": "2026-05-30T03:25:57.639Z"
       },
       {
         "id": "5",
@@ -2017,9 +2018,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-30T02:53:46.994Z",
+      "lastModified": "2026-05-30T03:25:57.639Z",
       "taskCount": 15,
-      "completedCount": 3,
+      "completedCount": 4,
       "tags": [
         "phase2-admin-platform"
       ]
