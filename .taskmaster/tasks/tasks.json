@@ -2016,7 +2016,7 @@
         "description": "Build the admin product table and form workflows, and surface imageUrl in the customer storefront.",
         "details": "Implement admin-frontend /products with pagination, keyword search, status filter, create, edit, imageUrl editing, status mutation, detail view, and confirmations for on shelf and off shelf. Use only /api/admin/products/** from the admin UI. Update the separate Phase 1 customer frontend product list and detail to render imageUrl with existing placeholder fallback, without adding admin navigation or admin behavior to the customer app. Tests or verification cover create, edit, status changes, image preview, USER route rejection, no /internal calls, admin-frontend npm run build, and frontend npm run build for the image display regression.",
         "testStrategy": "",
-        "status": "in-progress",
+        "status": "done",
         "dependencies": [
           "5",
           "10",
@@ -2040,15 +2040,16 @@
             "title": "Surface product imageUrl in customer storefront",
             "description": "frontend product list + detail render imageUrl with existing placeholder fallback; no admin behavior added to the customer app.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "12.1"
             ],
             "parentTaskId": 12,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-30T18:40:47.632Z"
           }
         ],
-        "updatedAt": "2026-05-30T18:35:27.192Z"
+        "updatedAt": "2026-05-30T18:40:47.632Z"
       },
       {
         "id": "13",
@@ -2146,9 +2147,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-30T18:35:27.192Z",
+      "lastModified": "2026-05-30T18:40:47.632Z",
       "taskCount": 15,
-      "completedCount": 11,
+      "completedCount": 12,
       "tags": [
         "phase2-admin-platform"
       ]

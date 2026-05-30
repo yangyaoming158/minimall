@@ -6,6 +6,7 @@ export interface Product {
   productId: string
   name: string
   description: string | null
+  imageUrl: string | null
   price: number
   status: ProductStatus
   createdAt: string

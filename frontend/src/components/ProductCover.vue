@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { coverFor, type CoverSpec } from '@/utils/cover'
 
 type Aspect = '4:5' | '1:1' | '16:9'
@@ -10,12 +10,24 @@ const props = withDefaults(
   defineProps<{
     productId: number | string | null | undefined
     name?: string | null
+    imageUrl?: string | null
     aspect?: Aspect
     grade?: Grade
     size?: Size
   }>(),
   { aspect: '4:5', grade: 'list', size: 'md' },
 )
+
+// Prefer a real product image when present; fall back to the generated cover
+// when it is absent or fails to load.
+const imageFailed = ref(false)
+watch(
+  () => props.imageUrl,
+  () => {
+    imageFailed.value = false
+  },
+)
+const showImage = computed(() => !!props.imageUrl && !imageFailed.value)
 
 const VIEWBOX: Record<Aspect, { w: number; h: number }> = {
   '4:5': { w: 400, h: 500 },
@@ -68,7 +80,15 @@ const ariaLabel = computed(() => props.name || 'Product cover')
     :style="figureStyle"
     :aria-label="ariaLabel"
   >
+    <img
+      v-if="showImage"
+      class="cover__img"
+      :src="imageUrl as string"
+      :alt="ariaLabel"
+      @error="imageFailed = true"
+    />
     <svg
+      v-else
       :viewBox="`0 0 ${vb.w} ${vb.h}`"
       preserveAspectRatio="xMidYMid slice"
       role="img"
@@ -229,6 +249,13 @@ const ariaLabel = computed(() => props.name || 'Product cover')
   display: block;
   width: 100%;
   height: 100%;
+}
+
+.cover__img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .cover--detail {

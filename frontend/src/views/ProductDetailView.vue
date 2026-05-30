@@ -228,6 +228,7 @@ function goBackToList(): void {
         <ProductCover
           :product-id="product.productId"
           :name="product.name"
+          :image-url="product.imageUrl"
           aspect="4:5"
           grade="detail"
           size="full"
