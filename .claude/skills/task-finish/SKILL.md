@@ -23,6 +23,7 @@ Standardize task wrap-up: verify → write dev-log → propose a commit. Never c
    - Single backend module → `mvn -pl <module> -am test`
    - Cross-module backend → `mvn clean package -DskipTests`
    - Docs / config only → skip build; note `documentation-only` in dev-log "Test result"
+2b. MANDATORY full-build gate (hard rule): if ANY backend (`*.java`, `pom.xml`, `src/main/resources/**`, or SQL migration) file changed, you MUST also run `mvn clean package -DskipTests` for the full reactor before staging — regardless of how narrow the scope looks. The scoped check in step 2 does not satisfy this. A single-module test pass is NOT sufficient to commit; the full reactor must compile and package. If this gate fails, treat it as verification FAIL (see Stop conditions). Skip ONLY for docs/config-only or frontend-only changes with no backend file touched.
 3. If `frontend/src/**` or `admin-frontend/src/**` changed → invoke skill `gateway-contract-audit`. Record its pass/fail summary in the dev-log entry.
 4. Append a new entry to `docs/dev-log.md` using exactly this template (preserve field order, keep "Status: Done"):
    ```
@@ -62,6 +63,7 @@ Waiting for your "go" before commit.
 
 ## Verification checklist
 - [ ] Verification command matched the changed scope
+- [ ] If any backend file changed, full `mvn clean package -DskipTests` ran and passed (mandatory gate, step 2b)
 - [ ] dev-log entry has all 9 fields filled (no blanks)
 - [ ] `git add -A` / `git add .` not used
 - [ ] No `git commit` executed
