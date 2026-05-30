@@ -1,5 +1,6 @@
 package com.minimall.product.web;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -16,6 +17,9 @@ import static org.mockito.Mockito.when;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.minimall.common.auth.context.AuthRole;
 import com.minimall.common.auth.jwt.JwtUtils;
+import com.minimall.common.core.audit.AdminAuditAction;
+import com.minimall.common.core.audit.AdminAuditLogWriteRequest;
+import com.minimall.common.core.audit.AdminAuditWriter;
 import com.minimall.common.core.exception.ErrorCode;
 import com.minimall.product.domain.Product;
 import com.minimall.product.domain.ProductStatus;
@@ -26,8 +30,10 @@ import com.minimall.product.repository.ProductRepository;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.Map;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -71,13 +77,16 @@ class ProductControllerTest {
     @MockBean
     private StringRedisTemplate redisTemplate;
 
+    @MockBean
+    private AdminAuditWriter adminAuditWriter;
+
     private ValueOperations<String, String> valueOperations;
 
     @BeforeEach
     @SuppressWarnings("unchecked")
     void setUp() {
         productRepository.deleteAll();
-        reset(redisTemplate);
+        reset(redisTemplate, adminAuditWriter);
         valueOperations = mock(ValueOperations.class);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.get(anyString())).thenReturn(null);
@@ -176,6 +185,106 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.data.content[0].name").value("New Name"))
                 .andExpect(jsonPath("$.data.content[0].imageUrl")
                         .value("https://cdn.example.com/products/sku-2003-new.png"));
+    }
+
+    @Test
+    void adminCreateWritesAuditLogWithRequestMetadata() throws Exception {
+        CreateProductRequest request = new CreateProductRequest(
+                "SKU-AUDIT-1",
+                "Audit Keyboard",
+                "Tracked create",
+                "https://cdn.example.com/products/audit-keyboard.png",
+                new BigDecimal("129.90"));
+
+        mockMvc.perform(post("/api/admin/products")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken())
+                        .header("X-Request-Id", "REQ-PRODUCT-CREATE")
+                        .header("X-Forwarded-For", "203.0.113.10, 10.0.0.2")
+                        .header(HttpHeaders.USER_AGENT, "AdminBrowser/1.0")
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.productId").value("SKU-AUDIT-1"));
+
+        AdminAuditLogWriteRequest audit = captureSingleAudit();
+        assertThat(audit.adminUserId()).isEqualTo(42L);
+        assertThat(audit.adminUsername()).isEqualTo("admin");
+        assertThat(audit.action()).isEqualTo(AdminAuditAction.PRODUCT_CREATE);
+        assertThat(audit.resourceId()).isEqualTo("SKU-AUDIT-1");
+        assertThat(audit.requestId()).isEqualTo("REQ-PRODUCT-CREATE");
+        assertThat(audit.ip()).isEqualTo("203.0.113.10");
+        assertThat(audit.userAgent()).isEqualTo("AdminBrowser/1.0");
+        assertThat(audit.summary()).isEqualTo("Create product SKU-AUDIT-1");
+        Assertions.assertNull(audit.beforeSnapshot());
+        assertThat(audit.afterSnapshot().get("productId").asText()).isEqualTo("SKU-AUDIT-1");
+        assertThat(audit.afterSnapshot().get("status").asText()).isEqualTo("ON_SHELF");
+        assertThat(audit.afterSnapshot().get("imageUrl").asText())
+                .isEqualTo("https://cdn.example.com/products/audit-keyboard.png");
+    }
+
+    @Test
+    void adminUpdateWritesBeforeAndAfterAuditSnapshots() throws Exception {
+        productRepository.saveAndFlush(new Product(
+                "SKU-AUDIT-2",
+                "Old Audit Product",
+                "Old description",
+                "https://cdn.example.com/products/old-audit.png",
+                new BigDecimal("79.00")));
+        UpdateProductRequest request = new UpdateProductRequest(
+                "New Audit Product",
+                "New description",
+                "https://cdn.example.com/products/new-audit.png",
+                new BigDecimal("89.00"));
+
+        mockMvc.perform(put("/api/admin/products/SKU-AUDIT-2")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken())
+                        .header("X-Request-Id", "REQ-PRODUCT-UPDATE")
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.name").value("New Audit Product"));
+
+        AdminAuditLogWriteRequest audit = captureSingleAudit();
+        assertThat(audit.action()).isEqualTo(AdminAuditAction.PRODUCT_UPDATE);
+        assertThat(audit.resourceId()).isEqualTo("SKU-AUDIT-2");
+        assertThat(audit.requestId()).isEqualTo("REQ-PRODUCT-UPDATE");
+        assertThat(audit.summary()).isEqualTo("Update product SKU-AUDIT-2");
+        assertThat(audit.beforeSnapshot().get("name").asText()).isEqualTo("Old Audit Product");
+        assertThat(audit.beforeSnapshot().get("imageUrl").asText())
+                .isEqualTo("https://cdn.example.com/products/old-audit.png");
+        assertThat(audit.afterSnapshot().get("name").asText()).isEqualTo("New Audit Product");
+        assertThat(audit.afterSnapshot().get("imageUrl").asText())
+                .isEqualTo("https://cdn.example.com/products/new-audit.png");
+    }
+
+    @Test
+    void adminStatusMutationsWriteShelfAuditActions() throws Exception {
+        productRepository.saveAndFlush(new Product("SKU-AUDIT-3", "Shelf Audit", null, new BigDecimal("59.00")));
+
+        mockMvc.perform(put("/api/admin/products/SKU-AUDIT-3/status")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken())
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(Map.of("status", "OFF_SHELF"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("OFF_SHELF"));
+
+        mockMvc.perform(put("/api/admin/products/SKU-AUDIT-3/status")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken())
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(Map.of("status", "ON_SHELF"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("ON_SHELF"));
+
+        ArgumentCaptor<AdminAuditLogWriteRequest> captor =
+                ArgumentCaptor.forClass(AdminAuditLogWriteRequest.class);
+        verify(adminAuditWriter, times(2)).write(captor.capture());
+        assertThat(captor.getAllValues())
+                .extracting(AdminAuditLogWriteRequest::action)
+                .containsExactly(AdminAuditAction.PRODUCT_OFF_SHELF, AdminAuditAction.PRODUCT_ON_SHELF);
+        assertThat(captor.getAllValues().get(0).beforeSnapshot().get("status").asText()).isEqualTo("ON_SHELF");
+        assertThat(captor.getAllValues().get(0).afterSnapshot().get("status").asText()).isEqualTo("OFF_SHELF");
+        assertThat(captor.getAllValues().get(1).beforeSnapshot().get("status").asText()).isEqualTo("OFF_SHELF");
+        assertThat(captor.getAllValues().get(1).afterSnapshot().get("status").asText()).isEqualTo("ON_SHELF");
     }
 
     @Test
@@ -456,5 +565,12 @@ class ProductControllerTest {
 
     private String userToken() {
         return jwtUtils.generateToken(43L, "alice", AuthRole.USER);
+    }
+
+    private AdminAuditLogWriteRequest captureSingleAudit() {
+        ArgumentCaptor<AdminAuditLogWriteRequest> captor =
+                ArgumentCaptor.forClass(AdminAuditLogWriteRequest.class);
+        verify(adminAuditWriter).write(captor.capture());
+        return captor.getValue();
     }
 }

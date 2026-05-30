@@ -10,6 +10,7 @@ import com.minimall.product.dto.ProductResponse;
 import com.minimall.product.dto.UpdateProductRequest;
 import com.minimall.product.dto.UpdateProductStatusRequest;
 import com.minimall.product.service.ProductService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.Locale;
 import org.springframework.data.domain.Pageable;
@@ -49,25 +50,34 @@ public class AdminProductController {
     }
 
     @PostMapping
-    public ApiResponse<ProductResponse> create(@Valid @RequestBody CreateProductRequest request) {
-        AdminAccess.requireAdmin();
-        return ApiResponse.success(productService.create(request));
+    public ApiResponse<ProductResponse> create(
+            @Valid @RequestBody CreateProductRequest request,
+            HttpServletRequest servletRequest) {
+        return ApiResponse.success(productService.create(
+                request,
+                AdminAccess.requireAdminAuditContext(servletRequest)));
     }
 
     @PutMapping("/{productId}")
     public ApiResponse<ProductResponse> update(
             @PathVariable("productId") String productId,
-            @Valid @RequestBody UpdateProductRequest request) {
-        AdminAccess.requireAdmin();
-        return ApiResponse.success(productService.update(productId, request));
+            @Valid @RequestBody UpdateProductRequest request,
+            HttpServletRequest servletRequest) {
+        return ApiResponse.success(productService.update(
+                productId,
+                request,
+                AdminAccess.requireAdminAuditContext(servletRequest)));
     }
 
     @PutMapping("/{productId}/status")
     public ApiResponse<ProductResponse> updateStatus(
             @PathVariable("productId") String productId,
-            @Valid @RequestBody UpdateProductStatusRequest request) {
-        AdminAccess.requireAdmin();
-        return ApiResponse.success(productService.updateStatus(productId, parseRequiredStatus(request.status())));
+            @Valid @RequestBody UpdateProductStatusRequest request,
+            HttpServletRequest servletRequest) {
+        return ApiResponse.success(productService.updateStatus(
+                productId,
+                parseRequiredStatus(request.status()),
+                AdminAccess.requireAdminAuditContext(servletRequest)));
     }
 
     private ProductStatus parseOptionalStatus(String status) {

@@ -1,7 +1,12 @@
 package com.minimall.product.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.minimall.common.core.audit.AdminAuditAction;
+import com.minimall.common.core.audit.AdminAuditLogWriteRequest;
+import com.minimall.common.core.audit.AdminAuditResourceType;
+import com.minimall.common.core.audit.AdminAuditWriter;
 import com.minimall.common.core.exception.BusinessException;
 import com.minimall.common.core.exception.ErrorCode;
 import com.minimall.common.core.response.PageResponse;
@@ -42,16 +47,19 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
+    private final AdminAuditWriter adminAuditWriter;
     private final Duration detailCacheTtl;
 
     public ProductService(
             ProductRepository productRepository,
             StringRedisTemplate redisTemplate,
             ObjectMapper objectMapper,
+            AdminAuditWriter adminAuditWriter,
             @Value("${minimall.product.cache.detail-ttl-seconds:300}") long detailCacheTtlSeconds) {
         this.productRepository = productRepository;
         this.redisTemplate = redisTemplate;
         this.objectMapper = objectMapper;
+        this.adminAuditWriter = adminAuditWriter;
         this.detailCacheTtl = Duration.ofSeconds(Math.max(1, detailCacheTtlSeconds));
     }
 
@@ -75,12 +83,57 @@ public class ProductService {
     }
 
     @Transactional
+    public ProductResponse create(CreateProductRequest request, ProductAdminAuditContext auditContext) {
+        if (productRepository.existsByProductId(request.productId())) {
+            throw new BusinessException(ErrorCode.CONFLICT, PRODUCT_EXISTS_MESSAGE);
+        }
+
+        Product product = new Product(
+                request.productId(),
+                request.name(),
+                request.description(),
+                request.imageUrl(),
+                request.price());
+        try {
+            ProductResponse response = ProductResponse.from(productRepository.saveAndFlush(product));
+            writeAudit(
+                    auditContext,
+                    AdminAuditAction.PRODUCT_CREATE,
+                    response.productId(),
+                    null,
+                    response,
+                    "Create product " + response.productId());
+            return response;
+        } catch (DataIntegrityViolationException exception) {
+            throw new BusinessException(ErrorCode.CONFLICT, PRODUCT_EXISTS_MESSAGE, exception);
+        }
+    }
+
+    @Transactional
     public ProductResponse update(String productId, UpdateProductRequest request) {
         Product product = getProduct(productId);
         product.updateDetails(request.name(), request.description(), request.imageUrl(), request.price());
         Product savedProduct = productRepository.save(product);
         evictProductDetailAfterCommit(productId);
         return ProductResponse.from(savedProduct);
+    }
+
+    @Transactional
+    public ProductResponse update(String productId, UpdateProductRequest request, ProductAdminAuditContext auditContext) {
+        Product product = getProduct(productId);
+        ProductResponse before = ProductResponse.from(product);
+        product.updateDetails(request.name(), request.description(), request.imageUrl(), request.price());
+        Product savedProduct = productRepository.save(product);
+        ProductResponse after = ProductResponse.from(savedProduct);
+        writeAudit(
+                auditContext,
+                AdminAuditAction.PRODUCT_UPDATE,
+                productId,
+                before,
+                after,
+                "Update product " + productId);
+        evictProductDetailAfterCommit(productId);
+        return after;
     }
 
     @Transactional(readOnly = true)
@@ -121,6 +174,27 @@ public class ProductService {
     }
 
     @Transactional
+    public ProductResponse onShelf(String productId, ProductAdminAuditContext auditContext) {
+        Product product = getProduct(productId);
+        if (product.getStatus() == ProductStatus.ON_SHELF) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, PRODUCT_ALREADY_ON_SHELF_MESSAGE);
+        }
+        ProductResponse before = ProductResponse.from(product);
+        product.onShelf();
+        Product savedProduct = productRepository.save(product);
+        ProductResponse after = ProductResponse.from(savedProduct);
+        writeAudit(
+                auditContext,
+                AdminAuditAction.PRODUCT_ON_SHELF,
+                productId,
+                before,
+                after,
+                "Put product " + productId + " on shelf");
+        evictProductDetailAfterCommit(productId);
+        return after;
+    }
+
+    @Transactional
     public ProductResponse offShelf(String productId) {
         Product product = getProduct(productId);
         if (product.getStatus() == ProductStatus.OFF_SHELF) {
@@ -133,11 +207,70 @@ public class ProductService {
     }
 
     @Transactional
+    public ProductResponse offShelf(String productId, ProductAdminAuditContext auditContext) {
+        Product product = getProduct(productId);
+        if (product.getStatus() == ProductStatus.OFF_SHELF) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, PRODUCT_ALREADY_OFF_SHELF_MESSAGE);
+        }
+        ProductResponse before = ProductResponse.from(product);
+        product.offShelf();
+        Product savedProduct = productRepository.save(product);
+        ProductResponse after = ProductResponse.from(savedProduct);
+        writeAudit(
+                auditContext,
+                AdminAuditAction.PRODUCT_OFF_SHELF,
+                productId,
+                before,
+                after,
+                "Take product " + productId + " off shelf");
+        evictProductDetailAfterCommit(productId);
+        return after;
+    }
+
+    @Transactional
     public ProductResponse updateStatus(String productId, ProductStatus status) {
         return switch (status) {
             case ON_SHELF -> onShelf(productId);
             case OFF_SHELF -> offShelf(productId);
         };
+    }
+
+    @Transactional
+    public ProductResponse updateStatus(
+            String productId,
+            ProductStatus status,
+            ProductAdminAuditContext auditContext) {
+        return switch (status) {
+            case ON_SHELF -> onShelf(productId, auditContext);
+            case OFF_SHELF -> offShelf(productId, auditContext);
+        };
+    }
+
+    private void writeAudit(
+            ProductAdminAuditContext auditContext,
+            AdminAuditAction action,
+            String productId,
+            ProductResponse before,
+            ProductResponse after,
+            String summary) {
+        adminAuditWriter.write(new AdminAuditLogWriteRequest(
+                auditContext.adminUserId(),
+                auditContext.adminUsername(),
+                action,
+                AdminAuditResourceType.PRODUCT,
+                productId,
+                auditContext.requestId(),
+                null,
+                null,
+                toSnapshot(before),
+                toSnapshot(after),
+                auditContext.ip(),
+                auditContext.userAgent(),
+                summary));
+    }
+
+    private JsonNode toSnapshot(ProductResponse response) {
+        return response == null ? null : objectMapper.valueToTree(response);
     }
 
     private Specification<Product> adminProductSpecification(String keyword, ProductStatus status) {

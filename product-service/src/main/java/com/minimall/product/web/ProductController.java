@@ -7,6 +7,7 @@ import com.minimall.product.dto.CreateProductRequest;
 import com.minimall.product.dto.ProductResponse;
 import com.minimall.product.dto.UpdateProductRequest;
 import com.minimall.product.service.ProductService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -29,17 +30,23 @@ public class ProductController {
     }
 
     @PostMapping
-    public ApiResponse<ProductResponse> create(@Valid @RequestBody CreateProductRequest request) {
-        AdminAccess.requireAdmin();
-        return ApiResponse.success(productService.create(request));
+    public ApiResponse<ProductResponse> create(
+            @Valid @RequestBody CreateProductRequest request,
+            HttpServletRequest servletRequest) {
+        return ApiResponse.success(productService.create(
+                request,
+                AdminAccess.requireAdminAuditContext(servletRequest)));
     }
 
     @PutMapping("/{productId}")
     public ApiResponse<ProductResponse> update(
             @PathVariable("productId") String productId,
-            @Valid @RequestBody UpdateProductRequest request) {
-        AdminAccess.requireAdmin();
-        return ApiResponse.success(productService.update(productId, request));
+            @Valid @RequestBody UpdateProductRequest request,
+            HttpServletRequest servletRequest) {
+        return ApiResponse.success(productService.update(
+                productId,
+                request,
+                AdminAccess.requireAdminAuditContext(servletRequest)));
     }
 
     @GetMapping
@@ -55,14 +62,20 @@ public class ProductController {
     }
 
     @PostMapping("/{productId}/on-shelf")
-    public ApiResponse<ProductResponse> onShelf(@PathVariable("productId") String productId) {
-        AdminAccess.requireAdmin();
-        return ApiResponse.success(productService.onShelf(productId));
+    public ApiResponse<ProductResponse> onShelf(
+            @PathVariable("productId") String productId,
+            HttpServletRequest servletRequest) {
+        return ApiResponse.success(productService.onShelf(
+                productId,
+                AdminAccess.requireAdminAuditContext(servletRequest)));
     }
 
     @PostMapping("/{productId}/off-shelf")
-    public ApiResponse<ProductResponse> offShelf(@PathVariable("productId") String productId) {
-        AdminAccess.requireAdmin();
-        return ApiResponse.success(productService.offShelf(productId));
+    public ApiResponse<ProductResponse> offShelf(
+            @PathVariable("productId") String productId,
+            HttpServletRequest servletRequest) {
+        return ApiResponse.success(productService.offShelf(
+                productId,
+                AdminAccess.requireAdminAuditContext(servletRequest)));
     }
 }

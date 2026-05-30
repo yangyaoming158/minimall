@@ -1785,7 +1785,7 @@
         "description": "Add product imageUrl persistence and admin-safe product management APIs while protecting legacy product write routes.",
         "details": "Add products.image_url migration, domain field, request validation, responses, and frontend-compatible fallback behavior. Implement AdminProductController for list, detail, create, update, and PUT status. Require ADMIN on existing /api/products write endpoints until removed in a later phase. Record audit logs for create, update, on shelf, and off shelf. Tests cover imageUrl save/return, status enum validation, USER forbidden, ADMIN success, legacy write protection, audit records, and Phase 1 product read compatibility.",
         "testStrategy": "",
-        "status": "in-progress",
+        "status": "done",
         "dependencies": [
           "3",
           "4"
@@ -1819,13 +1819,14 @@
             "title": "Record product admin audit logs and final regression",
             "description": "Wire AdminAuditWriter for product create update on-shelf and off-shelf operations with before and after snapshots, then run product-service and full package regression.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 5,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-30T08:30:55.714Z"
           }
         ],
-        "updatedAt": "2026-05-30T08:13:53.112Z"
+        "updatedAt": "2026-05-30T08:30:55.714Z"
       },
       {
         "id": "6",
@@ -2058,9 +2059,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-30T08:13:53.115Z",
+      "lastModified": "2026-05-30T08:30:55.717Z",
       "taskCount": 15,
-      "completedCount": 4,
+      "completedCount": 5,
       "tags": [
         "phase2-admin-platform"
       ]
