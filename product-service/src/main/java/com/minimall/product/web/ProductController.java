@@ -30,6 +30,7 @@ public class ProductController {
 
     @PostMapping
     public ApiResponse<ProductResponse> create(@Valid @RequestBody CreateProductRequest request) {
+        AdminAccess.requireAdmin();
         return ApiResponse.success(productService.create(request));
     }
 
@@ -37,6 +38,7 @@ public class ProductController {
     public ApiResponse<ProductResponse> update(
             @PathVariable("productId") String productId,
             @Valid @RequestBody UpdateProductRequest request) {
+        AdminAccess.requireAdmin();
         return ApiResponse.success(productService.update(productId, request));
     }
 
@@ -54,11 +56,13 @@ public class ProductController {
 
     @PostMapping("/{productId}/on-shelf")
     public ApiResponse<ProductResponse> onShelf(@PathVariable("productId") String productId) {
+        AdminAccess.requireAdmin();
         return ApiResponse.success(productService.onShelf(productId));
     }
 
     @PostMapping("/{productId}/off-shelf")
     public ApiResponse<ProductResponse> offShelf(@PathVariable("productId") String productId) {
+        AdminAccess.requireAdmin();
         return ApiResponse.success(productService.offShelf(productId));
     }
 }

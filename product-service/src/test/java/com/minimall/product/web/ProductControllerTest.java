@@ -14,6 +14,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.minimall.common.auth.context.AuthRole;
+import com.minimall.common.auth.jwt.JwtUtils;
 import com.minimall.common.core.exception.ErrorCode;
 import com.minimall.product.domain.Product;
 import com.minimall.product.domain.ProductStatus;
@@ -23,6 +25,7 @@ import com.minimall.product.dto.UpdateProductRequest;
 import com.minimall.product.repository.ProductRepository;
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +34,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.http.HttpHeaders;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -46,7 +50,9 @@ import org.springframework.test.web.servlet.MockMvc;
         "spring.data.redis.host=127.0.0.1",
         "spring.data.redis.port=6379",
         "spring.data.redis.password=",
-        "spring.data.redis.repositories.enabled=false"
+        "spring.data.redis.repositories.enabled=false",
+        "minimall.auth.jwt.secret=test-jwt-secret-for-product-controller",
+        "minimall.auth.jwt.expire-seconds=3600"
 })
 class ProductControllerTest {
 
@@ -58,6 +64,9 @@ class ProductControllerTest {
 
     @Autowired
     private ProductRepository productRepository;
+
+    @Autowired
+    private JwtUtils jwtUtils;
 
     @MockBean
     private StringRedisTemplate redisTemplate;
@@ -84,6 +93,7 @@ class ProductControllerTest {
                 new BigDecimal("129.90"));
 
         mockMvc.perform(post("/api/products")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken())
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -108,6 +118,7 @@ class ProductControllerTest {
                 new BigDecimal("49.90"));
 
         mockMvc.perform(post("/api/products")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken())
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isConflict())
@@ -126,6 +137,7 @@ class ProductControllerTest {
                 new BigDecimal("29.90"));
 
         mockMvc.perform(put("/api/products/SKU-2003")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken())
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -167,6 +179,143 @@ class ProductControllerTest {
     }
 
     @Test
+    void adminProductEndpointsListDetailCreateUpdateAndMutateStatus() throws Exception {
+        productRepository.saveAndFlush(new Product(
+                "SKU-ADMIN-1",
+                "Admin Keyboard",
+                "For admin list",
+                "https://cdn.example.com/products/admin-keyboard.png",
+                new BigDecimal("188.00")));
+        Product offShelfProduct = new Product("SKU-ADMIN-2", "Admin Mouse", null, new BigDecimal("88.00"));
+        offShelfProduct.offShelf();
+        productRepository.saveAndFlush(offShelfProduct);
+
+        mockMvc.perform(get("/api/admin/products")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken())
+                        .param("keyword", "keyboard")
+                        .param("status", "ON_SHELF")
+                        .param("page", "0")
+                        .param("size", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.totalElements").value(1))
+                .andExpect(jsonPath("$.data.content[0].productId").value("SKU-ADMIN-1"))
+                .andExpect(jsonPath("$.data.content[0].imageUrl")
+                        .value("https://cdn.example.com/products/admin-keyboard.png"));
+
+        mockMvc.perform(get("/api/admin/products/SKU-ADMIN-1")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.productId").value("SKU-ADMIN-1"));
+
+        CreateProductRequest createRequest = new CreateProductRequest(
+                "SKU-ADMIN-3",
+                "Admin Display",
+                "Created by admin",
+                "https://cdn.example.com/products/admin-display.png",
+                new BigDecimal("899.00"));
+        mockMvc.perform(post("/api/admin/products")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken())
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(createRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.productId").value("SKU-ADMIN-3"))
+                .andExpect(jsonPath("$.data.imageUrl")
+                        .value("https://cdn.example.com/products/admin-display.png"));
+
+        UpdateProductRequest updateRequest = new UpdateProductRequest(
+                "Admin Display Pro",
+                "Updated by admin",
+                "https://cdn.example.com/products/admin-display-pro.png",
+                new BigDecimal("999.00"));
+        mockMvc.perform(put("/api/admin/products/SKU-ADMIN-3")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken())
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.name").value("Admin Display Pro"))
+                .andExpect(jsonPath("$.data.imageUrl")
+                        .value("https://cdn.example.com/products/admin-display-pro.png"));
+
+        mockMvc.perform(put("/api/admin/products/SKU-ADMIN-3/status")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken())
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(Map.of("status", "OFF_SHELF"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.productId").value("SKU-ADMIN-3"))
+                .andExpect(jsonPath("$.data.status").value("OFF_SHELF"));
+    }
+
+    @Test
+    void adminProductEndpointsRejectUserRoleAndInvalidStatus() throws Exception {
+        productRepository.saveAndFlush(new Product("SKU-ADMIN-4", "Camera", null, new BigDecimal("399.00")));
+
+        mockMvc.perform(get("/api/admin/products")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(ErrorCode.FORBIDDEN.getCode()))
+                .andExpect(jsonPath("$.message").value(ErrorCode.FORBIDDEN.getMessage()));
+
+        mockMvc.perform(put("/api/admin/products/SKU-ADMIN-4/status")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken())
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(Map.of("status", "ARCHIVED"))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(ErrorCode.BAD_REQUEST.getCode()))
+                .andExpect(jsonPath("$.message").value("Invalid status"));
+    }
+
+    @Test
+    void legacyWriteRoutesRequireAdmin() throws Exception {
+        productRepository.saveAndFlush(new Product("SKU-LEGACY-1", "Legacy", null, new BigDecimal("59.00")));
+        CreateProductRequest request = new CreateProductRequest(
+                "SKU-LEGACY-2",
+                "Legacy Create",
+                null,
+                null,
+                new BigDecimal("69.00"));
+        UpdateProductRequest updateRequest = new UpdateProductRequest(
+                "Legacy Updated",
+                null,
+                null,
+                new BigDecimal("79.00"));
+
+        mockMvc.perform(post("/api/products")
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(ErrorCode.UNAUTHORIZED.getCode()))
+                .andExpect(jsonPath("$.message").value("Unauthorized"));
+
+        mockMvc.perform(post("/api/products")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken())
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(ErrorCode.FORBIDDEN.getCode()));
+
+        mockMvc.perform(put("/api/products/SKU-LEGACY-1")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken())
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value(ErrorCode.FORBIDDEN.getCode()));
+
+        mockMvc.perform(post("/api/products/SKU-LEGACY-1/off-shelf")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value(ErrorCode.FORBIDDEN.getCode()));
+    }
+
+    @Test
     void missingProductReturnsNotFound() throws Exception {
         mockMvc.perform(get("/api/products/MISSING"))
                 .andExpect(status().isNotFound())
@@ -179,20 +328,23 @@ class ProductControllerTest {
     void shelfOperationsSwitchStatusAndRejectInvalidTransition() throws Exception {
         productRepository.saveAndFlush(new Product("SKU-2004", "Lamp", null, new BigDecimal("69.00")));
 
-        mockMvc.perform(post("/api/products/SKU-2004/off-shelf"))
+        mockMvc.perform(post("/api/products/SKU-2004/off-shelf")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.id").doesNotExist())
                 .andExpect(jsonPath("$.data.productId").value("SKU-2004"))
                 .andExpect(jsonPath("$.data.status").value("OFF_SHELF"));
 
-        mockMvc.perform(post("/api/products/SKU-2004/off-shelf"))
+        mockMvc.perform(post("/api/products/SKU-2004/off-shelf")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken()))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.code").value(ErrorCode.BAD_REQUEST.getCode()))
                 .andExpect(jsonPath("$.message").value("Product is already off shelf"));
 
-        mockMvc.perform(post("/api/products/SKU-2004/on-shelf"))
+        mockMvc.perform(post("/api/products/SKU-2004/on-shelf")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.id").doesNotExist())
@@ -262,6 +414,7 @@ class ProductControllerTest {
                 new BigDecimal("499.00"));
 
         mockMvc.perform(put("/api/products/SKU-2007")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken())
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -295,5 +448,13 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.data.status").value("OFF_SHELF"));
 
         verify(valueOperations).get("product:detail:SKU-2008");
+    }
+
+    private String adminToken() {
+        return jwtUtils.generateToken(42L, "admin", AuthRole.ADMIN);
+    }
+
+    private String userToken() {
+        return jwtUtils.generateToken(43L, "alice", AuthRole.USER);
     }
 }

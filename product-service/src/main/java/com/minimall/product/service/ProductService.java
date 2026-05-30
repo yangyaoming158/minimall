@@ -12,12 +12,16 @@ import com.minimall.product.dto.InternalProductResponse;
 import com.minimall.product.dto.ProductResponse;
 import com.minimall.product.dto.UpdateProductRequest;
 import com.minimall.product.repository.ProductRepository;
+import jakarta.persistence.criteria.Predicate;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -88,6 +92,12 @@ public class ProductService {
     }
 
     @Transactional(readOnly = true)
+    public PageResponse<ProductResponse> adminList(String keyword, ProductStatus status, Pageable pageable) {
+        return PageResponse.from(productRepository.findAll(adminProductSpecification(keyword, status), pageable)
+                .map(ProductResponse::from));
+    }
+
+    @Transactional(readOnly = true)
     public ProductResponse detail(String productId) {
         return getCachedProductDetail(productId);
     }
@@ -120,6 +130,30 @@ public class ProductService {
         Product savedProduct = productRepository.save(product);
         evictProductDetailAfterCommit(productId);
         return ProductResponse.from(savedProduct);
+    }
+
+    @Transactional
+    public ProductResponse updateStatus(String productId, ProductStatus status) {
+        return switch (status) {
+            case ON_SHELF -> onShelf(productId);
+            case OFF_SHELF -> offShelf(productId);
+        };
+    }
+
+    private Specification<Product> adminProductSpecification(String keyword, ProductStatus status) {
+        return (root, query, criteriaBuilder) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            if (status != null) {
+                predicates.add(criteriaBuilder.equal(root.get("status"), status));
+            }
+            if (StringUtils.hasText(keyword)) {
+                String pattern = "%" + keyword.trim().toLowerCase() + "%";
+                predicates.add(criteriaBuilder.or(
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("productId")), pattern),
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("name")), pattern)));
+            }
+            return criteriaBuilder.and(predicates.toArray(Predicate[]::new));
+        };
     }
 
     private ProductResponse getCachedProductDetail(String productId) {
