@@ -6,11 +6,16 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.minimall.notification.domain.NotificationLog;
 import com.minimall.notification.domain.NotificationLogStatus;
 import com.minimall.notification.domain.NotificationType;
+import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.TestPropertySource;
 
@@ -82,6 +87,32 @@ class NotificationLogRepositoryTest {
     }
 
     @Test
+    void findAllBySpecificationFiltersByStatusAndCreatedRangeNewestFirst() {
+        LocalDateTime base = LocalDateTime.of(2026, 5, 20, 0, 0);
+        savePersisted("evt-spec-1001", "ORD-SPEC-A", NotificationLogStatus.SENT, base.plusDays(1));
+        savePersisted("evt-spec-1002", "ORD-SPEC-B", NotificationLogStatus.SENT, base.plusDays(3));
+        // Wrong status -> excluded.
+        savePersisted("evt-spec-1003", "ORD-SPEC-C", NotificationLogStatus.FAILED, base.plusDays(2));
+        // Out of range -> excluded.
+        savePersisted("evt-spec-1004", "ORD-SPEC-D", NotificationLogStatus.SENT, base.plusDays(10));
+
+        LocalDateTime from = base;
+        LocalDateTime to = base.plusDays(5);
+        Specification<NotificationLog> specification = (root, query, cb) -> cb.and(
+                cb.equal(root.get("status"), NotificationLogStatus.SENT),
+                cb.greaterThanOrEqualTo(root.get("createdAt"), from),
+                cb.lessThanOrEqualTo(root.get("createdAt"), to));
+
+        Page<NotificationLog> page = notificationLogRepository.findAll(specification,
+                PageRequest.of(0, 10, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"))));
+
+        assertThat(page.getTotalElements()).isEqualTo(2);
+        assertThat(page.getContent())
+                .extracting(NotificationLog::getEventId)
+                .containsExactly("evt-spec-1002", "evt-spec-1001");
+    }
+
+    @Test
     void rejectsDuplicateEventIdForIdempotency() {
         notificationLogRepository.saveAndFlush(new NotificationLog(
                 "payment-event-duplicate",
@@ -97,5 +128,21 @@ class NotificationLogRepositoryTest {
 
         assertThatThrownBy(() -> notificationLogRepository.saveAndFlush(duplicate))
                 .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    private void savePersisted(String eventId, String orderNo, NotificationLogStatus status, LocalDateTime createdAt) {
+        NotificationLog log = new NotificationLog(
+                eventId, NotificationType.PAYMENT_SUCCESS, orderNo, "{\"orderNo\":\"" + orderNo + "\"}");
+        if (status == NotificationLogStatus.SENT) {
+            log.markSent(createdAt);
+        } else if (status == NotificationLogStatus.FAILED) {
+            log.markFailed("boom");
+        }
+        notificationLogRepository.saveAndFlush(log);
+        jdbcTemplate.update(
+                "update notification_logs set created_at = ?, updated_at = ? where event_id = ?",
+                Timestamp.valueOf(createdAt),
+                Timestamp.valueOf(createdAt),
+                eventId);
     }
 }

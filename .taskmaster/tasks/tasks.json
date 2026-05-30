@@ -1970,14 +1970,15 @@
         "description": "Add admin notification log list and detail APIs only, explicitly excluding resend from Phase 2 MVP.",
         "details": "Implement AdminNotificationController for /api/admin/notifications and /api/admin/notifications/{id}. Support eventId, orderNo, status, channel, createdFrom, createdTo, page, and size filters. Do not add /resend or notification mutation behavior. Tests cover filtering, detail, pagination, status and channel handling, USER forbidden, ADMIN success, and notification consumer regression.",
         "testStrategy": "",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           "3",
           "4",
           "8"
         ],
         "priority": "medium",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-05-30T17:10:08.448Z"
       },
       {
         "id": "10",
@@ -2118,9 +2119,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-30T16:53:38.898Z",
+      "lastModified": "2026-05-30T17:10:08.449Z",
       "taskCount": 15,
-      "completedCount": 8,
+      "completedCount": 9,
       "tags": [
         "phase2-admin-platform"
       ]
