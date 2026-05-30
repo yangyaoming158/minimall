@@ -243,6 +243,188 @@ class AdminOrderControllerTest {
                 .andExpect(jsonPath("$.data.content[0].orderCount").doesNotExist());
     }
 
+    @Test
+    void adminOrderListRequiresAuthentication() throws Exception {
+        mockMvc.perform(get("/api/admin/orders"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(ErrorCode.UNAUTHORIZED.getCode()));
+    }
+
+    @Test
+    void adminOrderListRejectsUserRole() throws Exception {
+        mockMvc.perform(get("/api/admin/orders")
+                        .header(AuthHeaders.USER_ID, "501")
+                        .header(AuthHeaders.USERNAME, "operator")
+                        .header(AuthHeaders.USER_ROLE, "USER"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(ErrorCode.FORBIDDEN.getCode()));
+    }
+
+    @Test
+    void adminOrderListReturnsNewestFirstWithUsernameForAdmin() throws Exception {
+        saveOrder(namedOrder("ORD-ADMIN-LIST-1001", 801L, "alice", "SKU-LIST-A", OrderStatus.PAID),
+                LocalDateTime.of(2026, 5, 20, 10, 0));
+        saveOrder(namedOrder("ORD-ADMIN-LIST-1002", 802L, "bob", "SKU-LIST-B", OrderStatus.PENDING_PAYMENT),
+                LocalDateTime.of(2026, 5, 22, 10, 0));
+        saveOrder(namedOrder("ORD-ADMIN-LIST-1003", 803L, "carol", "SKU-LIST-C", OrderStatus.CANCELLED),
+                LocalDateTime.of(2026, 5, 21, 10, 0));
+
+        mockMvc.perform(get("/api/admin/orders")
+                        .header(AuthHeaders.USER_ID, "900")
+                        .header(AuthHeaders.USERNAME, "admin")
+                        .header(AuthHeaders.USER_ROLE, "ADMIN")
+                        .param("page", "0")
+                        .param("size", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.code").value(ErrorCode.SUCCESS.getCode()))
+                .andExpect(jsonPath("$.data.totalElements").value(3))
+                .andExpect(jsonPath("$.data.content[0].orderNo").value("ORD-ADMIN-LIST-1002"))
+                .andExpect(jsonPath("$.data.content[0].username").value("bob"))
+                .andExpect(jsonPath("$.data.content[0].status").value("PENDING_PAYMENT"))
+                .andExpect(jsonPath("$.data.content[0].items[0].productId").value("SKU-LIST-B"))
+                .andExpect(jsonPath("$.data.content[1].orderNo").value("ORD-ADMIN-LIST-1003"))
+                .andExpect(jsonPath("$.data.content[2].orderNo").value("ORD-ADMIN-LIST-1001"));
+    }
+
+    @Test
+    void adminOrderListFiltersByStatusUserIdAndProductId() throws Exception {
+        saveOrder(namedOrder("ORD-ADMIN-FILT-1001", 811L, "dave", "SKU-FILT-A", OrderStatus.PAID),
+                LocalDateTime.of(2026, 5, 20, 10, 0));
+        saveOrder(namedOrder("ORD-ADMIN-FILT-1002", 811L, "dave", "SKU-FILT-B", OrderStatus.PENDING_PAYMENT),
+                LocalDateTime.of(2026, 5, 20, 11, 0));
+        saveOrder(namedOrder("ORD-ADMIN-FILT-1003", 812L, "erin", "SKU-FILT-A", OrderStatus.PAID),
+                LocalDateTime.of(2026, 5, 20, 12, 0));
+
+        mockMvc.perform(get("/api/admin/orders")
+                        .header(AuthHeaders.USER_ID, "900")
+                        .header(AuthHeaders.USERNAME, "admin")
+                        .header(AuthHeaders.USER_ROLE, "ADMIN")
+                        .param("status", "PAID")
+                        .param("userId", "811")
+                        .param("productId", " SKU-FILT-A "))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.totalElements").value(1))
+                .andExpect(jsonPath("$.data.content[0].orderNo").value("ORD-ADMIN-FILT-1001"))
+                .andExpect(jsonPath("$.data.content[0].userId").value(811));
+    }
+
+    @Test
+    void adminOrderListFiltersByOrderNoUsernameAndDateRange() throws Exception {
+        saveOrder(namedOrder("ORD-ADMIN-RANGE-1001", 821L, "fred", "SKU-RANGE-A", OrderStatus.PAID),
+                LocalDateTime.of(2026, 5, 18, 10, 0));
+        saveOrder(namedOrder("ORD-ADMIN-RANGE-1002", 822L, "gina", "SKU-RANGE-B", OrderStatus.PAID),
+                LocalDateTime.of(2026, 5, 25, 10, 0));
+
+        mockMvc.perform(get("/api/admin/orders")
+                        .header(AuthHeaders.USER_ID, "900")
+                        .header(AuthHeaders.USERNAME, "admin")
+                        .header(AuthHeaders.USER_ROLE, "ADMIN")
+                        .param("username", "gina")
+                        .param("createdFrom", "2026-05-24T00:00:00")
+                        .param("createdTo", "2026-05-26T00:00:00"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.totalElements").value(1))
+                .andExpect(jsonPath("$.data.content[0].orderNo").value("ORD-ADMIN-RANGE-1002"))
+                .andExpect(jsonPath("$.data.content[0].username").value("gina"));
+
+        mockMvc.perform(get("/api/admin/orders")
+                        .header(AuthHeaders.USER_ID, "900")
+                        .header(AuthHeaders.USERNAME, "admin")
+                        .header(AuthHeaders.USER_ROLE, "ADMIN")
+                        .param("orderNo", "ORD-ADMIN-RANGE-1001"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.totalElements").value(1))
+                .andExpect(jsonPath("$.data.content[0].orderNo").value("ORD-ADMIN-RANGE-1001"));
+    }
+
+    @Test
+    void adminOrderListRejectsInvalidStatus() throws Exception {
+        mockMvc.perform(get("/api/admin/orders")
+                        .header(AuthHeaders.USER_ID, "900")
+                        .header(AuthHeaders.USERNAME, "admin")
+                        .header(AuthHeaders.USER_ROLE, "ADMIN")
+                        .param("status", "NOT_A_STATUS"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(ErrorCode.BAD_REQUEST.getCode()))
+                .andExpect(jsonPath("$.message").value("Invalid status"));
+    }
+
+    @Test
+    void adminOrderListRejectsInvalidDateRange() throws Exception {
+        mockMvc.perform(get("/api/admin/orders")
+                        .header(AuthHeaders.USER_ID, "900")
+                        .header(AuthHeaders.USERNAME, "admin")
+                        .header(AuthHeaders.USER_ROLE, "ADMIN")
+                        .param("createdFrom", "2026-05-22T00:00:00")
+                        .param("createdTo", "2026-05-21T00:00:00"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(ErrorCode.BAD_REQUEST.getCode()))
+                .andExpect(jsonPath("$.message").value("createdFrom must be before or equal to createdTo"));
+    }
+
+    @Test
+    void adminOrderListBoundsPageSize() throws Exception {
+        saveOrder(namedOrder("ORD-ADMIN-BOUND-1001", 831L, "hank", "SKU-BOUND-A", OrderStatus.PAID),
+                LocalDateTime.of(2026, 5, 20, 10, 0));
+
+        mockMvc.perform(get("/api/admin/orders")
+                        .header(AuthHeaders.USER_ID, "900")
+                        .header(AuthHeaders.USERNAME, "admin")
+                        .header(AuthHeaders.USER_ROLE, "ADMIN")
+                        .param("size", "500"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.size").value(100))
+                .andExpect(jsonPath("$.data.totalElements").value(1));
+    }
+
+    @Test
+    void adminOrderDetailReturnsOrderForAdmin() throws Exception {
+        saveOrder(namedOrder("ORD-ADMIN-DET-1001", 841L, "ivy", "SKU-DET-A", OrderStatus.PAID),
+                LocalDateTime.of(2026, 5, 20, 10, 0));
+
+        mockMvc.perform(get("/api/admin/orders/ORD-ADMIN-DET-1001")
+                        .header(AuthHeaders.USER_ID, "900")
+                        .header(AuthHeaders.USERNAME, "admin")
+                        .header(AuthHeaders.USER_ROLE, "ADMIN"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.orderNo").value("ORD-ADMIN-DET-1001"))
+                .andExpect(jsonPath("$.data.userId").value(841))
+                .andExpect(jsonPath("$.data.username").value("ivy"))
+                .andExpect(jsonPath("$.data.status").value("PAID"))
+                .andExpect(jsonPath("$.data.items[0].productId").value("SKU-DET-A"))
+                .andExpect(jsonPath("$.data.paidAt").exists());
+    }
+
+    @Test
+    void adminOrderDetailReturnsNotFoundForUnknownOrder() throws Exception {
+        mockMvc.perform(get("/api/admin/orders/ORD-DOES-NOT-EXIST")
+                        .header(AuthHeaders.USER_ID, "900")
+                        .header(AuthHeaders.USERNAME, "admin")
+                        .header(AuthHeaders.USER_ROLE, "ADMIN"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(ErrorCode.NOT_FOUND.getCode()))
+                .andExpect(jsonPath("$.message").value("Order not found"));
+    }
+
+    @Test
+    void adminOrderDetailRejectsUserRole() throws Exception {
+        saveOrder(namedOrder("ORD-ADMIN-DET-FORBID", 842L, "jane", "SKU-DET-B", OrderStatus.PAID),
+                LocalDateTime.of(2026, 5, 20, 10, 0));
+
+        mockMvc.perform(get("/api/admin/orders/ORD-ADMIN-DET-FORBID")
+                        .header(AuthHeaders.USER_ID, "842")
+                        .header(AuthHeaders.USERNAME, "jane")
+                        .header(AuthHeaders.USER_ROLE, "USER"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value(ErrorCode.FORBIDDEN.getCode()));
+    }
+
     private Order order(
             String orderNo,
             Long userId,
@@ -259,6 +441,24 @@ class AdminOrderControllerTest {
                 quantity,
                 unitPrice,
                 unitPrice.multiply(BigDecimal.valueOf(quantity)),
+                "idem-" + orderNo,
+                LocalDateTime.of(2026, 5, 30, 12, 0));
+        if (status != OrderStatus.PENDING_PAYMENT) {
+            new OrderStateMachine().transition(order, status, LocalDateTime.of(2026, 5, 20, 9, 0));
+        }
+        return order;
+    }
+
+    private Order namedOrder(String orderNo, Long userId, String username, String productId, OrderStatus status) {
+        Order order = new Order(
+                orderNo,
+                userId,
+                username,
+                productId,
+                "Admin Order Product",
+                2,
+                new BigDecimal("19.90"),
+                new BigDecimal("39.80"),
                 "idem-" + orderNo,
                 LocalDateTime.of(2026, 5, 30, 12, 0));
         if (status != OrderStatus.PENDING_PAYMENT) {

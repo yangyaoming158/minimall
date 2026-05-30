@@ -1924,12 +1924,13 @@
             "title": "Implement admin order list and detail APIs",
             "description": "Add ADMIN-only order list and detail endpoints with filters for orderNo username userId status productId createdFrom createdTo page and size, stable ApiResponse/PageResponse contracts, enum validation, pagination, and no customer API regression.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "7.1"
             ],
             "parentTaskId": 7,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-30T16:24:28.020Z"
           },
           {
             "id": 3,
@@ -1944,7 +1945,7 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-05-30T16:10:40.121Z"
+        "updatedAt": "2026-05-30T16:24:28.020Z"
       },
       {
         "id": "8",
@@ -2115,7 +2116,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-30T16:10:40.122Z",
+      "lastModified": "2026-05-30T16:24:28.021Z",
       "taskCount": 15,
       "completedCount": 6,
       "tags": [

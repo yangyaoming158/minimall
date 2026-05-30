@@ -6,17 +6,22 @@ import com.minimall.common.core.exception.ErrorCode;
 import com.minimall.common.core.response.PageResponse;
 import com.minimall.order.domain.Order;
 import com.minimall.order.domain.OrderStatus;
+import com.minimall.order.dto.AdminOrderResponse;
 import com.minimall.order.dto.OrderDetailResponse;
 import com.minimall.order.dto.OrderItemSummary;
 import com.minimall.order.dto.OrderSummaryResponse;
 import com.minimall.order.dto.ProductSalesAggregationResponse;
 import com.minimall.order.repository.ProductSalesAggregation;
 import com.minimall.order.repository.OrderRepository;
+import jakarta.persistence.criteria.Predicate;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class OrderQueryService {
 
     private static final int MAX_PRODUCT_SALES_PAGE_SIZE = 100;
+    private static final int MAX_ADMIN_ORDER_PAGE_SIZE = 100;
 
     private final OrderRepository orderRepository;
 
@@ -43,6 +49,30 @@ public class OrderQueryService {
     public PageResponse<OrderSummaryResponse> myOrders(UserContext userContext, Pageable pageable) {
         return PageResponse.from(orderRepository.findByUserId(userContext.getUserId(), pageable)
                 .map(this::toSummaryResponse));
+    }
+
+    @Transactional(readOnly = true)
+    public AdminOrderResponse adminDetail(String orderNo) {
+        Order order = orderRepository.findByOrderNo(orderNo)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Order not found"));
+        return AdminOrderResponse.from(order);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<AdminOrderResponse> adminList(
+            String orderNo,
+            String username,
+            Long userId,
+            OrderStatus status,
+            String productId,
+            LocalDateTime createdFrom,
+            LocalDateTime createdTo,
+            Pageable pageable) {
+        validateCreatedRange(createdFrom, createdTo);
+        Specification<Order> specification =
+                adminOrderSpecification(orderNo, username, userId, status, productId, createdFrom, createdTo);
+        return PageResponse.from(orderRepository.findAll(specification, boundedAdminOrderPageable(pageable))
+                .map(AdminOrderResponse::from));
     }
 
     @Transactional(readOnly = true)
@@ -113,6 +143,48 @@ public class OrderQueryService {
         int page = Math.max(0, pageable.getPageNumber());
         int size = Math.max(1, Math.min(pageable.getPageSize(), MAX_PRODUCT_SALES_PAGE_SIZE));
         return PageRequest.of(page, size);
+    }
+
+    private Pageable boundedAdminOrderPageable(Pageable pageable) {
+        int page = Math.max(0, pageable.getPageNumber());
+        int size = Math.max(1, Math.min(pageable.getPageSize(), MAX_ADMIN_ORDER_PAGE_SIZE));
+        // Stable, deterministic newest-first ordering regardless of any client-supplied sort.
+        return PageRequest.of(page, size, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
+    }
+
+    private Specification<Order> adminOrderSpecification(
+            String orderNo,
+            String username,
+            Long userId,
+            OrderStatus status,
+            String productId,
+            LocalDateTime createdFrom,
+            LocalDateTime createdTo) {
+        return (root, query, criteriaBuilder) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            if (StringUtils.hasText(orderNo)) {
+                predicates.add(criteriaBuilder.equal(root.get("orderNo"), orderNo.trim()));
+            }
+            if (StringUtils.hasText(username)) {
+                predicates.add(criteriaBuilder.equal(root.get("username"), username.trim()));
+            }
+            if (userId != null) {
+                predicates.add(criteriaBuilder.equal(root.get("userId"), userId));
+            }
+            if (status != null) {
+                predicates.add(criteriaBuilder.equal(root.get("status"), status));
+            }
+            if (StringUtils.hasText(productId)) {
+                predicates.add(criteriaBuilder.equal(root.get("productId"), productId.trim()));
+            }
+            if (createdFrom != null) {
+                predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("createdAt"), createdFrom));
+            }
+            if (createdTo != null) {
+                predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("createdAt"), createdTo));
+            }
+            return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
+        };
     }
 
     private String normalize(String value) {

@@ -12,7 +12,10 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 @DataJpaTest(properties = {
@@ -255,6 +258,36 @@ class OrderRepositoryTest {
                     assertThat(aggregation.getOrderCount()).isEqualTo(1L);
                     assertThat(aggregation.getTotalAmount()).isEqualByComparingTo("60.00");
                 });
+    }
+
+    @Test
+    void findAllBySpecificationFiltersByStatusAndCreatedRangeNewestFirst() {
+        LocalDateTime base = LocalDateTime.of(2026, 5, 20, 0, 0);
+        saveOrder(order("ORD-SPEC-1001", 401L, "SKU-SPEC-A", 1, new BigDecimal("10.00"), OrderStatus.PAID),
+                base.plusDays(1));
+        saveOrder(order("ORD-SPEC-1002", 402L, "SKU-SPEC-B", 1, new BigDecimal("10.00"), OrderStatus.PAID),
+                base.plusDays(3));
+        // Out of status -> excluded.
+        saveOrder(order("ORD-SPEC-1003", 403L, "SKU-SPEC-C", 1, new BigDecimal("10.00"), OrderStatus.PENDING_PAYMENT),
+                base.plusDays(2));
+        // Out of date range -> excluded.
+        saveOrder(order("ORD-SPEC-1004", 404L, "SKU-SPEC-D", 1, new BigDecimal("10.00"), OrderStatus.PAID),
+                base.plusDays(10));
+
+        LocalDateTime from = base;
+        LocalDateTime to = base.plusDays(5);
+        Specification<Order> specification = (root, query, cb) -> cb.and(
+                cb.equal(root.get("status"), OrderStatus.PAID),
+                cb.greaterThanOrEqualTo(root.get("createdAt"), from),
+                cb.lessThanOrEqualTo(root.get("createdAt"), to));
+
+        Page<Order> page = orderRepository.findAll(specification,
+                PageRequest.of(0, 10, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"))));
+
+        assertThat(page.getTotalElements()).isEqualTo(2);
+        assertThat(page.getContent())
+                .extracting(Order::getOrderNo)
+                .containsExactly("ORD-SPEC-1002", "ORD-SPEC-1001");
     }
 
     private Order order(String orderNo, Long userId, LocalDateTime expireAt) {

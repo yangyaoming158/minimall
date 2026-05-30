@@ -5,6 +5,7 @@ import com.minimall.common.core.exception.ErrorCode;
 import com.minimall.common.core.response.ApiResponse;
 import com.minimall.common.core.response.PageResponse;
 import com.minimall.order.domain.OrderStatus;
+import com.minimall.order.dto.AdminOrderResponse;
 import com.minimall.order.dto.ProductSalesAggregationResponse;
 import com.minimall.order.service.OrderQueryService;
 import java.time.LocalDateTime;
@@ -13,6 +14,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -25,6 +27,31 @@ public class AdminOrderController {
 
     public AdminOrderController(OrderQueryService orderQueryService) {
         this.orderQueryService = orderQueryService;
+    }
+
+    @GetMapping
+    public ApiResponse<PageResponse<AdminOrderResponse>> list(
+            @RequestParam(name = "orderNo", required = false) String orderNo,
+            @RequestParam(name = "username", required = false) String username,
+            @RequestParam(name = "userId", required = false) Long userId,
+            @RequestParam(name = "status", required = false) String status,
+            @RequestParam(name = "productId", required = false) String productId,
+            @RequestParam(name = "createdFrom", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            LocalDateTime createdFrom,
+            @RequestParam(name = "createdTo", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            LocalDateTime createdTo,
+            Pageable pageable) {
+        AdminAccess.requireAdmin();
+        return ApiResponse.success(orderQueryService.adminList(
+                orderNo, username, userId, parseStatus(status), productId, createdFrom, createdTo, pageable));
+    }
+
+    @GetMapping("/{orderNo}")
+    public ApiResponse<AdminOrderResponse> detail(@PathVariable("orderNo") String orderNo) {
+        AdminAccess.requireAdmin();
+        return ApiResponse.success(orderQueryService.adminDetail(orderNo));
     }
 
     @GetMapping("/product-sales")
