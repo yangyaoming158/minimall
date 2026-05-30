@@ -1834,7 +1834,7 @@
         "description": "Add admin-safe inventory initialization, adjustment, and record query APIs with mandatory requestId idempotency and audit logging.",
         "details": "Implement AdminInventoryController for list, detail, initialize, adjust, and records. Do not expose or reuse internal deduct/release semantics as UI APIs. Require requestId for adjustments and guarantee duplicate requestId behavior. Prevent negative available stock, record inventory_records with admin context and reason, and write audit logs. Tests cover initialization conflict, positive and negative adjustments, negative stock rejection, duplicate requestId, records query, USER forbidden, ADMIN success, and audit persistence.",
         "testStrategy": "",
-        "status": "in-progress",
+        "status": "done",
         "dependencies": [
           "3",
           "4",
@@ -1883,15 +1883,16 @@
             "title": "Record inventory admin audit logs and regression",
             "description": "Wire inventory admin write operations to AdminAuditWriter with before after snapshots operator metadata requestId sourceType referenceNo and regression coverage for audit persistence and gateway-owned ADMIN access expectations.",
             "details": "\n\n[2026-05-30] Concurrency follow-up from 6.3: add @Version optimistic locking to the Inventory entity (plus a version BIGINT column migration) so admin inventory adjustments are concurrency-safe. 6.3 admin adjust uses read-modify-write (load -> validate non-negative -> mutate -> save) with no @Version, so concurrent admin adjusts, or an admin adjust racing an atomic order deduct/release, can lose updates (stock count ends too high). Negative stock is NOT reachable today (service guard + domain guard + MySQL chk_inventory_non_negative all clamp >= 0), so this is a lost-update/correctness concern, not a negative-stock bug. Scope: add @Version, map OptimisticLockException -> ApiResponse 40900 conflict, and add a concurrent-adjustment regression test, alongside the inventory admin audit-log work.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "6.3"
             ],
             "parentTaskId": 6,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-30T13:45:07.116Z"
           }
         ],
-        "updatedAt": "2026-05-30T13:14:21.367Z"
+        "updatedAt": "2026-05-30T13:45:07.116Z"
       },
       {
         "id": "7",
@@ -2088,9 +2089,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-30T13:14:21.370Z",
+      "lastModified": "2026-05-30T13:45:07.116Z",
       "taskCount": 15,
-      "completedCount": 5,
+      "completedCount": 6,
       "tags": [
         "phase2-admin-platform"
       ]

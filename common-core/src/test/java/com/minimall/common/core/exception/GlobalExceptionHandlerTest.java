@@ -8,6 +8,7 @@ import jakarta.validation.Path;
 import jakarta.validation.metadata.ConstraintDescriptor;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.MethodParameter;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BeanPropertyBindingResult;
@@ -79,6 +80,17 @@ class GlobalExceptionHandlerTest {
         ApiResponse<Void> body = requireBody(response);
         assertEquals(ErrorCode.VALIDATION_ERROR.getCode(), body.getCode());
         assertEquals("userId: must not be null", body.getMessage());
+    }
+
+    @Test
+    void optimisticLockingFailureMapsToConflict() {
+        ResponseEntity<ApiResponse<Void>> response = handler.handleOptimisticLockingFailureException(
+                new OptimisticLockingFailureException("stale inventory"));
+
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        ApiResponse<Void> body = requireBody(response);
+        assertFalse(body.isSuccess());
+        assertEquals(ErrorCode.CONFLICT.getCode(), body.getCode());
     }
 
     @Test

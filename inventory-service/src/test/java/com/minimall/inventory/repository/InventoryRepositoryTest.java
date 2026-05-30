@@ -9,7 +9,9 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 
@@ -21,6 +23,9 @@ class InventoryRepositoryTest {
 
     @Autowired
     private InventoryRepository inventoryRepository;
+
+    @Autowired
+    private TestEntityManager testEntityManager;
 
     @Test
     void savesInventoryAndFindsByProductId() {
@@ -124,5 +129,28 @@ class InventoryRepositoryTest {
         assertThat(firstPage.getTotalElements()).isEqualTo(3);
         assertThat(firstPage.getTotalPages()).isEqualTo(2);
         assertThat(firstPage.getContent()).hasSize(2);
+    }
+
+    @Test
+    void savingStaleVersionFailsOptimisticLock() {
+        Inventory persisted = testEntityManager.persistFlushFind(new Inventory("SKU-VER", 10, 0));
+        assertThat(persisted.getVersion()).isEqualTo(0L);
+        Long id = persisted.getId();
+
+        // Load a stale snapshot, then detach it so a later write does not share its identity.
+        testEntityManager.clear();
+        Inventory stale = testEntityManager.find(Inventory.class, id);
+        testEntityManager.clear();
+
+        // A separate update bumps the persisted version to 1.
+        Inventory fresh = testEntityManager.find(Inventory.class, id);
+        fresh.adjustAvailableStock(5);
+        testEntityManager.flush();
+        testEntityManager.clear();
+
+        // Re-saving the stale (version 0) snapshot must be rejected.
+        stale.adjustAvailableStock(1);
+        assertThatThrownBy(() -> inventoryRepository.saveAndFlush(stale))
+                .isInstanceOf(OptimisticLockingFailureException.class);
     }
 }

@@ -11,6 +11,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import jakarta.persistence.Version;
 import java.time.LocalDateTime;
 
 @Entity
@@ -38,6 +39,10 @@ public class Inventory {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32)
     private InventoryStatus status = InventoryStatus.ACTIVE;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private long version;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
@@ -89,6 +94,10 @@ public class Inventory {
 
     public int getSafetyStock() {
         return safetyStock;
+    }
+
+    public long getVersion() {
+        return version;
     }
 
     public InventoryStatus getStatus() {
