@@ -1986,13 +1986,14 @@
         "description": "Create a separate Vue admin frontend project with its own route shell, guards, role-aware auth state, and admin API clients.",
         "details": "Create an independent admin-frontend directory with its own package.json, Vite config, TypeScript config, README, app entry, router, Pinia setup, Axios client, and Element Plus setup. Do not add admin routes, menus, login, or pages to the Phase 1 customer frontend. Add admin-frontend routes /login, / redirecting to /products, and protected /products, /inventories, /orders, /payments, /notifications, /audit-logs. Add AdminLayout with side menu and top bar. Add role-aware auth store, /api/admin/me guard, 403 handling, and API clients for all admin endpoints through the gateway only. Tests or build checks cover route guards, direct service port absence, no /internal calls, no forged X-User-* headers, and admin-frontend npm run build.",
         "testStrategy": "",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           "3",
           "9"
         ],
         "priority": "high",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-05-30T18:11:15.631Z"
       },
       {
         "id": "11",
@@ -2119,9 +2120,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-30T17:10:08.449Z",
+      "lastModified": "2026-05-30T18:11:15.631Z",
       "taskCount": 15,
-      "completedCount": 9,
+      "completedCount": 10,
       "tags": [
         "phase2-admin-platform"
       ]

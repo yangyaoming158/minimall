@@ -1,0 +1,97 @@
+/*
+ * MiniMall Admin — design tokens.
+ *
+ * A neutral SaaS operations console: cool-gray canvas, dark slate sidebar,
+ * a single indigo accent, tinted "pill" status colors. Deliberately distinct
+ * from the warm customer storefront (ink / paper / terracotta).
+ *
+ * Loaded AFTER Element Plus so the :root variables (including the
+ * --el-color-primary override) win the cascade.
+ */
+
+:root {
+  /* ───────── Surfaces · cool gray ───────── */
+  --canvas: #f5f6f8;
+  --surface: #ffffff;
+  --surface-muted: #fafbfc;
+
+  /* ───────── Sidebar · dark slate ───────── */
+  --sidebar-bg: #1f2430;
+  --sidebar-bg-hover: #2a3140;
+  --sidebar-fg: #c4cad6;
+  --sidebar-fg-muted: #8b93a3;
+  --sidebar-active-bg: #2f3646;
+
+  /* ───────── Text · slate ramp ───────── */
+  --text-strong: #0f172a;
+  --text: #334155;
+  --text-muted: #64748b;
+  --text-faint: #94a3b8;
+
+  /* ───────── Lines ───────── */
+  --border: #e2e8f0;
+  --border-strong: #cbd5e1;
+
+  /* ───────── Accent · single indigo ───────── */
+  --accent: #4f46e5;
+  --accent-strong: #4338ca;
+  --accent-soft: #eef2ff;
+
+  /* ───────── Status · solid + soft tint ───────── */
+  --success: #15803d;
+  --success-soft: #dcfce7;
+  --warning: #b45309;
+  --warning-soft: #fef3c7;
+  --danger: #b91c1c;
+  --danger-soft: #fee2e2;
+  --info: #1d4ed8;
+  --info-soft: #dbeafe;
+  --neutral: #475569;
+  --neutral-soft: #eef1f5;
+
+  /* ───────── Type ───────── */
+  --font-sans:
+    "Inter", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+    system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono:
+    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+
+  --text-base: 14px;
+  --text-sm: 13px;
+  --text-xs: 12px;
+  --text-lg: 16px;
+  --text-xl: 20px;
+
+  /* ───────── Spacing · 4px step ───────── */
+  --space-4: 4px;
+  --space-8: 8px;
+  --space-12: 12px;
+  --space-16: 16px;
+  --space-20: 20px;
+  --space-24: 24px;
+  --space-32: 32px;
+
+  /* ───────── Radius ───────── */
+  --radius-sm: 6px;
+  --radius: 8px;
+  --radius-md: 10px;
+
+  /* ───────── Shadow · restrained ───────── */
+  --shadow-1: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-2: 0 4px 14px rgba(15, 23, 42, 0.07);
+
+  /* ───────── Layout metrics ───────── */
+  --sidebar-w: 220px;
+  --topbar-h: 56px;
+
+  /* ───────── Element Plus alignment ───────── */
+  --el-color-primary: #4f46e5;
+  --el-color-primary-light-3: #7b74ec;
+  --el-color-primary-light-5: #a5a0f2;
+  --el-color-primary-light-7: #cfccf8;
+  --el-color-primary-light-8: #e2e0fb;
+  --el-color-primary-light-9: #eef2ff;
+  --el-color-primary-dark-2: #4338ca;
+  --el-border-radius-base: 8px;
+}
