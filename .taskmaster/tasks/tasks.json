@@ -1954,14 +1954,15 @@
         "description": "Add admin payment list, filter, detail, and order lookup APIs for operational visibility without refund or reconciliation features.",
         "details": "Implement AdminPaymentController for /api/admin/payments, /api/admin/payments/{paymentNo}, and /api/admin/payments/order/{orderNo}. Support filters for paymentNo, orderNo, status, paidFrom, paidTo, page, and size. Do not add refund, callback, or reconciliation behavior. Tests cover filtering, payment detail, lookup by orderNo, status enum handling, pagination, USER forbidden, ADMIN success, and existing customer mock payment regression.",
         "testStrategy": "",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           "3",
           "4",
           "7"
         ],
         "priority": "medium",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-05-30T16:53:38.898Z"
       },
       {
         "id": "9",
@@ -2117,9 +2118,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-30T16:35:42.697Z",
+      "lastModified": "2026-05-30T16:53:38.898Z",
       "taskCount": 15,
-      "completedCount": 7,
+      "completedCount": 8,
       "tags": [
         "phase2-admin-platform"
       ]

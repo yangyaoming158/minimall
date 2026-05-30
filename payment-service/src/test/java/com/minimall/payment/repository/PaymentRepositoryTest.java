@@ -12,6 +12,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 @DataJpaTest(properties = {
@@ -82,6 +86,33 @@ class PaymentRepositoryTest {
     }
 
     @Test
+    void findAllBySpecificationFiltersByStatusAndPaidRangeNewestFirst() {
+        LocalDateTime base = LocalDateTime.of(2026, 5, 20, 0, 0);
+        // SUCCESS, paid inside range.
+        savePaid("PAY-SPEC-1001", "ORD-SPEC-1001", base.plusDays(1), base.plusHours(10));
+        // SUCCESS, paid inside range, newer createdAt.
+        savePaid("PAY-SPEC-1002", "ORD-SPEC-1002", base.plusDays(3), base.plusHours(20));
+        // SUCCESS, paid OUTSIDE range -> excluded.
+        savePaid("PAY-SPEC-1003", "ORD-SPEC-1003", base.plusHours(5), base.plusDays(30));
+        // PENDING (paidAt null) -> excluded by status and by paid range.
+        paymentRepository.saveAndFlush(new Payment(
+                "PAY-SPEC-1004", "ORD-SPEC-1004", new BigDecimal("5.00"), PaymentChannel.MOCK, "idem-spec-1004"));
+
+        Specification<Payment> specification = (root, query, cb) -> cb.and(
+                cb.equal(root.get("status"), PaymentStatus.SUCCESS),
+                cb.greaterThanOrEqualTo(root.get("paidAt"), base),
+                cb.lessThanOrEqualTo(root.get("paidAt"), base.plusDays(5)));
+
+        Page<Payment> page = paymentRepository.findAll(specification,
+                PageRequest.of(0, 10, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"))));
+
+        assertThat(page.getTotalElements()).isEqualTo(2);
+        assertThat(page.getContent())
+                .extracting(Payment::getPaymentNo)
+                .containsExactly("PAY-SPEC-1002", "PAY-SPEC-1001");
+    }
+
+    @Test
     void duplicatePaymentNoViolatesUniqueConstraint() {
         paymentRepository.saveAndFlush(new Payment(
                 "PAY-DUP",
@@ -133,5 +164,16 @@ class PaymentRepositoryTest {
                 PaymentChannel.MOCK,
                 "idem-pay-dup")))
                 .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    private void savePaid(String paymentNo, String orderNo, LocalDateTime createdAt, LocalDateTime paidAt) {
+        Payment payment = new Payment(
+                paymentNo, orderNo, new BigDecimal("9.99"), PaymentChannel.MOCK, "idem-" + paymentNo);
+        payment.markSuccess(paidAt);
+        paymentRepository.saveAndFlush(payment);
+        jdbcTemplate.update(
+                "update payments set created_at = ? where payment_no = ?",
+                java.sql.Timestamp.valueOf(createdAt),
+                paymentNo);
     }
 }
