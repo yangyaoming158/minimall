@@ -1726,7 +1726,7 @@
         "description": "Create the shared admin audit model, table, enums, writer API, and user-service query endpoint for audit logs.",
         "details": "Add admin_operation_logs migration owned by user-service query API. Add common-core audit action and resource enums plus shared DTOs or helper interfaces. Implement a small reusable audit writer pattern usable from product, inventory, and notification services without MQ. /api/admin/audit-logs supports adminUserId, action, resourceType, resourceId, createdFrom, createdTo, page, size. Tests cover persistence, filtering, pagination, ApiResponse envelope, and ADMIN enforcement.",
         "testStrategy": "",
-        "status": "pending",
+        "status": "in-progress",
         "dependencies": [
           "2"
         ],
@@ -1737,12 +1737,44 @@
             "title": "Define AI-ready audit source taxonomy",
             "description": "Extend the audit model and shared enums so admin writes can record action, resourceType, resourceId, requestId, sourceType, referenceNo, operator identity, beforeSnapshot, afterSnapshot, ip, userAgent, and summary. Reserve enum values or documented extension points for INVENTORY_ADJUSTMENT, INBOUND_ORDER, and AI_SUGGESTION without implementing AI execution in Phase 2. Acceptance: audit query DTOs expose these fields where present and product/inventory write audit records remain traceable for future AI suggestion links.",
             "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 4,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-30T02:14:48.829Z"
+          },
+          {
+            "id": 2,
+            "title": "Add admin audit persistence model",
+            "description": "Create the admin_operation_logs migration plus user-service persistence entity and repository for the shared audit contract.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 4,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Implement reusable admin audit writer",
+            "description": "Add the reusable audit writer API and service-side writer implementation so admin write operations can persist audit records without MQ.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 4,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Implement admin audit log query API",
+            "description": "Add GET /api/admin/audit-logs in user-service with ADMIN enforcement, filters, pagination, ApiResponse envelope, and tests.",
+            "details": "",
             "status": "pending",
             "dependencies": [],
             "parentTaskId": 4,
             "parentId": "undefined"
           }
-        ]
+        ],
+        "updatedAt": "2026-05-30T02:15:59.846Z"
       },
       {
         "id": "5",
@@ -1983,7 +2015,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-29T14:04:52.979Z",
+      "lastModified": "2026-05-30T02:15:59.846Z",
       "taskCount": 15,
       "completedCount": 3,
       "tags": [
