@@ -2016,14 +2016,39 @@
         "description": "Build the admin product table and form workflows, and surface imageUrl in the customer storefront.",
         "details": "Implement admin-frontend /products with pagination, keyword search, status filter, create, edit, imageUrl editing, status mutation, detail view, and confirmations for on shelf and off shelf. Use only /api/admin/products/** from the admin UI. Update the separate Phase 1 customer frontend product list and detail to render imageUrl with existing placeholder fallback, without adding admin navigation or admin behavior to the customer app. Tests or verification cover create, edit, status changes, image preview, USER route rejection, no /internal calls, admin-frontend npm run build, and frontend npm run build for the image display regression.",
         "testStrategy": "",
-        "status": "pending",
+        "status": "in-progress",
         "dependencies": [
           "5",
           "10",
           "11"
         ],
         "priority": "high",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement admin product management page",
+            "description": "admin-frontend /products: list (keyword/status/pagination), create/edit (incl imageUrl), status mutation with confirm, detail. Only /api/admin/products/**.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 12,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-30T18:35:27.192Z"
+          },
+          {
+            "id": 2,
+            "title": "Surface product imageUrl in customer storefront",
+            "description": "frontend product list + detail render imageUrl with existing placeholder fallback; no admin behavior added to the customer app.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [
+              "12.1"
+            ],
+            "parentTaskId": 12,
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2026-05-30T18:35:27.192Z"
       },
       {
         "id": "13",
@@ -2121,7 +2146,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-30T18:26:12.067Z",
+      "lastModified": "2026-05-30T18:35:27.192Z",
       "taskCount": 15,
       "completedCount": 11,
       "tags": [
