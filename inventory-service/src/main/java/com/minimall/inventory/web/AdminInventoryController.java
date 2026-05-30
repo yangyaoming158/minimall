@@ -1,6 +1,5 @@
 package com.minimall.inventory.web;
 
-import com.minimall.common.auth.context.UserContext;
 import com.minimall.common.core.exception.BusinessException;
 import com.minimall.common.core.exception.ErrorCode;
 import com.minimall.common.core.response.ApiResponse;
@@ -12,6 +11,7 @@ import com.minimall.inventory.dto.InitializeInventoryRequest;
 import com.minimall.inventory.dto.InventoryRecordResponse;
 import com.minimall.inventory.service.InventoryCommandService;
 import com.minimall.inventory.service.InventoryQueryService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Locale;
@@ -58,19 +58,19 @@ public class AdminInventoryController {
 
     @PostMapping
     public ApiResponse<AdminInventoryResponse> initialize(
-            @Valid @RequestBody InitializeInventoryRequest request) {
-        UserContext admin = AdminAccess.requireAdmin();
+            @Valid @RequestBody InitializeInventoryRequest request,
+            HttpServletRequest servletRequest) {
         return ApiResponse.success(
-                inventoryCommandService.initialize(request, admin.getUserId(), admin.getUsername()));
+                inventoryCommandService.initialize(request, AdminAccess.requireAdminAuditContext(servletRequest)));
     }
 
     @PostMapping("/{productId}/adjust")
     public ApiResponse<AdminInventoryResponse> adjust(
             @PathVariable("productId") String productId,
-            @Valid @RequestBody AdjustInventoryRequest request) {
-        UserContext admin = AdminAccess.requireAdmin();
-        return ApiResponse.success(
-                inventoryCommandService.adjust(productId, request, admin.getUserId(), admin.getUsername()));
+            @Valid @RequestBody AdjustInventoryRequest request,
+            HttpServletRequest servletRequest) {
+        return ApiResponse.success(inventoryCommandService.adjust(
+                productId, request, AdminAccess.requireAdminAuditContext(servletRequest)));
     }
 
     @GetMapping("/{productId}/records")

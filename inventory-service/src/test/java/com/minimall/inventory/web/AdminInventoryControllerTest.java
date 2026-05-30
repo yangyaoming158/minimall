@@ -1,6 +1,10 @@
 package com.minimall.inventory.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -9,6 +13,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.minimall.common.auth.context.AuthRole;
 import com.minimall.common.auth.jwt.JwtUtils;
+import com.minimall.common.core.audit.AdminAuditAction;
+import com.minimall.common.core.audit.AdminAuditLogWriteRequest;
+import com.minimall.common.core.audit.AdminAuditResourceType;
+import com.minimall.common.core.audit.AdminAuditWriter;
 import com.minimall.common.core.exception.ErrorCode;
 import com.minimall.inventory.domain.Inventory;
 import com.minimall.inventory.domain.InventoryRecordSourceType;
@@ -18,9 +26,11 @@ import com.minimall.inventory.repository.InventoryRecordRepository;
 import com.minimall.inventory.repository.InventoryRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
@@ -55,10 +65,14 @@ class AdminInventoryControllerTest {
     @Autowired
     private InventoryRecordRepository inventoryRecordRepository;
 
+    @MockBean
+    private AdminAuditWriter adminAuditWriter;
+
     @BeforeEach
     void setUp() {
         inventoryRecordRepository.deleteAll();
         inventoryRepository.deleteAll();
+        reset(adminAuditWriter);
     }
 
     @Test
@@ -124,6 +138,29 @@ class AdminInventoryControllerTest {
                     assertThat(record.getSourceType()).isEqualTo(InventoryRecordSourceType.ADMIN_INITIALIZE);
                     assertThat(record.getQuantity()).isEqualTo(10);
                 });
+
+        AdminAuditLogWriteRequest audit = captureSingleAudit();
+        assertThat(audit.action()).isEqualTo(AdminAuditAction.INVENTORY_INITIALIZE);
+        assertThat(audit.resourceType()).isEqualTo(AdminAuditResourceType.INVENTORY);
+        assertThat(audit.resourceId()).isEqualTo("SKU-INIT-1");
+        assertThat(audit.adminUserId()).isEqualTo(42L);
+        assertThat(audit.adminUsername()).isEqualTo("admin");
+        assertThat(audit.beforeSnapshot()).isNull();
+        assertThat(audit.afterSnapshot()).isNotNull();
+        assertThat(audit.afterSnapshot().get("availableStock").asInt()).isEqualTo(10);
+    }
+
+    @Test
+    void initializeConflictDoesNotWriteAudit() throws Exception {
+        inventoryRepository.saveAndFlush(buildInventory("SKU-INIT-NOAUDIT", 5, 0, 0));
+
+        mockMvc.perform(post("/api/admin/inventories")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(new InitializeInventoryRequest("SKU-INIT-NOAUDIT", 1, 0))))
+                .andExpect(status().isConflict());
+
+        verify(adminAuditWriter, never()).write(any());
     }
 
     @Test
@@ -155,6 +192,16 @@ class AdminInventoryControllerTest {
                 .extracting(Inventory::getAvailableStock)
                 .isEqualTo(11);
         assertThat(inventoryRecordRepository.findByProductId("SKU-ADJ")).hasSize(2);
+
+        ArgumentCaptor<AdminAuditLogWriteRequest> captor =
+                ArgumentCaptor.forClass(AdminAuditLogWriteRequest.class);
+        verify(adminAuditWriter, org.mockito.Mockito.times(2)).write(captor.capture());
+        AdminAuditLogWriteRequest lastAudit = captor.getAllValues().get(1);
+        assertThat(lastAudit.action()).isEqualTo(AdminAuditAction.INVENTORY_ADJUST);
+        assertThat(lastAudit.resourceId()).isEqualTo("SKU-ADJ");
+        assertThat(lastAudit.referenceNo()).isEqualTo("REQ-ADJ-DOWN");
+        assertThat(lastAudit.beforeSnapshot().get("availableStock").asInt()).isEqualTo(15);
+        assertThat(lastAudit.afterSnapshot().get("availableStock").asInt()).isEqualTo(11);
     }
 
     @Test
@@ -231,6 +278,13 @@ class AdminInventoryControllerTest {
 
     private String json(Object value) throws Exception {
         return objectMapper.writeValueAsString(value);
+    }
+
+    private AdminAuditLogWriteRequest captureSingleAudit() {
+        ArgumentCaptor<AdminAuditLogWriteRequest> captor =
+                ArgumentCaptor.forClass(AdminAuditLogWriteRequest.class);
+        verify(adminAuditWriter).write(captor.capture());
+        return captor.getValue();
     }
 
     private String adminToken() {

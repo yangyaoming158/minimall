@@ -1,5 +1,11 @@
 package com.minimall.inventory.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.minimall.common.core.audit.AdminAuditAction;
+import com.minimall.common.core.audit.AdminAuditLogWriteRequest;
+import com.minimall.common.core.audit.AdminAuditResourceType;
+import com.minimall.common.core.audit.AdminAuditWriter;
 import com.minimall.common.core.exception.BusinessException;
 import com.minimall.common.core.exception.ErrorCode;
 import com.minimall.inventory.domain.Inventory;
@@ -23,14 +29,20 @@ public class InventoryCommandService {
     private final InventoryRepository inventoryRepository;
     private final InventoryRecordRepository inventoryRecordRepository;
     private final InventoryQueryService inventoryQueryService;
+    private final AdminAuditWriter adminAuditWriter;
+    private final ObjectMapper objectMapper;
 
     public InventoryCommandService(
             InventoryRepository inventoryRepository,
             InventoryRecordRepository inventoryRecordRepository,
-            InventoryQueryService inventoryQueryService) {
+            InventoryQueryService inventoryQueryService,
+            AdminAuditWriter adminAuditWriter,
+            ObjectMapper objectMapper) {
         this.inventoryRepository = inventoryRepository;
         this.inventoryRecordRepository = inventoryRecordRepository;
         this.inventoryQueryService = inventoryQueryService;
+        this.adminAuditWriter = adminAuditWriter;
+        this.objectMapper = objectMapper;
     }
 
     @Transactional
@@ -45,7 +57,7 @@ public class InventoryCommandService {
 
     @Transactional
     public AdminInventoryResponse initialize(
-            InitializeInventoryRequest request, Long adminUserId, String adminUsername) {
+            InitializeInventoryRequest request, InventoryAdminAuditContext auditContext) {
         if (inventoryRepository.existsByProductId(request.productId())) {
             throw new BusinessException(ErrorCode.CONFLICT, "Inventory already initialized");
         }
@@ -62,17 +74,27 @@ public class InventoryCommandService {
                     request.initialStock(),
                     null,
                     "Initialize inventory",
-                    adminUserId,
-                    adminUsername,
+                    auditContext.adminUserId(),
+                    auditContext.adminUsername(),
                     InventoryRecordSourceType.ADMIN_INITIALIZE,
                     saved.getProductId()));
         }
-        return AdminInventoryResponse.from(saved);
+
+        AdminInventoryResponse response = AdminInventoryResponse.from(saved);
+        writeAudit(
+                auditContext,
+                AdminAuditAction.INVENTORY_INITIALIZE,
+                saved.getProductId(),
+                saved.getProductId(),
+                null,
+                response,
+                "Initialize inventory " + saved.getProductId() + " at " + request.initialStock());
+        return response;
     }
 
     @Transactional
     public AdminInventoryResponse adjust(
-            String productId, AdjustInventoryRequest request, Long adminUserId, String adminUsername) {
+            String productId, AdjustInventoryRequest request, InventoryAdminAuditContext auditContext) {
         int delta = request.delta();
         if (delta == 0) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "delta must not be zero");
@@ -91,6 +113,7 @@ public class InventoryCommandService {
             throw new BusinessException(ErrorCode.CONFLICT, "Insufficient inventory");
         }
 
+        AdminInventoryResponse before = AdminInventoryResponse.from(inventory);
         inventory.adjustAvailableStock(delta);
         Inventory saved = inventoryRepository.saveAndFlush(inventory);
 
@@ -103,11 +126,49 @@ public class InventoryCommandService {
                 Math.abs(delta),
                 request.requestId(),
                 request.reason(),
-                adminUserId,
-                adminUsername,
+                auditContext.adminUserId(),
+                auditContext.adminUsername(),
                 InventoryRecordSourceType.ADMIN_ADJUSTMENT,
                 request.requestId()));
-        return AdminInventoryResponse.from(saved);
+
+        AdminInventoryResponse after = AdminInventoryResponse.from(saved);
+        writeAudit(
+                auditContext,
+                AdminAuditAction.INVENTORY_ADJUST,
+                saved.getProductId(),
+                request.requestId(),
+                before,
+                after,
+                "Adjust inventory " + saved.getProductId() + " by " + delta + " (" + request.reason() + ")");
+        return after;
+    }
+
+    private void writeAudit(
+            InventoryAdminAuditContext auditContext,
+            AdminAuditAction action,
+            String resourceId,
+            String referenceNo,
+            AdminInventoryResponse before,
+            AdminInventoryResponse after,
+            String summary) {
+        adminAuditWriter.write(new AdminAuditLogWriteRequest(
+                auditContext.adminUserId(),
+                auditContext.adminUsername(),
+                action,
+                AdminAuditResourceType.INVENTORY,
+                resourceId,
+                auditContext.requestId(),
+                null,
+                referenceNo,
+                toSnapshot(before),
+                toSnapshot(after),
+                auditContext.ip(),
+                auditContext.userAgent(),
+                summary));
+    }
+
+    private JsonNode toSnapshot(AdminInventoryResponse response) {
+        return response == null ? null : objectMapper.valueToTree(response);
     }
 
     private InventoryResponse changeInventory(InventoryChangeRequest request, InventoryChangeType changeType) {
