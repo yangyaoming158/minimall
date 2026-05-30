@@ -130,4 +130,16 @@ public class Inventory {
     public void setSafetyStock(int safetyStock) {
         this.safetyStock = safetyStock;
     }
+
+    /**
+     * Apply an admin adjustment to available stock. Callers must validate the
+     * resulting stock is non-negative; this guards as a last line of defense.
+     */
+    public void adjustAvailableStock(int delta) {
+        int updated = this.availableStock + delta;
+        if (updated < 0) {
+            throw new IllegalArgumentException("available stock must not become negative");
+        }
+        this.availableStock = updated;
+    }
 }

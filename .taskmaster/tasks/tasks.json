@@ -1869,19 +1869,20 @@
             "title": "Implement admin inventory initialize adjust and records APIs",
             "description": "Add AdminInventoryController endpoints for list detail initialize adjust and records with ADMIN guard requestId idempotency negative stock protection and stable ApiResponse contracts.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "6.1",
               "6.2"
             ],
             "parentTaskId": 6,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-30T13:14:21.367Z"
           },
           {
             "id": 4,
             "title": "Record inventory admin audit logs and regression",
             "description": "Wire inventory admin write operations to AdminAuditWriter with before after snapshots operator metadata requestId sourceType referenceNo and regression coverage for audit persistence and gateway-owned ADMIN access expectations.",
-            "details": "",
+            "details": "\n\n[2026-05-30] Concurrency follow-up from 6.3: add @Version optimistic locking to the Inventory entity (plus a version BIGINT column migration) so admin inventory adjustments are concurrency-safe. 6.3 admin adjust uses read-modify-write (load -> validate non-negative -> mutate -> save) with no @Version, so concurrent admin adjusts, or an admin adjust racing an atomic order deduct/release, can lose updates (stock count ends too high). Negative stock is NOT reachable today (service guard + domain guard + MySQL chk_inventory_non_negative all clamp >= 0), so this is a lost-update/correctness concern, not a negative-stock bug. Scope: add @Version, map OptimisticLockException -> ApiResponse 40900 conflict, and add a concurrent-adjustment regression test, alongside the inventory admin audit-log work.",
             "status": "pending",
             "dependencies": [
               "6.3"
@@ -1890,7 +1891,7 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-05-30T09:20:52.568Z"
+        "updatedAt": "2026-05-30T13:14:21.367Z"
       },
       {
         "id": "7",
@@ -2087,7 +2088,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-30T09:20:52.568Z",
+      "lastModified": "2026-05-30T13:14:21.370Z",
       "taskCount": 15,
       "completedCount": 5,
       "tags": [

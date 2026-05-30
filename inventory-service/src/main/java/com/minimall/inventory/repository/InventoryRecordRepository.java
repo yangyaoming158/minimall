@@ -19,4 +19,6 @@ public interface InventoryRecordRepository extends JpaRepository<InventoryRecord
     boolean existsBySourceTypeAndRequestId(InventoryRecordSourceType sourceType, String requestId);
 
     List<InventoryRecord> findByProductId(String productId);
+
+    List<InventoryRecord> findByProductIdOrderByCreatedAtDescIdDesc(String productId);
 }
