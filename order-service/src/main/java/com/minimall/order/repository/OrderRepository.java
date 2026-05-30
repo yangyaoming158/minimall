@@ -22,6 +22,35 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     Page<Order> findByUserId(Long userId, Pageable pageable);
 
+    @Query(
+            value = """
+                    select o.productId as productId,
+                           sum(o.quantity) as quantitySold,
+                           count(o.id) as orderCount,
+                           sum(o.totalAmount) as totalAmount
+                      from Order o
+                     where (:productId is null or o.productId = :productId)
+                       and (:status is null or o.status = :status)
+                       and (:createdFrom is null or o.createdAt >= :createdFrom)
+                       and (:createdTo is null or o.createdAt <= :createdTo)
+                     group by o.productId
+                     order by sum(o.totalAmount) desc, sum(o.quantity) desc, o.productId asc
+                    """,
+            countQuery = """
+                    select count(distinct o.productId)
+                      from Order o
+                     where (:productId is null or o.productId = :productId)
+                       and (:status is null or o.status = :status)
+                       and (:createdFrom is null or o.createdAt >= :createdFrom)
+                       and (:createdTo is null or o.createdAt <= :createdTo)
+                    """)
+    Page<ProductSalesAggregation> aggregateProductSales(
+            @Param("productId") String productId,
+            @Param("status") OrderStatus status,
+            @Param("createdFrom") LocalDateTime createdFrom,
+            @Param("createdTo") LocalDateTime createdTo,
+            Pageable pageable);
+
     @Query("""
             select o from Order o
             where o.status = :status

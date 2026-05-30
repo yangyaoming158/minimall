@@ -1900,7 +1900,7 @@
         "description": "Add admin order list, filter, detail, and event timeline APIs without allowing manual order status mutation.",
         "details": "Implement AdminOrderController for /api/admin/orders, /api/admin/orders/{orderNo}, and /api/admin/orders/{orderNo}/events. Support filters for orderNo, username or userId, status, productId, createdFrom, createdTo, page, and size. Use existing order_events when available and otherwise return a minimal timeline from order state data. Do not add admin status write APIs. Tests cover filters, detail, event timeline, enum validation, pagination, USER forbidden, ADMIN success, and no regression to /api/orders/my.",
         "testStrategy": "",
-        "status": "pending",
+        "status": "in-progress",
         "dependencies": [
           "3",
           "4",
@@ -1913,12 +1913,38 @@
             "title": "Expose product sales aggregation for operations",
             "description": "Add a small admin read model for product sales aggregation based on orders, scoped by createdFrom, createdTo, status, and productId where applicable. This is not a BI dashboard; it is a structured service API that admin UI and future AI analysis can reuse instead of direct SQL. Acceptance: API returns productId, quantitySold, orderCount, and amount totals with PageResponse or bounded list semantics, and customer order APIs remain unchanged.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
+            "parentTaskId": 7,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-30T16:10:40.121Z"
+          },
+          {
+            "id": 2,
+            "title": "Implement admin order list and detail APIs",
+            "description": "Add ADMIN-only order list and detail endpoints with filters for orderNo username userId status productId createdFrom createdTo page and size, stable ApiResponse/PageResponse contracts, enum validation, pagination, and no customer API regression.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [
+              "7.1"
+            ],
+            "parentTaskId": 7,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Implement admin order event timeline regression",
+            "description": "Expose /api/admin/orders/{orderNo}/events using order_events when available and a minimal fallback from order state data, then add regression coverage for ADMIN success USER forbidden enum validation and no manual status mutation APIs.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [
+              "7.2"
+            ],
             "parentTaskId": 7,
             "parentId": "undefined"
           }
-        ]
+        ],
+        "updatedAt": "2026-05-30T16:10:40.121Z"
       },
       {
         "id": "8",
@@ -2089,7 +2115,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-30T13:45:07.116Z",
+      "lastModified": "2026-05-30T16:10:40.122Z",
       "taskCount": 15,
       "completedCount": 6,
       "tags": [
