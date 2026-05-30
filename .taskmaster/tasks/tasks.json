@@ -2001,13 +2001,14 @@
         "description": "Build the admin login flow and usable admin frame on top of the protected admin routes.",
         "details": "Implement admin-frontend /login using /api/admin/login. USER accounts must show permission failure. Successful ADMIN login stores token and enters /products. Admin shell shows current admin identity from /api/admin/me and supports local logout by clearing token. Preserve the separate Phase 1 customer frontend login and routes without adding admin entry points there. Tests or verification cover admin success, USER rejection, unauthenticated redirect, forbidden route behavior, and admin-frontend npm run build.",
         "testStrategy": "",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           "2",
           "10"
         ],
         "priority": "high",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-05-30T18:26:12.067Z"
       },
       {
         "id": "12",
@@ -2120,9 +2121,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-30T18:11:15.631Z",
+      "lastModified": "2026-05-30T18:26:12.067Z",
       "taskCount": 15,
-      "completedCount": 10,
+      "completedCount": 11,
       "tags": [
         "phase2-admin-platform"
       ]
