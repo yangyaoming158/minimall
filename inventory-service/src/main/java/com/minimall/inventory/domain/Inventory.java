@@ -32,6 +32,9 @@ public class Inventory {
     @Column(name = "locked_stock", nullable = false)
     private int lockedStock;
 
+    @Column(name = "safety_stock", nullable = false)
+    private int safetyStock;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32)
     private InventoryStatus status = InventoryStatus.ACTIVE;
@@ -84,8 +87,32 @@ public class Inventory {
         return lockedStock;
     }
 
+    public int getSafetyStock() {
+        return safetyStock;
+    }
+
     public InventoryStatus getStatus() {
         return status;
+    }
+
+    /**
+     * Derived current stock state, centralized here so admin/customer reads and
+     * later AI replenishment analysis share one definition.
+     */
+    public StockState stockState() {
+        if (status != InventoryStatus.ACTIVE) {
+            return StockState.INACTIVE;
+        }
+        return availableStock > 0 ? StockState.IN_STOCK : StockState.OUT_OF_STOCK;
+    }
+
+    /**
+     * Structured low-stock signal: an active product whose available stock has
+     * fallen to or below its configured safety threshold. A threshold of 0
+     * means low-stock tracking is disabled for the product.
+     */
+    public boolean isLowStock() {
+        return status == InventoryStatus.ACTIVE && safetyStock > 0 && availableStock <= safetyStock;
     }
 
     public LocalDateTime getCreatedAt() {
@@ -98,5 +125,9 @@ public class Inventory {
 
     public void setStatus(InventoryStatus status) {
         this.status = status;
+    }
+
+    public void setSafetyStock(int safetyStock) {
+        this.safetyStock = safetyStock;
     }
 }

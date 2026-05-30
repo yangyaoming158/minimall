@@ -3,8 +3,6 @@ package com.minimall.inventory.service;
 import com.minimall.common.core.exception.BusinessException;
 import com.minimall.common.core.exception.ErrorCode;
 import com.minimall.inventory.domain.Inventory;
-import com.minimall.inventory.domain.InventoryStatus;
-import com.minimall.inventory.domain.StockState;
 import com.minimall.inventory.dto.InventoryResponse;
 import com.minimall.inventory.repository.InventoryRepository;
 import org.springframework.stereotype.Service;
@@ -31,13 +29,6 @@ public class InventoryQueryService {
                 inventory.getProductId(),
                 inventory.getAvailableStock(),
                 inventory.getLockedStock(),
-                stockState(inventory));
-    }
-
-    private StockState stockState(Inventory inventory) {
-        if (inventory.getStatus() != InventoryStatus.ACTIVE) {
-            return StockState.INACTIVE;
-        }
-        return inventory.getAvailableStock() > 0 ? StockState.IN_STOCK : StockState.OUT_OF_STOCK;
+                inventory.stockState());
     }
 }

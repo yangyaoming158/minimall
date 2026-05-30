@@ -5,10 +5,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.minimall.inventory.domain.Inventory;
 import com.minimall.inventory.domain.InventoryStatus;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 
 @DataJpaTest(properties = {
         "spring.jpa.hibernate.ddl-auto=create-drop",
@@ -56,5 +59,70 @@ class InventoryRepositoryTest {
 
         assertThatThrownBy(() -> inventoryRepository.saveAndFlush(new Inventory("SKU-INV-DUP", 20, 0)))
                 .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void safetyStockDefaultsToZeroAndPersists() {
+        inventoryRepository.saveAndFlush(new Inventory("SKU-INV-SAFE-1", 50, 0));
+
+        Inventory withThreshold = new Inventory("SKU-INV-SAFE-2", 50, 0);
+        withThreshold.setSafetyStock(15);
+        inventoryRepository.saveAndFlush(withThreshold);
+
+        assertThat(inventoryRepository.findByProductId("SKU-INV-SAFE-1"))
+                .get()
+                .extracting(Inventory::getSafetyStock)
+                .isEqualTo(0);
+        assertThat(inventoryRepository.findByProductId("SKU-INV-SAFE-2"))
+                .get()
+                .extracting(Inventory::getSafetyStock)
+                .isEqualTo(15);
+    }
+
+    @Test
+    void findLowStockReturnsOnlyActiveProductsAtOrBelowPositiveThreshold() {
+        // At threshold -> low stock.
+        Inventory atThreshold = new Inventory("SKU-LOW-AT", 5, 0);
+        atThreshold.setSafetyStock(5);
+        // Below threshold -> low stock.
+        Inventory belowThreshold = new Inventory("SKU-LOW-BELOW", 2, 0);
+        belowThreshold.setSafetyStock(10);
+        // Above threshold -> healthy.
+        Inventory aboveThreshold = new Inventory("SKU-HEALTHY", 20, 0);
+        aboveThreshold.setSafetyStock(5);
+        // Threshold disabled (0) -> never low stock even at zero available.
+        Inventory thresholdDisabled = new Inventory("SKU-NO-THRESHOLD", 0, 0);
+        // Inactive product at/below threshold -> excluded.
+        Inventory inactive = new Inventory("SKU-INACTIVE", 1, 0);
+        inactive.setSafetyStock(5);
+        inactive.setStatus(InventoryStatus.INACTIVE);
+
+        inventoryRepository.saveAll(List.of(
+                atThreshold, belowThreshold, aboveThreshold, thresholdDisabled, inactive));
+        inventoryRepository.flush();
+
+        Page<Inventory> lowStock = inventoryRepository.findLowStock(InventoryStatus.ACTIVE, PageRequest.of(0, 10));
+
+        assertThat(lowStock.getContent())
+                .extracting(Inventory::getProductId)
+                .containsExactlyInAnyOrder("SKU-LOW-AT", "SKU-LOW-BELOW");
+        assertThat(lowStock.getContent())
+                .allMatch(Inventory::isLowStock);
+    }
+
+    @Test
+    void findLowStockIsPaginated() {
+        for (int i = 0; i < 3; i++) {
+            Inventory low = new Inventory("SKU-PAGE-" + i, 0, 0);
+            low.setSafetyStock(5);
+            inventoryRepository.save(low);
+        }
+        inventoryRepository.flush();
+
+        Page<Inventory> firstPage = inventoryRepository.findLowStock(InventoryStatus.ACTIVE, PageRequest.of(0, 2));
+
+        assertThat(firstPage.getTotalElements()).isEqualTo(3);
+        assertThat(firstPage.getTotalPages()).isEqualTo(2);
+        assertThat(firstPage.getContent()).hasSize(2);
     }
 }

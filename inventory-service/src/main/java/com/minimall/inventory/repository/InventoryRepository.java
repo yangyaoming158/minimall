@@ -3,6 +3,8 @@ package com.minimall.inventory.repository;
 import com.minimall.inventory.domain.Inventory;
 import com.minimall.inventory.domain.InventoryStatus;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -13,6 +15,20 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
     Optional<Inventory> findByProductId(String productId);
 
     boolean existsByProductId(String productId);
+
+    /**
+     * Structured low-stock query for the admin inventory API and later AI
+     * replenishment analysis: active products whose available stock has reached
+     * or fallen below a positive safety threshold. Keeps callers off direct
+     * database access.
+     */
+    @Query("""
+            select inventory from Inventory inventory
+             where inventory.status = :status
+               and inventory.safetyStock > 0
+               and inventory.availableStock <= inventory.safetyStock
+            """)
+    Page<Inventory> findLowStock(@Param("status") InventoryStatus status, Pageable pageable);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
