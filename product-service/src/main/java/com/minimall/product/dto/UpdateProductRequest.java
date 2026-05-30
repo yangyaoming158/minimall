@@ -15,6 +15,9 @@ public record UpdateProductRequest(
         @Size(max = 1024, message = "description length must be at most 1024")
         String description,
 
+        @Size(max = 512, message = "imageUrl length must be at most 512")
+        String imageUrl,
+
         @NotNull(message = "price must not be null")
         @DecimalMin(value = "0.01", message = "price must be greater than or equal to 0.01")
         @Digits(integer = 10, fraction = 2, message = "price must fit DECIMAL(12,2)")

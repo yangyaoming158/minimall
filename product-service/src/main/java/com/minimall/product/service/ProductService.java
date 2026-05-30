@@ -57,7 +57,12 @@ public class ProductService {
             throw new BusinessException(ErrorCode.CONFLICT, PRODUCT_EXISTS_MESSAGE);
         }
 
-        Product product = new Product(request.productId(), request.name(), request.description(), request.price());
+        Product product = new Product(
+                request.productId(),
+                request.name(),
+                request.description(),
+                request.imageUrl(),
+                request.price());
         try {
             return ProductResponse.from(productRepository.saveAndFlush(product));
         } catch (DataIntegrityViolationException exception) {
@@ -68,7 +73,7 @@ public class ProductService {
     @Transactional
     public ProductResponse update(String productId, UpdateProductRequest request) {
         Product product = getProduct(productId);
-        product.updateDetails(request.name(), request.description(), request.price());
+        product.updateDetails(request.name(), request.description(), request.imageUrl(), request.price());
         Product savedProduct = productRepository.save(product);
         evictProductDetailAfterCommit(productId);
         return ProductResponse.from(savedProduct);

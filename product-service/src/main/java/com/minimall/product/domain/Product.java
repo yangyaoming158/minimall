@@ -35,6 +35,9 @@ public class Product {
     @Column(length = 1024)
     private String description;
 
+    @Column(name = "image_url", length = 512)
+    private String imageUrl;
+
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal price;
 
@@ -52,9 +55,14 @@ public class Product {
     }
 
     public Product(String productId, String name, String description, BigDecimal price) {
+        this(productId, name, description, null, price);
+    }
+
+    public Product(String productId, String name, String description, String imageUrl, BigDecimal price) {
         this.productId = productId;
         this.name = name;
         this.description = description;
+        this.imageUrl = nullIfBlank(imageUrl);
         this.price = price;
     }
 
@@ -91,6 +99,10 @@ public class Product {
         return description;
     }
 
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
     public BigDecimal getPrice() {
         return price;
     }
@@ -112,8 +124,13 @@ public class Product {
     }
 
     public void updateDetails(String name, String description, BigDecimal price) {
+        updateDetails(name, description, null, price);
+    }
+
+    public void updateDetails(String name, String description, String imageUrl, BigDecimal price) {
         this.name = name;
         this.description = description;
+        this.imageUrl = nullIfBlank(imageUrl);
         this.price = price;
     }
 
@@ -123,5 +140,9 @@ public class Product {
 
     public void offShelf() {
         this.status = ProductStatus.OFF_SHELF;
+    }
+
+    private static String nullIfBlank(String value) {
+        return value == null || value.isBlank() ? null : value;
     }
 }

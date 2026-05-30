@@ -80,6 +80,7 @@ class ProductControllerTest {
                 "SKU-2001",
                 "Wireless Keyboard",
                 "Low profile keyboard",
+                "https://cdn.example.com/products/sku-2001.png",
                 new BigDecimal("129.90"));
 
         mockMvc.perform(post("/api/products")
@@ -91,6 +92,7 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.data.id").doesNotExist())
                 .andExpect(jsonPath("$.data.productId").value("SKU-2001"))
                 .andExpect(jsonPath("$.data.name").value("Wireless Keyboard"))
+                .andExpect(jsonPath("$.data.imageUrl").value("https://cdn.example.com/products/sku-2001.png"))
                 .andExpect(jsonPath("$.data.price").value(129.90))
                 .andExpect(jsonPath("$.data.status").value("ON_SHELF"));
     }
@@ -98,7 +100,12 @@ class ProductControllerTest {
     @Test
     void duplicateProductIdReturnsConflict() throws Exception {
         productRepository.saveAndFlush(new Product("SKU-2002", "Mouse", null, new BigDecimal("39.90")));
-        CreateProductRequest request = new CreateProductRequest("SKU-2002", "Mouse 2", null, new BigDecimal("49.90"));
+        CreateProductRequest request = new CreateProductRequest(
+                "SKU-2002",
+                "Mouse 2",
+                null,
+                null,
+                new BigDecimal("49.90"));
 
         mockMvc.perform(post("/api/products")
                         .contentType("application/json")
@@ -112,7 +119,11 @@ class ProductControllerTest {
     @Test
     void updateDetailAndListReturnPersistedFields() throws Exception {
         productRepository.saveAndFlush(new Product("SKU-2003", "Old Name", "Old", new BigDecimal("19.90")));
-        UpdateProductRequest request = new UpdateProductRequest("New Name", "New description", new BigDecimal("29.90"));
+        UpdateProductRequest request = new UpdateProductRequest(
+                "New Name",
+                "New description",
+                "https://cdn.example.com/products/sku-2003-new.png",
+                new BigDecimal("29.90"));
 
         mockMvc.perform(put("/api/products/SKU-2003")
                         .contentType("application/json")
@@ -123,6 +134,7 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.data.productId").value("SKU-2003"))
                 .andExpect(jsonPath("$.data.name").value("New Name"))
                 .andExpect(jsonPath("$.data.description").value("New description"))
+                .andExpect(jsonPath("$.data.imageUrl").value("https://cdn.example.com/products/sku-2003-new.png"))
                 .andExpect(jsonPath("$.data.price").value(29.90));
 
         mockMvc.perform(get("/api/products/SKU-2003"))
@@ -132,6 +144,7 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.data.id").doesNotExist())
                 .andExpect(jsonPath("$.data.productId").value("SKU-2003"))
                 .andExpect(jsonPath("$.data.name").value("New Name"))
+                .andExpect(jsonPath("$.data.imageUrl").value("https://cdn.example.com/products/sku-2003-new.png"))
                 .andExpect(jsonPath("$.data.status").value("ON_SHELF"));
 
         mockMvc.perform(get("/api/products")
@@ -148,7 +161,9 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.data.totalPages").value(1))
                 .andExpect(jsonPath("$.data.content[0].id").doesNotExist())
                 .andExpect(jsonPath("$.data.content[0].productId").value("SKU-2003"))
-                .andExpect(jsonPath("$.data.content[0].name").value("New Name"));
+                .andExpect(jsonPath("$.data.content[0].name").value("New Name"))
+                .andExpect(jsonPath("$.data.content[0].imageUrl")
+                        .value("https://cdn.example.com/products/sku-2003-new.png"));
     }
 
     @Test
@@ -207,6 +222,7 @@ class ProductControllerTest {
                 "SKU-2006",
                 "Cached Headphones",
                 "Cached description",
+                "https://cdn.example.com/products/sku-2006-cached.png",
                 new BigDecimal("188.00"),
                 ProductStatus.OFF_SHELF,
                 null,
@@ -228,6 +244,7 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.data.id").doesNotExist())
                 .andExpect(jsonPath("$.data.productId").value("SKU-2006"))
                 .andExpect(jsonPath("$.data.name").value("Cached Headphones"))
+                .andExpect(jsonPath("$.data.imageUrl").value("https://cdn.example.com/products/sku-2006-cached.png"))
                 .andExpect(jsonPath("$.data.price").value(188.00))
                 .andExpect(jsonPath("$.data.status").value("OFF_SHELF"));
 
@@ -238,7 +255,11 @@ class ProductControllerTest {
     @Test
     void updateEvictsProductDetailCacheAfterCommit() throws Exception {
         productRepository.saveAndFlush(new Product("SKU-2007", "Tablet", "Old", new BigDecimal("399.00")));
-        UpdateProductRequest request = new UpdateProductRequest("Tablet Pro", "New", new BigDecimal("499.00"));
+        UpdateProductRequest request = new UpdateProductRequest(
+                "Tablet Pro",
+                "New",
+                "https://cdn.example.com/products/sku-2007.png",
+                new BigDecimal("499.00"));
 
         mockMvc.perform(put("/api/products/SKU-2007")
                         .contentType("application/json")
@@ -257,6 +278,7 @@ class ProductControllerTest {
                 "SKU-2008",
                 "Cached Speaker",
                 "Cached internal detail",
+                "https://cdn.example.com/products/sku-2008-cached.png",
                 new BigDecimal("149.00"),
                 ProductStatus.OFF_SHELF,
                 null,

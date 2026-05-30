@@ -23,7 +23,12 @@ class ProductRepositoryTest {
     @Test
     void savesProductAndFindsByProductId() {
         Product saved = productRepository.saveAndFlush(
-                new Product("SKU-1001", "Wireless Mouse", "Quiet wireless mouse", new BigDecimal("39.90")));
+                new Product(
+                        "SKU-1001",
+                        "Wireless Mouse",
+                        "Quiet wireless mouse",
+                        "https://cdn.example.com/sku-1001.png",
+                        new BigDecimal("39.90")));
 
         assertThat(saved.getId()).isNotNull();
         assertThat(saved.getCreatedAt()).isNotNull();
@@ -33,6 +38,7 @@ class ProductRepositoryTest {
                 .get()
                 .satisfies(product -> {
                     assertThat(product.getName()).isEqualTo("Wireless Mouse");
+                    assertThat(product.getImageUrl()).isEqualTo("https://cdn.example.com/sku-1001.png");
                     assertThat(product.getPrice()).isEqualByComparingTo("39.90");
                     assertThat(product.getStatus()).isEqualTo(ProductStatus.ON_SHELF);
                 });
@@ -50,6 +56,18 @@ class ProductRepositoryTest {
                 .get()
                 .extracting(Product::getStatus)
                 .isEqualTo(ProductStatus.OFF_SHELF);
+    }
+
+    @Test
+    void normalizesBlankImageUrlToNull() {
+        Product saved = productRepository.saveAndFlush(
+                new Product("SKU-1003", "Notebook", null, " ", new BigDecimal("9.90")));
+
+        assertThat(productRepository.findByProductId(saved.getProductId()))
+                .isPresent()
+                .get()
+                .extracting(Product::getImageUrl)
+                .isNull();
     }
 
     @Test
