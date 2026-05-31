@@ -1,18 +1,25 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { mount, flushPromises, enableAutoUnmount } from '@vue/test-utils'
+import { mount, flushPromises, enableAutoUnmount, type VueWrapper } from '@vue/test-utils'
 import { createPinia } from 'pinia'
-import ElementPlus from 'element-plus'
+import ElementPlus, { ElMessage } from 'element-plus'
 import type { AdminInventory } from '@/types/inventory'
+import { ApiError } from '@/types/api'
 
 vi.mock('@/api/inventories', () => ({
   listInventories: vi.fn(),
   getInventory: vi.fn(),
+  initializeInventory: vi.fn(),
+  adjustInventory: vi.fn(),
 }))
 
-import { listInventories } from '@/api/inventories'
+import { adjustInventory, initializeInventory, listInventories } from '@/api/inventories'
 import InventoriesView from '@/views/InventoriesView.vue'
+import InventoryInitDialog from '@/components/InventoryInitDialog.vue'
+import InventoryAdjustDialog from '@/components/InventoryAdjustDialog.vue'
 
 const mockedList = vi.mocked(listInventories)
+const mockedInit = vi.mocked(initializeInventory)
+const mockedAdjust = vi.mocked(adjustInventory)
 
 function inventory(over: Partial<AdminInventory> = {}): AdminInventory {
   return {
@@ -35,6 +42,15 @@ function pageOf(content: AdminInventory[]) {
 
 function mountView() {
   return mount(InventoriesView, { global: { plugins: [createPinia(), ElementPlus] } })
+}
+
+// Selecting the per-row 调整 action sets the adjust target before we drive the
+// dialog's submit directly (the dialog body teleports, so we emit from the
+// component instance instead of clicking inside the teleported footer).
+async function openAdjust(wrapper: VueWrapper): Promise<void> {
+  const btn = wrapper.findAll('button').find((b) => b.text() === '调整')
+  await btn!.trigger('click')
+  await flushPromises()
 }
 
 enableAutoUnmount(afterEach)
@@ -82,5 +98,122 @@ describe('InventoriesView', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('低库存')
+  })
+
+  it('initializes inventory and refreshes the list', async () => {
+    mockedInit.mockResolvedValue(inventory())
+    const wrapper = mountView()
+    await flushPromises()
+    expect(mockedList).toHaveBeenCalledTimes(1)
+
+    wrapper.findComponent(InventoryInitDialog).vm.$emit('submit', {
+      productId: 'SKU-9',
+      initialStock: 50,
+      safetyStock: 5,
+    })
+    await flushPromises()
+
+    expect(mockedInit).toHaveBeenCalledWith({ productId: 'SKU-9', initialStock: 50, safetyStock: 5 })
+    expect(mockedList).toHaveBeenCalledTimes(2)
+  })
+
+  it('surfaces a 40900 conflict when initialization fails', async () => {
+    const error = vi.spyOn(ElMessage, 'error').mockImplementation(() => ({}) as never)
+    mockedInit.mockRejectedValue(new ApiError('40900', '库存已初始化', 409))
+    const wrapper = mountView()
+    await flushPromises()
+
+    wrapper.findComponent(InventoryInitDialog).vm.$emit('submit', {
+      productId: 'SKU-1',
+      initialStock: 1,
+      safetyStock: 0,
+    })
+    await flushPromises()
+
+    expect(error).toHaveBeenCalledWith('库存已初始化')
+  })
+
+  it('adjusts stock up with a generated requestId and refreshes', async () => {
+    mockedAdjust.mockResolvedValue(inventory())
+    const wrapper = mountView()
+    await flushPromises()
+    await openAdjust(wrapper)
+
+    wrapper.findComponent(InventoryAdjustDialog).vm.$emit('submit', { delta: 5, reason: '补货' })
+    await flushPromises()
+
+    expect(mockedAdjust).toHaveBeenCalledTimes(1)
+    const [productId, payload] = mockedAdjust.mock.calls[0]
+    expect(productId).toBe('SKU-1')
+    expect(payload.delta).toBe(5)
+    expect(payload.reason).toBe('补货')
+    expect(typeof payload.requestId).toBe('string')
+    expect(payload.requestId.length).toBeGreaterThan(0)
+    expect(mockedList).toHaveBeenCalledTimes(2)
+  })
+
+  it('adjusts stock down with a negative delta', async () => {
+    mockedAdjust.mockResolvedValue(inventory())
+    const wrapper = mountView()
+    await flushPromises()
+    await openAdjust(wrapper)
+
+    wrapper.findComponent(InventoryAdjustDialog).vm.$emit('submit', { delta: -3, reason: '盘亏' })
+    await flushPromises()
+
+    expect(mockedAdjust.mock.calls[0][1].delta).toBe(-3)
+  })
+
+  it('mints a fresh requestId on each submit attempt', async () => {
+    mockedAdjust.mockResolvedValue(inventory())
+    const wrapper = mountView()
+    await flushPromises()
+    const dialog = wrapper.findComponent(InventoryAdjustDialog)
+
+    await openAdjust(wrapper)
+    dialog.vm.$emit('submit', { delta: 1, reason: 'a' })
+    await flushPromises()
+    await openAdjust(wrapper)
+    dialog.vm.$emit('submit', { delta: 1, reason: 'b' })
+    await flushPromises()
+
+    expect(mockedAdjust).toHaveBeenCalledTimes(2)
+    const id1 = mockedAdjust.mock.calls[0][1].requestId
+    const id2 = mockedAdjust.mock.calls[1][1].requestId
+    expect(id1).not.toBe(id2)
+  })
+
+  it('guards against a double submit while one is in flight', async () => {
+    let resolve!: (value: AdminInventory) => void
+    mockedAdjust.mockReturnValue(
+      new Promise<AdminInventory>((r) => {
+        resolve = r
+      }),
+    )
+    const wrapper = mountView()
+    await flushPromises()
+    await openAdjust(wrapper)
+    const dialog = wrapper.findComponent(InventoryAdjustDialog)
+
+    dialog.vm.$emit('submit', { delta: 1, reason: 'x' })
+    dialog.vm.$emit('submit', { delta: 1, reason: 'x' })
+    await flushPromises()
+
+    expect(mockedAdjust).toHaveBeenCalledTimes(1)
+    resolve(inventory())
+    await flushPromises()
+  })
+
+  it('surfaces a 40900 insufficient-stock error on adjust', async () => {
+    const error = vi.spyOn(ElMessage, 'error').mockImplementation(() => ({}) as never)
+    mockedAdjust.mockRejectedValue(new ApiError('40900', '库存不足', 409))
+    const wrapper = mountView()
+    await flushPromises()
+    await openAdjust(wrapper)
+
+    wrapper.findComponent(InventoryAdjustDialog).vm.$emit('submit', { delta: -999, reason: '超量出库' })
+    await flushPromises()
+
+    expect(error).toHaveBeenCalledWith('库存不足')
   })
 })

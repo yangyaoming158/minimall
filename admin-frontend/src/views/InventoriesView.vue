@@ -1,9 +1,20 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
+import { ElMessage } from 'element-plus'
 import PageHeader from '@/components/PageHeader.vue'
 import StatusTag from '@/components/StatusTag.vue'
-import { getInventory, listInventories } from '@/api/inventories'
-import type { AdminInventory, InventoryStatus, StockState } from '@/types/inventory'
+import InventoryInitDialog from '@/components/InventoryInitDialog.vue'
+import InventoryAdjustDialog, {
+  type AdjustFormPayload,
+} from '@/components/InventoryAdjustDialog.vue'
+import { adjustInventory, getInventory, initializeInventory, listInventories } from '@/api/inventories'
+import { ApiError } from '@/types/api'
+import type {
+  AdminInventory,
+  InitializeInventoryRequest,
+  InventoryStatus,
+  StockState,
+} from '@/types/inventory'
 
 const PAGE_SIZE = 10
 
@@ -41,6 +52,29 @@ const STATUS_LABEL: Record<InventoryStatus, string> = {
 const detailVisible = ref(false)
 const detail = ref<AdminInventory | null>(null)
 const detailLoading = ref(false)
+
+// Initialize / adjust dialog state.
+const initVisible = ref(false)
+const initSubmitting = ref(false)
+const adjustVisible = ref(false)
+const adjustSubmitting = ref(false)
+const adjustTarget = ref<string | null>(null)
+
+function genRequestId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  return `req-${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
+
+// The http interceptor only toasts 401/429/500. Surface other business errors
+// (e.g. 40900 conflict / insufficient stock, 40000/40400) explicitly; skip
+// transport-less errors that the interceptor already toasted.
+function surfaceBusinessError(err: unknown): void {
+  if (err instanceof ApiError && err.httpStatus != null && ![401, 429, 500].includes(err.httpStatus)) {
+    ElMessage.error(err.message)
+  }
+}
 
 async function fetchInventories(): Promise<void> {
   loading.value = true
@@ -89,12 +123,62 @@ async function openDetail(row: AdminInventory): Promise<void> {
   }
 }
 
+function openInit(): void {
+  initVisible.value = true
+}
+
+async function onInitSubmit(payload: InitializeInventoryRequest): Promise<void> {
+  if (initSubmitting.value) {
+    return
+  }
+  initSubmitting.value = true
+  try {
+    await initializeInventory(payload)
+    ElMessage.success('库存已初始化')
+    initVisible.value = false
+    await fetchInventories()
+  } catch (err) {
+    surfaceBusinessError(err) // keep the dialog open so the admin can adjust input
+  } finally {
+    initSubmitting.value = false
+  }
+}
+
+function openAdjust(row: AdminInventory): void {
+  adjustTarget.value = row.productId
+  adjustVisible.value = true
+}
+
+async function onAdjustSubmit(payload: AdjustFormPayload): Promise<void> {
+  if (adjustSubmitting.value || !adjustTarget.value) {
+    return // in-flight guard: a re-fired submit must not double-apply
+  }
+  adjustSubmitting.value = true
+  // Fresh idempotency key per submit attempt: a genuine retry is a new op, while
+  // an accidental double-fire is blocked by the in-flight guard above.
+  const requestId = genRequestId()
+  try {
+    await adjustInventory(adjustTarget.value, { ...payload, requestId })
+    ElMessage.success('库存已调整')
+    adjustVisible.value = false
+    await fetchInventories()
+  } catch (err) {
+    surfaceBusinessError(err) // e.g. 40900 insufficient stock — keep dialog open
+  } finally {
+    adjustSubmitting.value = false
+  }
+}
+
 onMounted(fetchInventories)
 </script>
 
 <template>
   <div>
-    <PageHeader title="库存管理" description="库存列表、搜索、库存状态与低库存筛选、库存详情。" />
+    <PageHeader title="库存管理" description="库存列表、搜索、库存状态与低库存筛选、初始化 / 调整库存、库存详情。">
+      <template #actions>
+        <el-button type="primary" @click="openInit">初始化库存</el-button>
+      </template>
+    </PageHeader>
 
     <div class="filter-bar">
       <el-input
@@ -147,9 +231,10 @@ onMounted(fetchInventories)
           <StatusTag :value="row.status" :label="STATUS_LABEL[row.status as InventoryStatus]" />
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="120" fixed="right">
+      <el-table-column label="操作" width="160" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" @click="openDetail(row)">详情</el-button>
+          <el-button link type="primary" @click="openAdjust(row)">调整</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -188,6 +273,14 @@ onMounted(fetchInventories)
         </el-descriptions>
       </div>
     </el-drawer>
+
+    <InventoryInitDialog v-model="initVisible" :submitting="initSubmitting" @submit="onInitSubmit" />
+    <InventoryAdjustDialog
+      v-model="adjustVisible"
+      :product-id="adjustTarget"
+      :submitting="adjustSubmitting"
+      @submit="onAdjustSubmit"
+    />
   </div>
 </template>
 

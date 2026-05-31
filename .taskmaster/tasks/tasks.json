@@ -2092,12 +2092,13 @@
             "title": "库存初始化与调整（幂等写）",
             "description": "Add initialize and adjust dialogs with mandatory reason and a per-submit requestId idempotency key.",
             "details": "InventoryInitDialog (productId, initialStock, safetyStock) -> POST /api/admin/inventories, show 40900 conflict if already initialized. InventoryAdjustDialog (delta +/-, reason required, fresh requestId regenerated on each submit attempt) -> POST /{productId}/adjust, surface 40900 insufficient-stock/conflict; never allow negative stock. Refresh list on success. Verify: initialize, adjust positive & negative, duplicate-submit guard (requestId regenerated), reason required.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "13.2"
             ],
             "parentTaskId": 13,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-31T07:27:49.702Z"
           },
           {
             "id": 4,
@@ -2112,7 +2113,7 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-05-31T07:01:41.686Z"
+        "updatedAt": "2026-05-31T07:27:49.702Z"
       },
       {
         "id": "14",
@@ -2183,7 +2184,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-31T07:01:41.686Z",
+      "lastModified": "2026-05-31T07:27:49.702Z",
       "taskCount": 15,
       "completedCount": 12,
       "tags": [

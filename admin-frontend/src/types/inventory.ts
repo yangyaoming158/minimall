@@ -23,3 +23,17 @@ export interface InventoryListParams extends PageParams {
   stockState?: StockState
   lowStock?: boolean
 }
+
+export interface InitializeInventoryRequest {
+  productId: string
+  initialStock: number
+  safetyStock: number
+}
+
+// requestId is the idempotency key; the view mints a fresh one per submit
+// attempt so the backend can dedupe genuine retries by requestId.
+export interface AdjustInventoryRequest {
+  delta: number
+  reason: string
+  requestId: string
+}
