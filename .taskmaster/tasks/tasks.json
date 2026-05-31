@@ -2166,7 +2166,7 @@
         "description": "Run full backend and frontend verification, protect Phase 1 purchase flow, and document Phase 2 acceptance results.",
         "details": "Run focused module tests from each completed backend task, then mvn test where feasible, mvn clean package -DskipTests, docker compose config, admin-frontend npm run build, and frontend npm run build. Manually verify admin auth 401/403, forged role header stripping, product imageUrl, inventory adjustment idempotency, order/payment/notification/audit pages in the independent admin app, and Phase 1 customer flow register/login/products/detail/order/pay/PAID in the separate customer app. Create docs/phase2-admin-acceptance.md with commands, results, changed scope, known limitations, and final checklist.",
         "testStrategy": "",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           "12",
           "13",
@@ -2179,19 +2179,21 @@
             "title": "Record AI inventory assistant boundaries and Phase 2.5 backlog",
             "description": "In Phase 2 acceptance docs, explicitly record that AI must not directly modify inventory, execute SQL, bypass backend services, or call /internal paths. AI may only consume structured admin APIs and create suggestions or drafts in later phases; confirmed inventory changes must be executed by inventory-service with inventory records and audit logs. Include a Phase 2.5 backlog for inbound order drafts, inbound order items, AI operation suggestions, suggestion review states, and inventory trend or hot-slow product statistics.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 15,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-31T09:25:53.613Z"
           }
-        ]
+        ],
+        "updatedAt": "2026-05-31T09:25:53.613Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-31T09:18:14.489Z",
+      "lastModified": "2026-05-31T09:25:53.614Z",
       "taskCount": 15,
-      "completedCount": 14,
+      "completedCount": 15,
       "tags": [
         "phase2-admin-platform"
       ]
