@@ -56,4 +56,16 @@ describe('admin router guard', () => {
 
     expect(router.currentRoute.value.path).toBe('/products')
   })
+
+  it('clears a residual non-admin token and shows /login instead of looping', async () => {
+    const auth = useAuthStore()
+    auth.token = 'non-admin-token'
+    mockedGetAdminMe.mockRejectedValue(new ApiError('40300', 'forbidden', 403))
+
+    await router.replace('/login')
+
+    expect(router.currentRoute.value.path).toBe('/login')
+    expect(auth.token).toBeNull()
+    expect(auth.isLoggedIn).toBe(false)
+  })
 })

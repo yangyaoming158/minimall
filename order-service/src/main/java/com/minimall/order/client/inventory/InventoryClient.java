@@ -2,6 +2,7 @@ package com.minimall.order.client.inventory;
 
 import com.minimall.common.core.exception.BusinessException;
 import com.minimall.common.core.exception.ErrorCode;
+import com.minimall.order.client.InternalTokenInterceptor;
 import java.util.Objects;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -31,8 +32,12 @@ public class InventoryClient {
     @Autowired
     public InventoryClient(
             RestTemplateBuilder restTemplateBuilder,
-            @Value("${minimall.clients.inventory-service.base-url:http://127.0.0.1:8103}") String inventoryServiceBaseUrl) {
-        this(restTemplateBuilder.rootUri(inventoryServiceBaseUrl).build());
+            @Value("${minimall.clients.inventory-service.base-url:http://127.0.0.1:8103}") String inventoryServiceBaseUrl,
+            @Value("${minimall.auth.internal.secret:}") String internalSecret) {
+        this(restTemplateBuilder
+                .rootUri(inventoryServiceBaseUrl)
+                .additionalInterceptors(new InternalTokenInterceptor(internalSecret))
+                .build());
     }
 
     InventoryClient(RestTemplate restTemplate) {

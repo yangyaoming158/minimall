@@ -97,7 +97,21 @@ router.beforeEach(async (to) => {
   }
 
   if (to.meta.guestOnly && auth.isLoggedIn) {
-    return { path: '/products' }
+    // A confirmed admin in memory: skip the login page.
+    if (auth.currentAdmin) {
+      return { path: '/products' }
+    }
+    // Token present but identity unconfirmed (e.g. a residual non-admin USER
+    // token from the customer storefront). Verify before bouncing away from
+    // /login; otherwise the user is stuck in a /login -> /products -> 403 loop
+    // and cannot sign in as an admin without manually clearing storage.
+    try {
+      await auth.fetchCurrentAdmin()
+      return { path: '/products' }
+    } catch {
+      auth.logout()
+      return true
+    }
   }
 
   return true

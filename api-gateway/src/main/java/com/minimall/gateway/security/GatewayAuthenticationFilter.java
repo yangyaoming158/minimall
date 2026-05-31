@@ -7,6 +7,7 @@ import com.minimall.common.auth.jwt.JwtUtils;
 import com.minimall.common.core.exception.BusinessException;
 import com.minimall.common.core.exception.ErrorCode;
 import com.minimall.gateway.web.GatewayErrorResponseWriter;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
@@ -33,10 +34,15 @@ public class GatewayAuthenticationFilter implements GlobalFilter, Ordered {
 
     private final JwtUtils jwtUtils;
     private final GatewayErrorResponseWriter errorResponseWriter;
+    private final String internalSecret;
 
-    public GatewayAuthenticationFilter(JwtUtils jwtUtils, GatewayErrorResponseWriter errorResponseWriter) {
+    public GatewayAuthenticationFilter(
+            JwtUtils jwtUtils,
+            GatewayErrorResponseWriter errorResponseWriter,
+            @Value("${minimall.auth.internal.secret:}") String internalSecret) {
         this.jwtUtils = jwtUtils;
         this.errorResponseWriter = errorResponseWriter;
+        this.internalSecret = internalSecret == null || internalSecret.isBlank() ? null : internalSecret;
     }
 
     @Override
@@ -84,9 +90,16 @@ public class GatewayAuthenticationFilter implements GlobalFilter, Ordered {
     private ServerHttpRequest sanitizePropagationHeaders(ServerHttpRequest request) {
         return request.mutate()
                 .headers(headers -> {
+                    // Strip any browser-forged trusted headers, then stamp the
+                    // request as gateway-originated so downstream services trust
+                    // the identity we inject and accept it on internal calls.
                     headers.remove(AuthHeaders.USER_ID);
                     headers.remove(AuthHeaders.USERNAME);
                     headers.remove(AuthHeaders.USER_ROLE);
+                    headers.remove(AuthHeaders.GATEWAY_TOKEN);
+                    if (internalSecret != null) {
+                        headers.set(AuthHeaders.GATEWAY_TOKEN, internalSecret);
+                    }
                 })
                 .build();
     }

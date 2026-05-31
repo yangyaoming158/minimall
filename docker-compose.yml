@@ -18,6 +18,7 @@ x-java-service-environment: &java-service-environment
   SPRING_RABBITMQ_VIRTUAL_HOST: /
   MINIMALL_AUTH_JWT_SECRET: ${MINIMALL_AUTH_JWT_SECRET:?MINIMALL_AUTH_JWT_SECRET is required}
   MINIMALL_AUTH_JWT_EXPIRE_SECONDS: ${MINIMALL_AUTH_JWT_EXPIRE_SECONDS:-3600}
+  MINIMALL_AUTH_INTERNAL_SECRET: ${MINIMALL_INTERNAL_TOKEN:?MINIMALL_INTERNAL_TOKEN is required}
   MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED: ${MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED:-true}
 
 x-java-service-healthcheck: &java-service-healthcheck
@@ -160,8 +161,11 @@ services:
     environment:
       <<: *java-service-environment
       SERVER_PORT: 8101
-    ports:
-      - "${USER_SERVICE_PORT:-8101}:8101"
+    # Not published: downstream services are reachable only inside the compose
+    # network (via the gateway). Exposing the port would let a client bypass the
+    # gateway and forge trusted headers / hit /internal directly.
+    expose:
+      - "8101"
     depends_on:
       mysql:
         condition: service_healthy
@@ -183,8 +187,9 @@ services:
       <<: *java-service-environment
       SERVER_PORT: 8102
       PRODUCT_DETAIL_CACHE_TTL_SECONDS: ${PRODUCT_DETAIL_CACHE_TTL_SECONDS:-300}
-    ports:
-      - "${PRODUCT_SERVICE_PORT:-8102}:8102"
+    # Not published — gateway-only access (see user-service note).
+    expose:
+      - "8102"
     depends_on:
       mysql:
         condition: service_healthy
@@ -207,8 +212,9 @@ services:
     environment:
       <<: *java-service-environment
       SERVER_PORT: 8103
-    ports:
-      - "${INVENTORY_SERVICE_PORT:-8103}:8103"
+    # Not published — gateway-only access (see user-service note).
+    expose:
+      - "8103"
     depends_on:
       mysql:
         condition: service_healthy
@@ -236,8 +242,9 @@ services:
       MINIMALL_ORDER_TIMEOUT_FIXED_DELAY: ${MINIMALL_ORDER_TIMEOUT_FIXED_DELAY:-60000}
       MINIMALL_ORDER_TIMEOUT_BATCH_SIZE: ${MINIMALL_ORDER_TIMEOUT_BATCH_SIZE:-100}
       ORDER_IDEMPOTENCY_LOCK_TTL_SECONDS: ${ORDER_IDEMPOTENCY_LOCK_TTL_SECONDS:-30}
-    ports:
-      - "${ORDER_SERVICE_PORT:-8104}:8104"
+    # Not published — gateway-only access (see user-service note).
+    expose:
+      - "8104"
     depends_on:
       mysql:
         condition: service_healthy
@@ -266,8 +273,9 @@ services:
     environment:
       <<: *java-service-environment
       SERVER_PORT: 8105
-    ports:
-      - "${PAYMENT_SERVICE_PORT:-8105}:8105"
+    # Not published — gateway-only access (see user-service note).
+    expose:
+      - "8105"
     depends_on:
       mysql:
         condition: service_healthy
@@ -290,8 +298,9 @@ services:
     environment:
       <<: *java-service-environment
       SERVER_PORT: 8106
-    ports:
-      - "${NOTIFICATION_SERVICE_PORT:-8106}:8106"
+    # Not published — gateway-only access (see user-service note).
+    expose:
+      - "8106"
     depends_on:
       mysql:
         condition: service_healthy
@@ -326,6 +335,7 @@ services:
       SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
       MINIMALL_AUTH_JWT_SECRET: ${MINIMALL_AUTH_JWT_SECRET:?MINIMALL_AUTH_JWT_SECRET is required}
       MINIMALL_AUTH_JWT_EXPIRE_SECONDS: ${MINIMALL_AUTH_JWT_EXPIRE_SECONDS:-3600}
+      MINIMALL_AUTH_INTERNAL_SECRET: ${MINIMALL_INTERNAL_TOKEN:?MINIMALL_INTERNAL_TOKEN is required}
       MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED: ${MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED:-true}
       MINIMALL_GATEWAY_CORS_ALLOWED_ORIGIN_PATTERNS: ${MINIMALL_GATEWAY_CORS_ALLOWED_ORIGIN_PATTERNS:-http://localhost:*,http://127.0.0.1:*}
       MINIMALL_GATEWAY_CORS_ALLOWED_METHODS: ${MINIMALL_GATEWAY_CORS_ALLOWED_METHODS:-GET,POST,PUT,PATCH,DELETE,OPTIONS}
@@ -338,6 +348,9 @@ services:
       MINIMALL_GATEWAY_RATE_LIMIT_REQUESTED_TOKENS: ${MINIMALL_GATEWAY_RATE_LIMIT_REQUESTED_TOKENS:-1}
       MINIMALL_GATEWAY_RATE_LIMIT_KEY_PREFIX: ${MINIMALL_GATEWAY_RATE_LIMIT_KEY_PREFIX:-minimall:gateway:rate-limit}
       MINIMALL_GATEWAY_RATE_LIMIT_FAIL_OPEN: ${MINIMALL_GATEWAY_RATE_LIMIT_FAIL_OPEN:-true}
+      # Only enable when the gateway truly sits behind a trusted reverse proxy;
+      # otherwise clients could spoof X-Forwarded-For to dodge rate limiting.
+      MINIMALL_GATEWAY_RATE_LIMIT_TRUST_FORWARDED_FOR: ${MINIMALL_GATEWAY_RATE_LIMIT_TRUST_FORWARDED_FOR:-false}
     ports:
       - "${API_GATEWAY_PORT:-8080}:8080"
     depends_on:

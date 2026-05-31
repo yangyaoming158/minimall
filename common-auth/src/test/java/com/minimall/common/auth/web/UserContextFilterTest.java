@@ -169,6 +169,45 @@ class UserContextFilterTest {
     }
 
     @Test
+    void ignoresForgedAdminHeadersWhenGatewaySecretIsConfiguredButAbsent() throws Exception {
+        // Direct-to-service attacker: forges admin headers but has no secret.
+        UserContextFilter filter = new UserContextFilter(null, "gateway-shared-secret");
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        AtomicBoolean chainWasInvoked = new AtomicBoolean(false);
+        request.addHeader(AuthHeaders.USER_ID, "1001");
+        request.addHeader(AuthHeaders.USERNAME, "alice");
+        request.addHeader(AuthHeaders.USER_ROLE, "ADMIN");
+
+        filter.doFilter(request, response, (servletRequest, servletResponse) -> {
+            chainWasInvoked.set(true);
+            // Forged headers are not trusted -> no escalated context leaks through.
+            assertThat(UserContextHolder.hasContext()).isFalse();
+        });
+
+        assertThat(chainWasInvoked).isTrue();
+        assertThat(response.getStatus()).isEqualTo(200);
+    }
+
+    @Test
+    void trustsPropagationHeadersWhenGatewaySecretMatches() throws Exception {
+        UserContextFilter filter = new UserContextFilter(null, "gateway-shared-secret");
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        AtomicBoolean contextWasAvailableInChain = new AtomicBoolean(false);
+        request.addHeader(AuthHeaders.USER_ID, "1001");
+        request.addHeader(AuthHeaders.USERNAME, "alice");
+        request.addHeader(AuthHeaders.USER_ROLE, "ADMIN");
+        request.addHeader(AuthHeaders.GATEWAY_TOKEN, "gateway-shared-secret");
+
+        filter.doFilter(request, response, chainAssertingContext(1001L, "alice", AuthRole.ADMIN, contextWasAvailableInChain));
+
+        assertThat(contextWasAvailableInChain).isTrue();
+        assertThat(UserContextHolder.hasContext()).isFalse();
+        assertThat(response.getStatus()).isEqualTo(200);
+    }
+
+    @Test
     void proceedsWithoutUserContextWhenNoAuthDataExists() throws Exception {
         UserContextFilter filter = new UserContextFilter(null);
         MockHttpServletRequest request = new MockHttpServletRequest();

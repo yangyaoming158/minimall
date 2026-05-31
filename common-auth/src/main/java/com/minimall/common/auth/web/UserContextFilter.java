@@ -25,10 +25,16 @@ public class UserContextFilter extends OncePerRequestFilter {
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final JwtUtils jwtUtils;
+    private final String internalSecret;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public UserContextFilter(JwtUtils jwtUtils) {
+        this(jwtUtils, null);
+    }
+
+    public UserContextFilter(JwtUtils jwtUtils, String internalSecret) {
         this.jwtUtils = jwtUtils;
+        this.internalSecret = internalSecret == null || internalSecret.isBlank() ? null : internalSecret;
     }
 
     @Override
@@ -48,9 +54,16 @@ public class UserContextFilter extends OncePerRequestFilter {
     }
 
     private UserContext resolveUserContext(HttpServletRequest request) {
-        UserContext headerUserContext = resolveFromHeaders(request);
-        if (headerUserContext != null) {
-            return headerUserContext;
+        // Only honor gateway-propagated identity when accompanied by the trusted
+        // gateway secret. A caller that bypasses the gateway (e.g. hits a service
+        // port directly) can forge X-User-* headers but not the secret, so its
+        // propagation headers are ignored and it falls back to JWT/anonymous —
+        // it can never escalate to ADMIN by header injection.
+        if (trustsPropagationHeaders(request)) {
+            UserContext headerUserContext = resolveFromHeaders(request);
+            if (headerUserContext != null) {
+                return headerUserContext;
+            }
         }
 
         String authorization = request.getHeader(HttpHeaders.AUTHORIZATION);
@@ -64,6 +77,16 @@ public class UserContextFilter extends OncePerRequestFilter {
             throw new BusinessException(ErrorCode.UNAUTHORIZED, "JWT parser is not configured");
         }
         return jwtUtils.parseToken(authorization);
+    }
+
+    private boolean trustsPropagationHeaders(HttpServletRequest request) {
+        if (internalSecret == null) {
+            // Enforcement disabled (no secret configured): preserve legacy trust.
+            // The network boundary is then the only protection.
+            return true;
+        }
+        String presented = request.getHeader(AuthHeaders.GATEWAY_TOKEN);
+        return internalSecret.equals(presented);
     }
 
     private UserContext resolveFromHeaders(HttpServletRequest request) {
