@@ -2057,7 +2057,7 @@
         "description": "Build the admin inventory list, initialization, adjustment, and record timeline workflows.",
         "details": "Implement admin-frontend /inventories with pagination, product search, stock state filtering, inventory initialization, adjustment dialog, mandatory reason, generated requestId per submit attempt, and inventory record view. Use only /api/admin/inventories/** through gateway. Show clear conflict and insufficient stock errors from ApiResponse. Tests or verification cover initialize, adjust positive and negative, duplicate submit guard, records view, reason required, no /internal calls, and admin-frontend npm run build.",
         "testStrategy": "",
-        "status": "pending",
+        "status": "in-progress",
         "dependencies": [
           "6",
           "10",
@@ -2075,8 +2075,44 @@
             "dependencies": [],
             "parentTaskId": 13,
             "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "库存列表、筛选与详情",
+            "description": "Build the admin inventory list with pagination plus keyword, stockState and lowStock filters, and a detail view.",
+            "details": "New src/types/inventory.ts and src/api/inventories.ts calling only gateway /api/admin/inventories. Rewrite InventoriesView.vue list: columns availableStock/lockedStock/safetyStock, stockState and status StatusTags, low-stock tag; filters keyword + stockState select + lowStock toggle; detail via getInventory. Verify: list render, keyword/stockState/lowStock params, npm run build, gateway-contract audit.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 13,
+            "updatedAt": "2026-05-31T07:01:41.686Z",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "库存初始化与调整（幂等写）",
+            "description": "Add initialize and adjust dialogs with mandatory reason and a per-submit requestId idempotency key.",
+            "details": "InventoryInitDialog (productId, initialStock, safetyStock) -> POST /api/admin/inventories, show 40900 conflict if already initialized. InventoryAdjustDialog (delta +/-, reason required, fresh requestId regenerated on each submit attempt) -> POST /{productId}/adjust, surface 40900 insufficient-stock/conflict; never allow negative stock. Refresh list on success. Verify: initialize, adjust positive & negative, duplicate-submit guard (requestId regenerated), reason required.",
+            "status": "pending",
+            "dependencies": [
+              "13.2"
+            ],
+            "parentTaskId": 13,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "库存流水时间线",
+            "description": "Add an inventory records timeline drawer surfacing traceability fields.",
+            "details": "Records drawer via GET /{productId}/records showing changeType, quantity, reason, requestId, sourceType, referenceNo, operator (adminUsername) and createdAt. Keep the page structure compatible with a later AI-suggestion entry without adding AI UI (satisfies 13.1). Verify: records render with traceability fields, npm run build.",
+            "status": "pending",
+            "dependencies": [
+              "13.2"
+            ],
+            "parentTaskId": 13,
+            "parentId": "undefined"
           }
-        ]
+        ],
+        "updatedAt": "2026-05-31T07:01:41.686Z"
       },
       {
         "id": "14",
@@ -2147,7 +2183,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-30T18:40:47.632Z",
+      "lastModified": "2026-05-31T07:01:41.686Z",
       "taskCount": 15,
       "completedCount": 12,
       "tags": [
