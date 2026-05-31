@@ -2123,7 +2123,7 @@
         "description": "Build admin pages for orders, payments, notifications, and audit logs using the completed admin query APIs.",
         "details": "Implement admin-frontend /orders with filters, details, and event timeline. Implement /payments with paymentNo/orderNo filters and detail. Implement /notifications with eventId/orderNo filters and detail, no resend UI. Implement /audit-logs with adminUserId, action, resourceType, resourceId, and time filters plus detail view. Use tables, filter bars, pagination, and concise status tags in the independent admin app. Tests or verification cover page loading, filtering, detail drawers, no direct service ports, no /internal calls, and admin-frontend npm run build.",
         "testStrategy": "",
-        "status": "in-progress",
+        "status": "done",
         "dependencies": [
           "4",
           "7",
@@ -2151,13 +2151,14 @@
             "title": "Build notification and audit operations pages",
             "description": "Implement admin-frontend notifications and audit-log pages as a focused observability slice: notification filters/detail with no resend UI, audit filters/detail, sourceType/referenceNo/requestId visibility where available, and concise status labels. Acceptance: pages use only gateway admin APIs, do not call /internal paths, and expose enough audit context to trace inventory changes created by admin operations.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 14,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-05-31T09:18:14.489Z"
           }
         ],
-        "updatedAt": "2026-05-31T08:57:06.458Z"
+        "updatedAt": "2026-05-31T09:18:14.489Z"
       },
       {
         "id": "15",
@@ -2188,9 +2189,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-05-31T08:57:06.458Z",
+      "lastModified": "2026-05-31T09:18:14.489Z",
       "taskCount": 15,
-      "completedCount": 13,
+      "completedCount": 14,
       "tags": [
         "phase2-admin-platform"
       ]
