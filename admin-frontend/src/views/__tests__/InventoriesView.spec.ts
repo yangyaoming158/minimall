@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount, flushPromises, enableAutoUnmount, type VueWrapper } from '@vue/test-utils'
 import { createPinia } from 'pinia'
 import ElementPlus, { ElMessage } from 'element-plus'
-import type { AdminInventory } from '@/types/inventory'
+import type { AdminInventory, InventoryRecord } from '@/types/inventory'
 import { ApiError } from '@/types/api'
 
 vi.mock('@/api/inventories', () => ({
@@ -10,9 +10,15 @@ vi.mock('@/api/inventories', () => ({
   getInventory: vi.fn(),
   initializeInventory: vi.fn(),
   adjustInventory: vi.fn(),
+  getInventoryRecords: vi.fn(),
 }))
 
-import { adjustInventory, initializeInventory, listInventories } from '@/api/inventories'
+import {
+  adjustInventory,
+  getInventoryRecords,
+  initializeInventory,
+  listInventories,
+} from '@/api/inventories'
 import InventoriesView from '@/views/InventoriesView.vue'
 import InventoryInitDialog from '@/components/InventoryInitDialog.vue'
 import InventoryAdjustDialog from '@/components/InventoryAdjustDialog.vue'
@@ -20,6 +26,7 @@ import InventoryAdjustDialog from '@/components/InventoryAdjustDialog.vue'
 const mockedList = vi.mocked(listInventories)
 const mockedInit = vi.mocked(initializeInventory)
 const mockedAdjust = vi.mocked(adjustInventory)
+const mockedRecords = vi.mocked(getInventoryRecords)
 
 function inventory(over: Partial<AdminInventory> = {}): AdminInventory {
   return {
@@ -40,8 +47,43 @@ function pageOf(content: AdminInventory[]) {
   return { content, page: 0, size: 10, totalElements: content.length, totalPages: 1 }
 }
 
+function record(over: Partial<InventoryRecord> = {}): InventoryRecord {
+  return {
+    id: 1,
+    productId: 'SKU-1',
+    orderNo: null,
+    requestId: 'req-abc',
+    changeType: 'ADJUST_INCREASE',
+    sourceType: 'ADMIN_ADJUSTMENT',
+    quantity: 8,
+    reason: '盘点入库',
+    adminUserId: 1,
+    adminUsername: 'admin',
+    referenceNo: null,
+    status: 'SUCCESS',
+    createdAt: '2026-05-02T10:00:00',
+    updatedAt: '2026-05-02T10:00:00',
+    ...over,
+  }
+}
+
 function mountView() {
   return mount(InventoriesView, { global: { plugins: [createPinia(), ElementPlus] } })
+}
+
+// For asserting the teleported records drawer inline: stub Teleport so the
+// drawer renders in place, and stub ElSelect (the stockState filter), which
+// otherwise hits a render recursion under the Teleport stub.
+function mountViewInline() {
+  return mount(InventoriesView, {
+    global: { plugins: [createPinia(), ElementPlus], stubs: { teleport: true, ElSelect: true } },
+  })
+}
+
+async function openRecords(wrapper: VueWrapper): Promise<void> {
+  const btn = wrapper.findAll('button').find((b) => b.text() === '流水')
+  await btn!.trigger('click')
+  await flushPromises()
 }
 
 // Selecting the per-row 调整 action sets the adjust target before we drive the
@@ -215,5 +257,30 @@ describe('InventoriesView', () => {
     await flushPromises()
 
     expect(error).toHaveBeenCalledWith('库存不足')
+  })
+
+  it('opens the records timeline and renders traceability fields', async () => {
+    mockedRecords.mockResolvedValue([record()])
+    const wrapper = mountViewInline()
+    await flushPromises()
+    await openRecords(wrapper)
+
+    expect(mockedRecords).toHaveBeenCalledWith('SKU-1')
+    const text = wrapper.text()
+    expect(text).toContain('调增') // changeType label
+    expect(text).toContain('管理员调整') // sourceType label
+    expect(text).toContain('+8') // signed quantity from changeType
+    expect(text).toContain('盘点入库') // reason
+    expect(text).toContain('admin') // operator (adminUsername)
+    expect(text).toContain('req-abc') // requestId traceability
+  })
+
+  it('shows an empty state when there are no records', async () => {
+    mockedRecords.mockResolvedValue([])
+    const wrapper = mountViewInline()
+    await flushPromises()
+    await openRecords(wrapper)
+
+    expect(wrapper.text()).toContain('暂无库存流水')
   })
 })

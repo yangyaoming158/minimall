@@ -37,3 +37,34 @@ export interface AdjustInventoryRequest {
   reason: string
   requestId: string
 }
+
+// Inventory record timeline. Mirrors inventory-service InventoryRecordResponse.
+export type InventoryChangeType = 'DEDUCT' | 'RELEASE' | 'ADJUST_INCREASE' | 'ADJUST_DECREASE'
+
+export type InventoryRecordSourceType =
+  | 'ORDER_DEDUCT'
+  | 'ORDER_RELEASE'
+  | 'ADMIN_INITIALIZE'
+  | 'ADMIN_ADJUSTMENT'
+  | 'INBOUND_ORDER'
+  | 'AI_SUGGESTION'
+
+export type InventoryRecordStatus = 'SUCCESS'
+
+// quantity is always a positive magnitude; direction is carried by changeType.
+export interface InventoryRecord {
+  id: number
+  productId: string
+  orderNo: string | null
+  requestId: string | null
+  changeType: InventoryChangeType
+  sourceType: InventoryRecordSourceType
+  quantity: number
+  reason: string | null
+  adminUserId: number | null
+  adminUsername: string | null
+  referenceNo: string | null
+  status: InventoryRecordStatus
+  createdAt: string
+  updatedAt: string
+}

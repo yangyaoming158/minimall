@@ -5,11 +5,11 @@ import type {
   AdminInventory,
   InitializeInventoryRequest,
   InventoryListParams,
+  InventoryRecord,
 } from '@/types/inventory'
 
 // Admin inventory APIs. Gateway-only: /api/admin/inventories/** — never a
-// service port and never an internal-only route. The record timeline lands in
-// a later subtask.
+// service port and never an internal-only route.
 export function listInventories(
   params: InventoryListParams,
 ): Promise<PageResponse<AdminInventory>> {
@@ -33,5 +33,12 @@ export function adjustInventory(
   return post<AdminInventory>(
     `/api/admin/inventories/${encodeURIComponent(productId)}/adjust`,
     payload,
+  )
+}
+
+// Returns the record timeline already ordered most-recent-first by the backend.
+export function getInventoryRecords(productId: string): Promise<InventoryRecord[]> {
+  return get<InventoryRecord[]>(
+    `/api/admin/inventories/${encodeURIComponent(productId)}/records`,
   )
 }
