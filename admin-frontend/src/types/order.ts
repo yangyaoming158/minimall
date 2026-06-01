@@ -1,7 +1,7 @@
 import type { PageParams } from './api'
 
 // Mirrors order-service AdminOrderResponse / OrderEventResponse.
-export type OrderStatus = 'PENDING_PAYMENT' | 'PAID' | 'CANCELLED' | 'CLOSED' | 'REFUNDED'
+export type OrderStatus = 'PENDING_PAYMENT' | 'PAID' | 'CANCELLED' | 'CLOSED'
 
 export interface OrderItem {
   productId: string

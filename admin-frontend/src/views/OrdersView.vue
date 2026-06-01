@@ -32,7 +32,6 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
   PAID: '已支付',
   CANCELLED: '已取消',
   CLOSED: '已关闭',
-  REFUNDED: '已退款',
 }
 
 const STATUS_OPTIONS: { value: '' | OrderStatus; label: string }[] = [
@@ -41,7 +40,6 @@ const STATUS_OPTIONS: { value: '' | OrderStatus; label: string }[] = [
   { value: 'PAID', label: '已支付' },
   { value: 'CANCELLED', label: '已取消' },
   { value: 'CLOSED', label: '已关闭' },
-  { value: 'REFUNDED', label: '已退款' },
 ]
 
 // Detail drawer.

@@ -23,7 +23,6 @@ const TONE_BY_VALUE: Record<string, Tone> = {
   PAID: 'success',
   CANCELLED: 'danger',
   CLOSED: 'neutral',
-  REFUNDED: 'info',
   // payment / notification
   PENDING: 'warning',
   SUCCESS: 'success',
