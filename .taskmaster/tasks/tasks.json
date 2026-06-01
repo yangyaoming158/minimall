@@ -2240,7 +2240,7 @@
         "dependencies": [
           "1"
         ],
-        "priority": "medium",
+        "priority": "high",
         "subtasks": []
       },
       {
@@ -2253,7 +2253,7 @@
         "dependencies": [
           "1"
         ],
-        "priority": "medium",
+        "priority": "high",
         "subtasks": []
       },
       {

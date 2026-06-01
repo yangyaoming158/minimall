@@ -2239,3 +2239,14 @@ Append one entry per implementation task so future sessions can recover project 
 - Test result: `mvn -pl inventory-service -am test` passed: common-core 39 tests, common-auth 38 tests, inventory-service 41 tests, 0 failures/errors. `mvn clean package -DskipTests` passed for the full 10-module reactor.
 - Issues: H2 logs expected duplicate-key errors from existing uniqueness assertion tests; they are part of passing tests.
 - Next: TaskMaster recommends Task 5 - Implement Inbound Order Drafts; Tasks 3 and 4 are also ready but lower priority.
+
+## Task tree update - Align Phase 2.5 priority with PRD order
+- Date: 2026-06-01
+- Status: Done
+- TaskMaster tag: `phase2-5-ai-inventory-readiness`
+- Implemented: Audited the actual Phase 2.5 task tree against `.taskmaster/docs/phase2-5-ai-inventory-readiness-prd.txt` instead of relying on `task-master next`. The PRD recommended development order is Task 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8, but the current task priorities left Task 3 and Task 4 as `medium` while Task 5 was `high`, causing TaskMaster to recommend Task 5 before Task 3/4. Updated Task 3 (`Add Safety Stock And Low-Stock Query`) and Task 4 (`Add Reusable Operations Statistics APIs`) to `high` so the ready queue now follows the true task order. An initial broad patch accidentally touched two `master` priorities, but that was corrected before commit; the final diff only changes the Phase 2.5 tag.
+- Changed files: `.taskmaster/tasks/tasks.json`; `docs/dev-log.md`
+- Commands run: `git status --short --branch`; `task-master tags`; direct read of `.taskmaster/tasks/tasks.json`; read PRD dependency table and recommended order; checked CLI help for a deterministic priority update command; precise `apply_patch` update; `task-master next`.
+- Test result: `task-master next` now recommends Task 3 (`Add Safety Stock And Low-Stock Query`) with priority `high`. `master` remains 20/20 done and `phase0-api-polish` remains 8/8 done.
+- Issues: TaskMaster CLI has no deterministic `set-priority` command; `update-task` is AI-text driven, so the priority-only update was applied directly to `.taskmaster/tasks/tasks.json` with a narrow final diff.
+- Next: Task 3 - Add Safety Stock And Low-Stock Query.
