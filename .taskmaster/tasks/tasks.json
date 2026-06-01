@@ -2198,5 +2198,239 @@
         "phase2-admin-platform"
       ]
     }
+  },
+  "phase2-5-ai-inventory-readiness": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Define the AI Inventory Integration Contract",
+        "description": "Lock the Phase 2.5 boundary, data flow, API naming, and acceptance rules before implementation.",
+        "details": "Create docs/phase2-5-ai-inventory-contract.md based on the Phase 2 admin API contract, Phase 2 acceptance notes, and the Phase 2.5 PRD. Document the allowed flow: structured data query -> suggestion or draft -> admin confirmation -> inventory-service change -> inventory record -> audit log. Explicitly state that AI must not directly update inventory, execute SQL, bypass backend services, or call /internal/**. List the structured APIs Phase 3 AI may consume and describe how Phase 2.5 outputs hand off to Phase 3.",
+        "testStrategy": "Review the document against docs/phase2-admin-api-contract.md and the Phase 2.5 PRD; verify all non-goals and hard boundaries are explicitly listed.",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 2,
+        "title": "Enhance Inventory Record Traceability",
+        "description": "Make inventory records useful for orders, admin adjustments, inbound orders, and future AI suggestion links.",
+        "details": "Extend inventory record persistence and DTOs to expose traceability fields such as requestId, reason, adminUserId, adminUsername, sourceType, and referenceNo. Ensure sourceType supports ORDER_DEDUCT, ORDER_RELEASE, ADMIN_INITIALIZE, ADMIN_ADJUSTMENT, and INBOUND_ORDER, with AI_SUGGESTION reserved as a future source/reference value. Preserve existing order deduct/release compatibility and admin adjustment idempotency.",
+        "testStrategy": "Run inventory-service tests covering admin initialize/adjust, order deduct/release compatibility, duplicate requestId behavior, record query response fields, negative stock rejection, and ApiResponse error shape.",
+        "status": "pending",
+        "dependencies": [
+          1
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 3,
+        "title": "Add Safety Stock And Low-Stock Query",
+        "description": "Provide a structured low-stock baseline for future replenishment suggestions.",
+        "details": "Add safetyStock or lowStockThreshold to the inventory admin model and expose admin APIs to set/read the threshold. Add a backend-computed low-stock query such as GET /api/admin/inventories/low-stock. Responses must include productId, availableStock, lockedStock, safetyStock, and stockState. Future AI code must be able to obtain low-stock candidates without database access.",
+        "testStrategy": "Run inventory-service admin API tests for threshold create/update/read, low-stock computation, 401 unauthenticated, 403 USER, ApiResponse envelope, and stock state serialization.",
+        "status": "pending",
+        "dependencies": [
+          1,
+          2
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 4,
+        "title": "Add Reusable Operations Statistics APIs",
+        "description": "Expose minimal read-only statistics for admin UI and future AI analysis.",
+        "details": "Implement admin read-only statistics APIs under /api/admin/**, for example sales aggregation by product and inventory trend queries. Sales aggregation should support time ranges and return productId, orderCount, soldQuantity, and totalAmount. Inventory trend should support time ranges/buckets and return inboundQuantity, outboundQuantity, adjustmentQuantity, and endingStock. Do not mutate inventory or require callers to read service databases directly.",
+        "testStrategy": "Run focused order-service and inventory-service tests for time range filters, aggregation totals, trend buckets, read-only route behavior, ADMIN enforcement, and ApiResponse/PageResponse envelopes.",
+        "status": "pending",
+        "dependencies": [
+          1,
+          2
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 5,
+        "title": "Implement Inbound Order Drafts",
+        "description": "Create an inbound order draft model that can later be generated from AI recommendations.",
+        "details": "Add inbound_order and inbound_order_item persistence, with status enum DRAFT, CONFIRMED, APPLIED, CANCELLED and draft source values ADMIN_MANUAL plus reserved AI_SUGGESTION. Implement admin draft create, list, detail, and cancel APIs. Creating or cancelling a draft must not change inventory. All responses must use ApiResponse and list responses must use PageResponse.",
+        "testStrategy": "Run inbound order API tests for multi-item draft creation, list/detail pagination, enum serialization, cancel behavior, no inventory mutation, ADMIN enforcement, USER/unauthenticated rejection, and audit records.",
+        "status": "pending",
+        "dependencies": [
+          1,
+          2
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Add inbound order schema and domain model",
+            "description": "Create inbound_order and inbound_order_item migrations/entities/repositories plus status and source enums.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 5,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Implement draft create, query, detail, and cancel APIs",
+            "description": "Expose admin draft APIs with ApiResponse/PageResponse, validation, ADMIN enforcement, and no inventory side effects.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [
+              1
+            ],
+            "parentTaskId": 5,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Add inbound draft audit and regression tests",
+            "description": "Write audit logs and tests covering draft lifecycle, permissions, enum stability, and no stock changes.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [
+              2
+            ],
+            "parentTaskId": 5,
+            "parentId": "undefined"
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Confirm Inbound Orders And Apply Inventory Changes",
+        "description": "After an administrator confirms an inbound order, inventory-service applies the stock increase in a transaction and writes records and audit logs.",
+        "details": "Implement POST /api/admin/inbound-orders/{inboundNo}/confirm with admin identity and requestId idempotency. Only DRAFT inbound orders can be confirmed. Successful confirmation increases inventory and moves the order to APPLIED. Repeated confirmation or duplicate requestId must not increase stock twice. If any item fails, the whole transaction rolls back. Each inventory record must link back to inboundNo, and audit logs must record admin, inbound number, item summary, and time.",
+        "testStrategy": "Run transaction and API tests for DRAFT-only confirmation, duplicate requestId, repeated confirmation, rollback on item failure, inventory increase, inventory_records referenceNo, audit log content, and ApiResponse errors.",
+        "status": "pending",
+        "dependencies": [
+          2,
+          5
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement confirmation state machine and idempotency",
+            "description": "Validate DRAFT-only confirmation, requestId uniqueness, and deterministic duplicate responses.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 6,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Apply inbound inventory transactionally",
+            "description": "Increase stock for all inbound items in one transaction and roll back if any item fails.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [
+              1
+            ],
+            "parentTaskId": 6,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Write inbound inventory records and audit logs",
+            "description": "Record sourceType INBOUND_ORDER, referenceNo inboundNo, requestId, operator, item summary, and admin audit entries.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [
+              2
+            ],
+            "parentTaskId": 6,
+            "parentId": "undefined"
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Reserve AI Operation Suggestion Records",
+        "description": "Provide a minimal suggestion review model without implementing model calls.",
+        "details": "Add ai_operation_suggestion persistence and status enum PENDING_REVIEW, CONVERTED_TO_DRAFT, REJECTED, APPLIED. Implement admin query, reject, and convert-to-inbound-draft APIs. Suggestion records must not directly modify inventory. Converted suggestions must link to the generated inbound order number and keep an input snapshot reference or structured input summary for auditability. Phase 2.5 stores/routes suggestion records only; it does not generate suggestions with AI.",
+        "testStrategy": "Run suggestion API tests for query, reject with reason, convert-to-draft, status transitions, inboundNo linkage, no inventory mutation, ADMIN enforcement, and auditability fields.",
+        "status": "pending",
+        "dependencies": [
+          4,
+          5
+        ],
+        "priority": "medium",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Add AI suggestion schema and domain model",
+            "description": "Create ai_operation_suggestion persistence, status enum, source/input snapshot fields, and repositories.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 7,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Implement suggestion query and reject APIs",
+            "description": "Expose admin list/detail/reject behavior with reason capture, ApiResponse/PageResponse, and ADMIN enforcement.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [
+              1
+            ],
+            "parentTaskId": 7,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Implement convert suggestion to inbound draft",
+            "description": "Convert a pending suggestion to an inbound draft, link inboundNo, update suggestion status, and avoid inventory mutation.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [
+              1
+            ],
+            "parentTaskId": 7,
+            "parentId": "undefined"
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Phase 2.5 Acceptance And Regression Documentation",
+        "description": "Prove Phase 2.5 is ready for Phase 3 without breaking Phase 1 storefront or Phase 2 admin platform behavior.",
+        "details": "Create docs/phase2-5-ai-inventory-readiness-acceptance.md. Document verification that inventory records expose traceability fields, low-stock query works, operation statistics are read-only, draft creation does not change inventory, confirmation increases inventory with records and audit logs, reconfirmation is idempotent, AI suggestions cannot directly change inventory, /internal/** remains unavailable to browser/AI clients, Phase 1 purchase flow still passes, and Phase 2 admin basics still pass.",
+        "testStrategy": "Run the Phase 2.5 focused backend tests plus Phase 1 register/login/product/order/payment/PAID regression and Phase 2 admin login/product/inventory/audit basics; record commands and results in the acceptance document.",
+        "status": "pending",
+        "dependencies": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "priority": "high",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "version": "1.0.0",
+      "lastModified": "2026-06-01T11:52:00.000Z",
+      "taskCount": 8,
+      "completedCount": 0,
+      "tags": [
+        "phase2-5-ai-inventory-readiness"
+      ],
+      "created": "2026-06-01T11:52:00.000Z",
+      "description": "Phase 2.5 AI inventory readiness backend contracts and traceability",
+      "updated": "2026-06-01T11:52:00.000Z"
+    }
   }
 }
