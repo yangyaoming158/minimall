@@ -2228,3 +2228,14 @@ Append one entry per implementation task so future sessions can recover project 
 - Test result: Documentation verification passed. `docs/phase2-5-ai-inventory-contract.md` exists, is non-empty, includes the required AI non-goals/hard boundaries, lists structured Phase 3-consumable APIs, records the gateway routing and downstream ownership decisions, and `git diff --check` passed. No Maven or frontend build was run because this task is documentation-only.
 - Issues: None.
 - Next: Task 2 - Enhance Inventory Record Traceability.
+
+## Task 2 - Enhance Inventory Record Traceability
+- Date: 2026-06-01
+- Status: Done
+- TaskMaster tag: `phase2-5-ai-inventory-readiness`
+- Implemented: Verified the Phase 2 inventory record implementation already carries the Task 2 traceability columns and DTO fields (`requestId`, `reason`, `adminUserId`, `adminUsername`, `sourceType`, `referenceNo`) and the required `InventoryRecordSourceType` values (`ORDER_DEDUCT`, `ORDER_RELEASE`, `ADMIN_INITIALIZE`, `ADMIN_ADJUSTMENT`, `INBOUND_ORDER`, reserved `AI_SUGGESTION`). Added regression coverage instead of duplicating fields: the admin records API now asserts the full traceability JSON output for adjustment records, and repository/DTO tests now lock the source enum set plus `INBOUND_ORDER` persistence/serialization for the upcoming inbound-order confirmation flow.
+- Changed files: `.taskmaster/tasks/tasks.json`; `docs/dev-log.md`; `inventory-service/src/test/java/com/minimall/inventory/web/AdminInventoryControllerTest.java`; `inventory-service/src/test/java/com/minimall/inventory/repository/InventoryRecordRepositoryTest.java`
+- Commands run: `node node_modules/task-master-ai/dist/task-master.js tags`; `next`; `show 2`; `set-status --id=2 --status=in-progress`; source/test reads for inventory records, DTOs, repositories, migrations, and controller tests; `mvn -pl inventory-service -am test`; `mvn clean package -DskipTests`; `set-status --id=2 --status=done`.
+- Test result: `mvn -pl inventory-service -am test` passed: common-core 39 tests, common-auth 38 tests, inventory-service 41 tests, 0 failures/errors. `mvn clean package -DskipTests` passed for the full 10-module reactor.
+- Issues: H2 logs expected duplicate-key errors from existing uniqueness assertion tests; they are part of passing tests.
+- Next: TaskMaster recommends Task 5 - Implement Inbound Order Drafts; Tasks 3 and 4 are also ready but lower priority.

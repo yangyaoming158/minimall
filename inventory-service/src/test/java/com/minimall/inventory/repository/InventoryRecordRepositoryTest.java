@@ -149,4 +149,45 @@ class InventoryRecordRepositoryTest {
         assertThat(response.createdAt()).isNotNull();
         assertThat(response.updatedAt()).isNotNull();
     }
+
+    @Test
+    void sourceTypesIncludeInboundOrderAndReservedAiSuggestionValues() {
+        assertThat(InventoryRecordSourceType.values())
+                .contains(
+                        InventoryRecordSourceType.ORDER_DEDUCT,
+                        InventoryRecordSourceType.ORDER_RELEASE,
+                        InventoryRecordSourceType.ADMIN_INITIALIZE,
+                        InventoryRecordSourceType.ADMIN_ADJUSTMENT,
+                        InventoryRecordSourceType.INBOUND_ORDER,
+                        InventoryRecordSourceType.AI_SUGGESTION);
+    }
+
+    @Test
+    void inboundOrderSourcePersistsAndSerializesTraceabilityFields() {
+        InventoryRecord saved = inventoryRecordRepository.saveAndFlush(new InventoryRecord(
+                "SKU-INBOUND-1",
+                null,
+                InventoryChangeType.ADJUST_INCREASE,
+                12,
+                "REQ-INBOUND-1",
+                "Confirmed inbound order",
+                101L,
+                "ops-admin",
+                InventoryRecordSourceType.INBOUND_ORDER,
+                "INB-20260601-001"));
+
+        assertThat(saved.getSourceType()).isEqualTo(InventoryRecordSourceType.INBOUND_ORDER);
+        assertThat(saved.getReferenceNo()).isEqualTo("INB-20260601-001");
+        assertThat(saved.getAdminUserId()).isEqualTo(101L);
+        assertThat(saved.getAdminUsername()).isEqualTo("ops-admin");
+
+        InventoryRecordResponse response = InventoryRecordResponse.from(saved);
+
+        assertThat(response.sourceType()).isEqualTo(InventoryRecordSourceType.INBOUND_ORDER);
+        assertThat(response.requestId()).isEqualTo("REQ-INBOUND-1");
+        assertThat(response.referenceNo()).isEqualTo("INB-20260601-001");
+        assertThat(response.adminUserId()).isEqualTo(101L);
+        assertThat(response.adminUsername()).isEqualTo("ops-admin");
+        assertThat(response.status()).isEqualTo(InventoryRecordStatus.SUCCESS);
+    }
 }

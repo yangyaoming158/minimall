@@ -258,7 +258,13 @@ class AdminInventoryControllerTest {
                 .andExpect(jsonPath("$.data.length()").value(2))
                 .andExpect(jsonPath("$.data[0].requestId").value("REQ-REC-2"))
                 .andExpect(jsonPath("$.data[0].changeType").value("ADJUST_DECREASE"))
+                .andExpect(jsonPath("$.data[0].sourceType").value("ADMIN_ADJUSTMENT"))
                 .andExpect(jsonPath("$.data[0].quantity").value(2))
+                .andExpect(jsonPath("$.data[0].reason").value("shrinkage"))
+                .andExpect(jsonPath("$.data[0].adminUserId").value(42))
+                .andExpect(jsonPath("$.data[0].adminUsername").value("admin"))
+                .andExpect(jsonPath("$.data[0].referenceNo").value("REQ-REC-2"))
+                .andExpect(jsonPath("$.data[0].status").value("SUCCESS"))
                 .andExpect(jsonPath("$.data[1].requestId").value("REQ-REC-1"));
     }
 

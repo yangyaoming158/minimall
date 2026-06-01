@@ -2222,12 +2222,13 @@
         "description": "Make inventory records useful for orders, admin adjustments, inbound orders, and future AI suggestion links.",
         "details": "Extend inventory record persistence and DTOs to expose traceability fields such as requestId, reason, adminUserId, adminUsername, sourceType, and referenceNo. Ensure sourceType supports ORDER_DEDUCT, ORDER_RELEASE, ADMIN_INITIALIZE, ADMIN_ADJUSTMENT, and INBOUND_ORDER, with AI_SUGGESTION reserved as a future source/reference value. Preserve existing order deduct/release compatibility and admin adjustment idempotency. Scope note: Phase 2 already ships inventory_records carrying requestId, reason, adminUsername, sourceType, and referenceNo (surfaced in the admin records drawer), and the Phase 2 backlog already reserves the AI_SUGGESTION and INBOUND_ORDER enum members. Treat this task as verify-and-complete (confirm fields/serialization, wire the INBOUND_ORDER source for Task 6, keep AI_SUGGESTION reserved) rather than greenfield — do not duplicate columns or DTO fields that already exist.",
         "testStrategy": "Run inventory-service tests covering admin initialize/adjust, order deduct/release compatibility, duplicate requestId behavior, record query response fields, negative stock rejection, and ApiResponse error shape.",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           "1"
         ],
         "priority": "high",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-06-01T13:14:43.486Z"
       },
       {
         "id": 3,
@@ -2424,15 +2425,15 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-06-01T13:03:40.717Z",
+      "lastModified": "2026-06-01T13:14:43.487Z",
       "taskCount": 8,
-      "completedCount": 1,
+      "completedCount": 2,
       "tags": [
         "phase2-5-ai-inventory-readiness"
       ],
-      "created": "2026-06-01T13:04:49.758Z",
+      "created": "2026-06-01T13:20:42.938Z",
       "description": "Tasks for phase2-5-ai-inventory-readiness context",
-      "updated": "2026-06-01T13:04:49.758Z"
+      "updated": "2026-06-01T13:20:42.938Z"
     }
   }
 }
