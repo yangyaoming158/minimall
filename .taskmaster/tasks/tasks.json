@@ -2205,7 +2205,7 @@
         "id": 1,
         "title": "Define the AI Inventory Integration Contract",
         "description": "Lock the Phase 2.5 boundary, data flow, API naming, and acceptance rules before implementation.",
-        "details": "Create docs/phase2-5-ai-inventory-contract.md based on the Phase 2 admin API contract, Phase 2 acceptance notes, and the Phase 2.5 PRD. Document the allowed flow: structured data query -> suggestion or draft -> admin confirmation -> inventory-service change -> inventory record -> audit log. Explicitly state that AI must not directly update inventory, execute SQL, bypass backend services, or call /internal/**. List the structured APIs Phase 3 AI may consume and describe how Phase 2.5 outputs hand off to Phase 3.",
+        "details": "Create docs/phase2-5-ai-inventory-contract.md based on the Phase 2 admin API contract, Phase 2 acceptance notes, and the Phase 2.5 PRD. Document the allowed flow: structured data query -> suggestion or draft -> admin confirmation -> inventory-service change -> inventory record -> audit log. Explicitly state that AI must not directly update inventory, execute SQL, bypass backend services, or call /internal/**. List the structured APIs Phase 3 AI may consume and describe how Phase 2.5 outputs hand off to Phase 3. Resolve and record three ownership/routing decisions the implementation tasks depend on: (a) the new admin path families /api/admin/operation-stats/**, /api/admin/inbound-orders/**, and /api/admin/ai-suggestions/** each need a gateway route plus downstream ADMIN enforcement; (b) operation-stats spans two owners (sales-by-product in order-service, inventory-trends in inventory-service), so either split the prefix per owner (e.g. /api/admin/operation-stats/sales-* vs /inventory-*) or assign a single owner that aggregates — a single prefix cannot fan out to two services in the gateway; (c) inbound orders, the confirm-apply flow, inventory_records, and ai_operation_suggestion all live in inventory-service so confirmation runs as one local transaction (avoids cross-service distributed transactions). Note that the gateway already strips browser-forged trusted headers and injects X-Internal-Token, so each new admin route inherits the same trust boundary.",
         "testStrategy": "Review the document against docs/phase2-admin-api-contract.md and the Phase 2.5 PRD; verify all non-goals and hard boundaries are explicitly listed.",
         "status": "pending",
         "dependencies": [],
@@ -2216,7 +2216,7 @@
         "id": 2,
         "title": "Enhance Inventory Record Traceability",
         "description": "Make inventory records useful for orders, admin adjustments, inbound orders, and future AI suggestion links.",
-        "details": "Extend inventory record persistence and DTOs to expose traceability fields such as requestId, reason, adminUserId, adminUsername, sourceType, and referenceNo. Ensure sourceType supports ORDER_DEDUCT, ORDER_RELEASE, ADMIN_INITIALIZE, ADMIN_ADJUSTMENT, and INBOUND_ORDER, with AI_SUGGESTION reserved as a future source/reference value. Preserve existing order deduct/release compatibility and admin adjustment idempotency.",
+        "details": "Extend inventory record persistence and DTOs to expose traceability fields such as requestId, reason, adminUserId, adminUsername, sourceType, and referenceNo. Ensure sourceType supports ORDER_DEDUCT, ORDER_RELEASE, ADMIN_INITIALIZE, ADMIN_ADJUSTMENT, and INBOUND_ORDER, with AI_SUGGESTION reserved as a future source/reference value. Preserve existing order deduct/release compatibility and admin adjustment idempotency. Scope note: Phase 2 already ships inventory_records carrying requestId, reason, adminUsername, sourceType, and referenceNo (surfaced in the admin records drawer), and the Phase 2 backlog already reserves the AI_SUGGESTION and INBOUND_ORDER enum members. Treat this task as verify-and-complete (confirm fields/serialization, wire the INBOUND_ORDER source for Task 6, keep AI_SUGGESTION reserved) rather than greenfield — do not duplicate columns or DTO fields that already exist.",
         "testStrategy": "Run inventory-service tests covering admin initialize/adjust, order deduct/release compatibility, duplicate requestId behavior, record query response fields, negative stock rejection, and ApiResponse error shape.",
         "status": "pending",
         "dependencies": [
@@ -2233,8 +2233,7 @@
         "testStrategy": "Run inventory-service admin API tests for threshold create/update/read, low-stock computation, 401 unauthenticated, 403 USER, ApiResponse envelope, and stock state serialization.",
         "status": "pending",
         "dependencies": [
-          1,
-          2
+          1
         ],
         "priority": "medium",
         "subtasks": []
@@ -2247,8 +2246,7 @@
         "testStrategy": "Run focused order-service and inventory-service tests for time range filters, aggregation totals, trend buckets, read-only route behavior, ADMIN enforcement, and ApiResponse/PageResponse envelopes.",
         "status": "pending",
         "dependencies": [
-          1,
-          2
+          1
         ],
         "priority": "medium",
         "subtasks": []
@@ -2270,7 +2268,7 @@
             "id": 1,
             "title": "Add inbound order schema and domain model",
             "description": "Create inbound_order and inbound_order_item migrations/entities/repositories plus status and source enums.",
-            "details": "",
+            "details": "Owner: inventory-service (co-located with confirm/apply so Task 6 is one local transaction). Flyway migration + entities/repositories for inbound_order (inboundNo, status, source, createdBy admin id/username, timestamps) and inbound_order_item (inboundNo FK, productId, quantity). Status enum DRAFT/CONFIRMED/APPLIED/CANCELLED; source enum ADMIN_MANUAL with AI_SUGGESTION reserved; both stored and serialized as stable enum names. Verify: migration applies cleanly; entity/enum round-trip unit test.",
             "status": "pending",
             "dependencies": [],
             "parentTaskId": 5,
@@ -2280,7 +2278,7 @@
             "id": 2,
             "title": "Implement draft create, query, detail, and cancel APIs",
             "description": "Expose admin draft APIs with ApiResponse/PageResponse, validation, ADMIN enforcement, and no inventory side effects.",
-            "details": "",
+            "details": "Add gateway route /api/admin/inbound-orders/** -> inventory-service (mirror an existing admin route; X-Internal-Token now injected automatically). POST /api/admin/inbound-orders/drafts (multi-item), GET list (PageResponse) and GET /{inboundNo} detail. Creating or cancelling a draft must not touch inventory. Verify: create multi-item draft, list/detail pagination, cancel, 401 unauthenticated, 403 USER, and assert zero inventory mutation.",
             "status": "pending",
             "dependencies": [
               1
@@ -2292,7 +2290,7 @@
             "id": 3,
             "title": "Add inbound draft audit and regression tests",
             "description": "Write audit logs and tests covering draft lifecycle, permissions, enum stability, and no stock changes.",
-            "details": "",
+            "details": "Write an admin audit log on draft create and cancel (action + inboundNo + item summary + operator + time). Tests: full draft lifecycle, enum-name stability, ADMIN enforcement, no stock change, and audit entries present.",
             "status": "pending",
             "dependencies": [
               2
@@ -2319,7 +2317,7 @@
             "id": 1,
             "title": "Implement confirmation state machine and idempotency",
             "description": "Validate DRAFT-only confirmation, requestId uniqueness, and deterministic duplicate responses.",
-            "details": "",
+            "details": "POST /api/admin/inbound-orders/{inboundNo}/confirm with a requestId idempotency key. Reject non-DRAFT orders via BusinessException/ApiResponse (conflict). A duplicate requestId returns the deterministic prior result without re-applying. Verify: DRAFT-only guard, duplicate requestId, and that a repeated confirm is a no-op.",
             "status": "pending",
             "dependencies": [],
             "parentTaskId": 6,
@@ -2329,7 +2327,7 @@
             "id": 2,
             "title": "Apply inbound inventory transactionally",
             "description": "Increase stock for all inbound items in one transaction and roll back if any item fails.",
-            "details": "",
+            "details": "Within one inventory-service local transaction: increase available stock for every item and move the order DRAFT->APPLIED. If any item fails, roll back the whole transaction (no partial stock, status unchanged). Reuse the existing idempotent inventory adjust path. Verify: multi-item increase, a forced single-item failure rolls everything back, and negative stock stays impossible.",
             "status": "pending",
             "dependencies": [
               1
@@ -2341,7 +2339,7 @@
             "id": 3,
             "title": "Write inbound inventory records and audit logs",
             "description": "Record sourceType INBOUND_ORDER, referenceNo inboundNo, requestId, operator, item summary, and admin audit entries.",
-            "details": "",
+            "details": "Each stock change writes an inventory_record with sourceType=INBOUND_ORDER, referenceNo=inboundNo, requestId, and operator; plus one admin audit log (admin, inboundNo, item summary, time). Verify: record referenceNo links inboundNo, audit content is complete, and ApiResponse error shapes on failure.",
             "status": "pending",
             "dependencies": [
               2
@@ -2368,7 +2366,7 @@
             "id": 1,
             "title": "Add AI suggestion schema and domain model",
             "description": "Create ai_operation_suggestion persistence, status enum, source/input snapshot fields, and repositories.",
-            "details": "",
+            "details": "Owner: inventory-service (co-located with inbound drafts/records). Flyway migration + model for ai_operation_suggestion (suggestionNo, type, status, source, suggested items/quantities, reason, inputSnapshotRef or structured input summary, linkedInboundNo, timestamps). Status enum PENDING_REVIEW/CONVERTED_TO_DRAFT/REJECTED/APPLIED with stable names. No model calls — store/route only. Verify: migration applies; enum/field round-trip.",
             "status": "pending",
             "dependencies": [],
             "parentTaskId": 7,
@@ -2378,7 +2376,7 @@
             "id": 2,
             "title": "Implement suggestion query and reject APIs",
             "description": "Expose admin list/detail/reject behavior with reason capture, ApiResponse/PageResponse, and ADMIN enforcement.",
-            "details": "",
+            "details": "Add gateway route /api/admin/ai-suggestions/** -> inventory-service with ADMIN enforcement. GET list (PageResponse) and detail; POST /{suggestionNo}/reject capturing a reason and moving status to REJECTED. Suggestions never mutate inventory. Verify: list/detail, reject-with-reason transition, 403 USER, 401 unauthenticated.",
             "status": "pending",
             "dependencies": [
               1
@@ -2390,7 +2388,7 @@
             "id": 3,
             "title": "Implement convert suggestion to inbound draft",
             "description": "Convert a pending suggestion to an inbound draft, link inboundNo, update suggestion status, and avoid inventory mutation.",
-            "details": "",
+            "details": "POST /{suggestionNo}/convert-inbound-draft builds an inbound draft (Task 5) from the suggestion's items, sets suggestion.linkedInboundNo and status CONVERTED_TO_DRAFT. No inventory change at convert time. Verify: convert creates a DRAFT, the inboundNo linkage is recorded, status transitions correctly, and no stock is mutated.",
             "status": "pending",
             "dependencies": [
               1
