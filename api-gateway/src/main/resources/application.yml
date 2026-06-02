@@ -24,7 +24,7 @@ spring:
         - id: order-service
           uri: ${ORDER_SERVICE_BASE_URL:http://localhost:8104}
           predicates:
-            - Path=/api/orders/**,/api/admin/orders/**
+            - Path=/api/orders/**,/api/admin/orders/**,/api/admin/operation-stats/sales-by-product
         - id: payment-service
           uri: ${PAYMENT_SERVICE_BASE_URL:http://localhost:8105}
           predicates:

@@ -42,7 +42,7 @@ class GatewayRoutesTest {
         assertRoute(routes, "inventory-service", "http://inventory-service.test",
                 "/api/inventories/**", "/api/admin/inventories/**");
         assertRoute(routes, "order-service", "http://order-service.test",
-                "/api/orders/**", "/api/admin/orders/**");
+                "/api/orders/**", "/api/admin/orders/**", "/api/admin/operation-stats/sales-by-product");
         assertRoute(routes, "payment-service", "http://payment-service.test",
                 "/api/payments/**", "/api/admin/payments/**");
         assertRoute(routes, "notification-service", "http://notification-service.test",

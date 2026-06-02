@@ -13,6 +13,7 @@ import com.minimall.order.dto.OrderEventResponse;
 import com.minimall.order.dto.OrderItemSummary;
 import com.minimall.order.dto.OrderSummaryResponse;
 import com.minimall.order.dto.ProductSalesAggregationResponse;
+import com.minimall.order.dto.SalesByProductStatsResponse;
 import com.minimall.order.repository.OrderEventRepository;
 import com.minimall.order.repository.ProductSalesAggregation;
 import com.minimall.order.repository.OrderRepository;
@@ -132,6 +133,18 @@ public class OrderQueryService {
                 .map(this::toProductSalesAggregationResponse));
     }
 
+    @Transactional(readOnly = true)
+    public PageResponse<SalesByProductStatsResponse> salesByProductStats(
+            LocalDateTime createdFrom,
+            LocalDateTime createdTo,
+            Pageable pageable) {
+        validateCreatedRange(createdFrom, createdTo);
+        Pageable boundedPageable = boundedPageable(pageable);
+        return PageResponse.from(orderRepository.aggregateProductSales(
+                        null, OrderStatus.PAID, createdFrom, createdTo, boundedPageable)
+                .map(this::toSalesByProductStatsResponse));
+    }
+
     private OrderDetailResponse toDetailResponse(Order order) {
         return new OrderDetailResponse(
                 order.getOrderNo(),
@@ -173,6 +186,14 @@ public class OrderQueryService {
                 aggregation.getProductId(),
                 aggregation.getQuantitySold() == null ? 0L : aggregation.getQuantitySold(),
                 aggregation.getOrderCount() == null ? 0L : aggregation.getOrderCount(),
+                aggregation.getTotalAmount() == null ? BigDecimal.ZERO : aggregation.getTotalAmount());
+    }
+
+    private SalesByProductStatsResponse toSalesByProductStatsResponse(ProductSalesAggregation aggregation) {
+        return new SalesByProductStatsResponse(
+                aggregation.getProductId(),
+                aggregation.getOrderCount() == null ? 0L : aggregation.getOrderCount(),
+                aggregation.getQuantitySold() == null ? 0L : aggregation.getQuantitySold(),
                 aggregation.getTotalAmount() == null ? BigDecimal.ZERO : aggregation.getTotalAmount());
     }
 

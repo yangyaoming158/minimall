@@ -231,6 +231,118 @@ class AdminOrderControllerTest {
     }
 
     @Test
+    void salesByProductStatsRequiresAuthentication() throws Exception {
+        mockMvc.perform(get("/api/admin/operation-stats/sales-by-product"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(ErrorCode.UNAUTHORIZED.getCode()));
+    }
+
+    @Test
+    void salesByProductStatsRejectsUserRole() throws Exception {
+        mockMvc.perform(get("/api/admin/operation-stats/sales-by-product")
+                        .header(AuthHeaders.USER_ID, "501")
+                        .header(AuthHeaders.USERNAME, "operator")
+                        .header(AuthHeaders.USER_ROLE, "USER"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(ErrorCode.FORBIDDEN.getCode()));
+    }
+
+    @Test
+    void salesByProductStatsReturnsReadOnlyAggregationForAdmin() throws Exception {
+        LocalDateTime createdAt = LocalDateTime.of(2026, 5, 24, 10, 0);
+        saveOrder(order(
+                "ORD-OP-STATS-1001",
+                611L,
+                "SKU-OP-A",
+                2,
+                new BigDecimal("19.90"),
+                OrderStatus.PAID),
+                createdAt.plusHours(1));
+        saveOrder(order(
+                "ORD-OP-STATS-1002",
+                612L,
+                "SKU-OP-A",
+                3,
+                new BigDecimal("19.90"),
+                OrderStatus.PAID),
+                createdAt.plusHours(2));
+        saveOrder(order(
+                "ORD-OP-STATS-1003",
+                613L,
+                "SKU-OP-B",
+                4,
+                new BigDecimal("8.50"),
+                OrderStatus.PAID),
+                createdAt.plusHours(3));
+        saveOrder(order(
+                "ORD-OP-STATS-PENDING",
+                615L,
+                "SKU-OP-PENDING",
+                99,
+                new BigDecimal("999.00"),
+                OrderStatus.PENDING_PAYMENT),
+                createdAt.plusHours(4));
+        saveOrder(order(
+                "ORD-OP-STATS-OLD",
+                614L,
+                "SKU-OP-C",
+                10,
+                new BigDecimal("99.00"),
+                OrderStatus.PAID),
+                createdAt.minusDays(5));
+
+        long beforeCount = orderRepository.count();
+
+        mockMvc.perform(get("/api/admin/operation-stats/sales-by-product")
+                        .header(AuthHeaders.USER_ID, "900")
+                        .header(AuthHeaders.USERNAME, "admin")
+                        .header(AuthHeaders.USER_ROLE, "ADMIN")
+                        .param("createdFrom", "2026-05-24T00:00:00")
+                        .param("createdTo", "2026-05-25T00:00:00")
+                        .param("page", "0")
+                        .param("size", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.code").value(ErrorCode.SUCCESS.getCode()))
+                .andExpect(jsonPath("$.data.page").value(0))
+                .andExpect(jsonPath("$.data.size").value(10))
+                .andExpect(jsonPath("$.data.totalElements").value(2))
+                .andExpect(jsonPath("$.data.totalPages").value(1))
+                .andExpect(jsonPath("$.data.content[0].productId").value("SKU-OP-A"))
+                .andExpect(jsonPath("$.data.content[0].orderCount").value(2))
+                .andExpect(jsonPath("$.data.content[0].soldQuantity").value(5))
+                .andExpect(jsonPath("$.data.content[0].totalAmount").value(99.50))
+                .andExpect(jsonPath("$.data.content[0].quantitySold").doesNotExist())
+                .andExpect(jsonPath("$.data.content[0].id").doesNotExist())
+                .andExpect(jsonPath("$.data.content[1].productId").value("SKU-OP-B"))
+                .andExpect(jsonPath("$.data.content[1].orderCount").value(1))
+                .andExpect(jsonPath("$.data.content[1].soldQuantity").value(4))
+                .andExpect(jsonPath("$.data.content[1].totalAmount").value(34.00));
+
+        assertThat(orderRepository.count()).isEqualTo(beforeCount);
+        assertThat(orderRepository.findByOrderNo("ORD-OP-STATS-1001"))
+                .get()
+                .extracting(Order::getStatus)
+                .isEqualTo(OrderStatus.PAID);
+    }
+
+    @Test
+    void salesByProductStatsRejectsInvalidDateRange() throws Exception {
+        mockMvc.perform(get("/api/admin/operation-stats/sales-by-product")
+                        .header(AuthHeaders.USER_ID, "900")
+                        .header(AuthHeaders.USERNAME, "admin")
+                        .header(AuthHeaders.USER_ROLE, "ADMIN")
+                        .param("createdFrom", "2026-05-25T00:00:00")
+                        .param("createdTo", "2026-05-24T00:00:00"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(ErrorCode.BAD_REQUEST.getCode()))
+                .andExpect(jsonPath("$.message").value("createdFrom must be before or equal to createdTo"));
+    }
+
+    @Test
     void customerMyOrdersStillUsesCustomerContract() throws Exception {
         saveOrder(order(
                 "ORD-CUSTOMER-UNCHANGED-1001",
