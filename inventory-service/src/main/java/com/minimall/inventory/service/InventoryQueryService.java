@@ -52,6 +52,12 @@ public class InventoryQueryService {
     }
 
     @Transactional(readOnly = true)
+    public PageResponse<AdminInventoryResponse> lowStock(Pageable pageable) {
+        return PageResponse.from(inventoryRepository.findLowStock(InventoryStatus.ACTIVE, pageable)
+                .map(AdminInventoryResponse::from));
+    }
+
+    @Transactional(readOnly = true)
     public List<InventoryRecordResponse> records(String productId) {
         getInventory(productId);
         return inventoryRecordRepository.findByProductIdOrderByCreatedAtDescIdDesc(productId).stream()

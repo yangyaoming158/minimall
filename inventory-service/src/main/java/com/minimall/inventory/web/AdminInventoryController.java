@@ -9,6 +9,7 @@ import com.minimall.inventory.dto.AdjustInventoryRequest;
 import com.minimall.inventory.dto.AdminInventoryResponse;
 import com.minimall.inventory.dto.InitializeInventoryRequest;
 import com.minimall.inventory.dto.InventoryRecordResponse;
+import com.minimall.inventory.dto.UpdateSafetyStockRequest;
 import com.minimall.inventory.service.InventoryCommandService;
 import com.minimall.inventory.service.InventoryQueryService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -18,6 +19,7 @@ import java.util.Locale;
 import org.springframework.data.domain.Pageable;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -50,6 +52,12 @@ public class AdminInventoryController {
                 inventoryQueryService.adminList(keyword, parseStockState(stockState), lowStock, pageable));
     }
 
+    @GetMapping("/low-stock")
+    public ApiResponse<PageResponse<AdminInventoryResponse>> lowStock(Pageable pageable) {
+        AdminAccess.requireAdmin();
+        return ApiResponse.success(inventoryQueryService.lowStock(pageable));
+    }
+
     @GetMapping("/{productId}")
     public ApiResponse<AdminInventoryResponse> detail(@PathVariable("productId") String productId) {
         AdminAccess.requireAdmin();
@@ -70,6 +78,15 @@ public class AdminInventoryController {
             @Valid @RequestBody AdjustInventoryRequest request,
             HttpServletRequest servletRequest) {
         return ApiResponse.success(inventoryCommandService.adjust(
+                productId, request, AdminAccess.requireAdminAuditContext(servletRequest)));
+    }
+
+    @PatchMapping("/{productId}/safety-stock")
+    public ApiResponse<AdminInventoryResponse> updateSafetyStock(
+            @PathVariable("productId") String productId,
+            @Valid @RequestBody UpdateSafetyStockRequest request,
+            HttpServletRequest servletRequest) {
+        return ApiResponse.success(inventoryCommandService.updateSafetyStock(
                 productId, request, AdminAccess.requireAdminAuditContext(servletRequest)));
     }
 

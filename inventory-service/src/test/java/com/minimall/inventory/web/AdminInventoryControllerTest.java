@@ -6,6 +6,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -22,6 +23,7 @@ import com.minimall.inventory.domain.Inventory;
 import com.minimall.inventory.domain.InventoryRecordSourceType;
 import com.minimall.inventory.dto.AdjustInventoryRequest;
 import com.minimall.inventory.dto.InitializeInventoryRequest;
+import com.minimall.inventory.dto.UpdateSafetyStockRequest;
 import com.minimall.inventory.repository.InventoryRecordRepository;
 import com.minimall.inventory.repository.InventoryRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -116,6 +118,32 @@ class AdminInventoryControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.totalElements").value(1))
                 .andExpect(jsonPath("$.data.content[0].productId").value("SKU-LOW"))
+                .andExpect(jsonPath("$.data.content[0].lowStock").value(true));
+    }
+
+    @Test
+    void lowStockRequiresAuthentication() throws Exception {
+        mockMvc.perform(get("/api/admin/inventories/low-stock"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value(ErrorCode.UNAUTHORIZED.getCode()));
+    }
+
+    @Test
+    void lowStockReturnsBackendComputedCandidates() throws Exception {
+        inventoryRepository.saveAndFlush(buildInventory("SKU-LOW-QUERY", 0, 2, 5));
+        inventoryRepository.saveAndFlush(buildInventory("SKU-LOW-HEALTHY", 20, 0, 5));
+        inventoryRepository.saveAndFlush(buildInventory("SKU-LOW-DISABLED", 0, 0, 0));
+
+        mockMvc.perform(get("/api/admin/inventories/low-stock")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.totalElements").value(1))
+                .andExpect(jsonPath("$.data.content[0].productId").value("SKU-LOW-QUERY"))
+                .andExpect(jsonPath("$.data.content[0].availableStock").value(0))
+                .andExpect(jsonPath("$.data.content[0].lockedStock").value(2))
+                .andExpect(jsonPath("$.data.content[0].safetyStock").value(5))
+                .andExpect(jsonPath("$.data.content[0].stockState").value("OUT_OF_STOCK"))
                 .andExpect(jsonPath("$.data.content[0].lowStock").value(true));
     }
 
@@ -244,6 +272,68 @@ class AdminInventoryControllerTest {
         adjust("SKU-MISSING", 1, "reason", "REQ-MISSING")
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value(ErrorCode.NOT_FOUND.getCode()));
+    }
+
+    @Test
+    void updateSafetyStockRejectsNonAdmin() throws Exception {
+        inventoryRepository.saveAndFlush(buildInventory("SKU-SAFE-USER", 8, 0, 2));
+
+        mockMvc.perform(patch("/api/admin/inventories/SKU-SAFE-USER/safety-stock")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(new UpdateSafetyStockRequest(6))))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value(ErrorCode.FORBIDDEN.getCode()));
+    }
+
+    @Test
+    void updateSafetyStockUpdatesThresholdAndWritesAudit() throws Exception {
+        inventoryRepository.saveAndFlush(buildInventory("SKU-SAFE-UPD", 4, 1, 2));
+
+        mockMvc.perform(patch("/api/admin/inventories/SKU-SAFE-UPD/safety-stock")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(new UpdateSafetyStockRequest(6))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.productId").value("SKU-SAFE-UPD"))
+                .andExpect(jsonPath("$.data.availableStock").value(4))
+                .andExpect(jsonPath("$.data.lockedStock").value(1))
+                .andExpect(jsonPath("$.data.safetyStock").value(6))
+                .andExpect(jsonPath("$.data.stockState").value("IN_STOCK"))
+                .andExpect(jsonPath("$.data.lowStock").value(true));
+
+        mockMvc.perform(get("/api/admin/inventories/SKU-SAFE-UPD")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.safetyStock").value(6))
+                .andExpect(jsonPath("$.data.lowStock").value(true));
+
+        AdminAuditLogWriteRequest audit = captureSingleAudit();
+        assertThat(audit.action()).isEqualTo(AdminAuditAction.INVENTORY_ADJUST);
+        assertThat(audit.resourceType()).isEqualTo(AdminAuditResourceType.INVENTORY);
+        assertThat(audit.resourceId()).isEqualTo("SKU-SAFE-UPD");
+        assertThat(audit.referenceNo()).isEqualTo("SKU-SAFE-UPD");
+        assertThat(audit.beforeSnapshot().get("safetyStock").asInt()).isEqualTo(2);
+        assertThat(audit.afterSnapshot().get("safetyStock").asInt()).isEqualTo(6);
+        assertThat(audit.afterSnapshot().get("lowStock").asBoolean()).isTrue();
+    }
+
+    @Test
+    void updateSafetyStockRejectsNegativeThreshold() throws Exception {
+        inventoryRepository.saveAndFlush(buildInventory("SKU-SAFE-NEG", 4, 0, 2));
+
+        mockMvc.perform(patch("/api/admin/inventories/SKU-SAFE-NEG/safety-stock")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(new UpdateSafetyStockRequest(-1))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION_ERROR.getCode()));
+
+        assertThat(inventoryRepository.findByProductId("SKU-SAFE-NEG"))
+                .get()
+                .extracting(Inventory::getSafetyStock)
+                .isEqualTo(2);
     }
 
     @Test

@@ -18,6 +18,7 @@ import com.minimall.inventory.dto.AdminInventoryResponse;
 import com.minimall.inventory.dto.InitializeInventoryRequest;
 import com.minimall.inventory.dto.InventoryChangeRequest;
 import com.minimall.inventory.dto.InventoryResponse;
+import com.minimall.inventory.dto.UpdateSafetyStockRequest;
 import com.minimall.inventory.repository.InventoryRecordRepository;
 import com.minimall.inventory.repository.InventoryRepository;
 import org.springframework.stereotype.Service;
@@ -140,6 +141,28 @@ public class InventoryCommandService {
                 before,
                 after,
                 "Adjust inventory " + saved.getProductId() + " by " + delta + " (" + request.reason() + ")");
+        return after;
+    }
+
+    @Transactional
+    public AdminInventoryResponse updateSafetyStock(
+            String productId, UpdateSafetyStockRequest request, InventoryAdminAuditContext auditContext) {
+        Inventory inventory = inventoryRepository.findByProductId(productId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Inventory not found"));
+
+        AdminInventoryResponse before = AdminInventoryResponse.from(inventory);
+        inventory.setSafetyStock(request.safetyStock());
+        Inventory saved = inventoryRepository.saveAndFlush(inventory);
+
+        AdminInventoryResponse after = AdminInventoryResponse.from(saved);
+        writeAudit(
+                auditContext,
+                AdminAuditAction.INVENTORY_ADJUST,
+                saved.getProductId(),
+                saved.getProductId(),
+                before,
+                after,
+                "Update inventory " + saved.getProductId() + " safety stock to " + request.safetyStock());
         return after;
     }
 

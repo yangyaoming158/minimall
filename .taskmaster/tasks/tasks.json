@@ -2236,12 +2236,13 @@
         "description": "Provide a structured low-stock baseline for future replenishment suggestions.",
         "details": "Add safetyStock or lowStockThreshold to the inventory admin model and expose admin APIs to set/read the threshold. Add a backend-computed low-stock query such as GET /api/admin/inventories/low-stock. Responses must include productId, availableStock, lockedStock, safetyStock, and stockState. Future AI code must be able to obtain low-stock candidates without database access.",
         "testStrategy": "Run inventory-service admin API tests for threshold create/update/read, low-stock computation, 401 unauthenticated, 403 USER, ApiResponse envelope, and stock state serialization.",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           "1"
         ],
         "priority": "high",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-06-02T11:18:33.552Z"
       },
       {
         "id": 4,
@@ -2425,9 +2426,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-06-01T13:14:43.487Z",
+      "lastModified": "2026-06-02T11:18:33.552Z",
       "taskCount": 8,
-      "completedCount": 2,
+      "completedCount": 3,
       "tags": [
         "phase2-5-ai-inventory-readiness"
       ],
