@@ -20,12 +20,16 @@ import com.minimall.common.core.audit.AdminAuditResourceType;
 import com.minimall.common.core.audit.AdminAuditWriter;
 import com.minimall.common.core.exception.ErrorCode;
 import com.minimall.inventory.domain.Inventory;
+import com.minimall.inventory.domain.InventoryChangeType;
+import com.minimall.inventory.domain.InventoryRecord;
 import com.minimall.inventory.domain.InventoryRecordSourceType;
 import com.minimall.inventory.dto.AdjustInventoryRequest;
 import com.minimall.inventory.dto.InitializeInventoryRequest;
 import com.minimall.inventory.dto.UpdateSafetyStockRequest;
 import com.minimall.inventory.repository.InventoryRecordRepository;
 import com.minimall.inventory.repository.InventoryRepository;
+import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -35,6 +39,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -66,6 +71,9 @@ class AdminInventoryControllerTest {
 
     @Autowired
     private InventoryRecordRepository inventoryRecordRepository;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     @MockBean
     private AdminAuditWriter adminAuditWriter;
@@ -145,6 +153,129 @@ class AdminInventoryControllerTest {
                 .andExpect(jsonPath("$.data.content[0].safetyStock").value(5))
                 .andExpect(jsonPath("$.data.content[0].stockState").value("OUT_OF_STOCK"))
                 .andExpect(jsonPath("$.data.content[0].lowStock").value(true));
+    }
+
+    @Test
+    void inventoryTrendsRequiresAuthentication() throws Exception {
+        mockMvc.perform(get("/api/admin/operation-stats/inventory-trends"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(ErrorCode.UNAUTHORIZED.getCode()));
+    }
+
+    @Test
+    void inventoryTrendsRejectsNonAdmin() throws Exception {
+        mockMvc.perform(get("/api/admin/operation-stats/inventory-trends")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(ErrorCode.FORBIDDEN.getCode()));
+    }
+
+    @Test
+    void inventoryTrendsReturnsDailyBucketsAndDoesNotMutateInventory() throws Exception {
+        inventoryRepository.saveAndFlush(buildInventory("SKU-TREND-A", 20, 0, 0));
+        inventoryRepository.saveAndFlush(buildInventory("SKU-TREND-B", 8, 0, 0));
+        inventoryRepository.saveAndFlush(buildInventory("SKU-TREND-OLD", 100, 0, 0));
+        LocalDateTime day1 = LocalDateTime.of(2026, 5, 20, 0, 0);
+        LocalDateTime day2 = day1.plusDays(1);
+
+        saveRecord(
+                "SKU-TREND-A",
+                InventoryChangeType.ADJUST_INCREASE,
+                20,
+                InventoryRecordSourceType.ADMIN_INITIALIZE,
+                "INIT-TREND-A",
+                day1.plusHours(1));
+        saveRecord(
+                "SKU-TREND-A",
+                InventoryChangeType.DEDUCT,
+                3,
+                InventoryRecordSourceType.ORDER_DEDUCT,
+                "ORDER-TREND-A-1",
+                day1.plusHours(2));
+        saveRecord(
+                "SKU-TREND-A",
+                InventoryChangeType.ADJUST_INCREASE,
+                5,
+                InventoryRecordSourceType.INBOUND_ORDER,
+                "INB-TREND-A-1",
+                day2.plusHours(1));
+        saveRecord(
+                "SKU-TREND-A",
+                InventoryChangeType.ADJUST_DECREASE,
+                2,
+                InventoryRecordSourceType.ADMIN_ADJUSTMENT,
+                "ADJ-TREND-A-1",
+                day2.plusHours(2));
+        saveRecord(
+                "SKU-TREND-B",
+                InventoryChangeType.RELEASE,
+                4,
+                InventoryRecordSourceType.ORDER_RELEASE,
+                "ORDER-TREND-B-1",
+                day2.plusHours(3));
+        saveRecord(
+                "SKU-TREND-OLD",
+                InventoryChangeType.ADJUST_INCREASE,
+                100,
+                InventoryRecordSourceType.ADMIN_INITIALIZE,
+                "INIT-TREND-OLD",
+                day1.minusDays(3));
+
+        long beforeRecordCount = inventoryRecordRepository.count();
+
+        mockMvc.perform(get("/api/admin/operation-stats/inventory-trends")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken())
+                        .param("createdFrom", "2026-05-20T00:00:00")
+                        .param("createdTo", "2026-05-21T23:59:59")
+                        .param("page", "0")
+                        .param("size", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.code").value(ErrorCode.SUCCESS.getCode()))
+                .andExpect(jsonPath("$.data.page").value(0))
+                .andExpect(jsonPath("$.data.size").value(10))
+                .andExpect(jsonPath("$.data.totalElements").value(3))
+                .andExpect(jsonPath("$.data.totalPages").value(1))
+                .andExpect(jsonPath("$.data.content[0].productId").value("SKU-TREND-A"))
+                .andExpect(jsonPath("$.data.content[0].bucketDate").value("2026-05-20"))
+                .andExpect(jsonPath("$.data.content[0].inboundQuantity").value(0))
+                .andExpect(jsonPath("$.data.content[0].outboundQuantity").value(3))
+                .andExpect(jsonPath("$.data.content[0].adjustmentQuantity").value(20))
+                .andExpect(jsonPath("$.data.content[0].endingStock").value(17))
+                .andExpect(jsonPath("$.data.content[0].id").doesNotExist())
+                .andExpect(jsonPath("$.data.content[1].productId").value("SKU-TREND-A"))
+                .andExpect(jsonPath("$.data.content[1].bucketDate").value("2026-05-21"))
+                .andExpect(jsonPath("$.data.content[1].inboundQuantity").value(5))
+                .andExpect(jsonPath("$.data.content[1].outboundQuantity").value(0))
+                .andExpect(jsonPath("$.data.content[1].adjustmentQuantity").value(-2))
+                .andExpect(jsonPath("$.data.content[1].endingStock").value(20))
+                .andExpect(jsonPath("$.data.content[2].productId").value("SKU-TREND-B"))
+                .andExpect(jsonPath("$.data.content[2].bucketDate").value("2026-05-21"))
+                .andExpect(jsonPath("$.data.content[2].inboundQuantity").value(4))
+                .andExpect(jsonPath("$.data.content[2].outboundQuantity").value(0))
+                .andExpect(jsonPath("$.data.content[2].adjustmentQuantity").value(0))
+                .andExpect(jsonPath("$.data.content[2].endingStock").value(8));
+
+        assertThat(inventoryRecordRepository.count()).isEqualTo(beforeRecordCount);
+        assertThat(inventoryRepository.findByProductId("SKU-TREND-A"))
+                .get()
+                .extracting(Inventory::getAvailableStock)
+                .isEqualTo(20);
+        verify(adminAuditWriter, never()).write(any());
+    }
+
+    @Test
+    void inventoryTrendsRejectsInvalidDateRange() throws Exception {
+        mockMvc.perform(get("/api/admin/operation-stats/inventory-trends")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken())
+                        .param("createdFrom", "2026-05-22T00:00:00")
+                        .param("createdTo", "2026-05-21T00:00:00"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(ErrorCode.BAD_REQUEST.getCode()))
+                .andExpect(jsonPath("$.message").value("createdFrom must be before or equal to createdTo"));
     }
 
     @Test
@@ -370,6 +501,33 @@ class AdminInventoryControllerTest {
         Inventory inventory = new Inventory(productId, available, locked);
         inventory.setSafetyStock(safetyStock);
         return inventory;
+    }
+
+    private void saveRecord(
+            String productId,
+            InventoryChangeType changeType,
+            int quantity,
+            InventoryRecordSourceType sourceType,
+            String referenceNo,
+            LocalDateTime createdAt) {
+        String orderNo = sourceType == InventoryRecordSourceType.ORDER_DEDUCT
+                || sourceType == InventoryRecordSourceType.ORDER_RELEASE ? referenceNo : null;
+        InventoryRecord saved = inventoryRecordRepository.saveAndFlush(new InventoryRecord(
+                productId,
+                orderNo,
+                changeType,
+                quantity,
+                referenceNo,
+                "trend test",
+                42L,
+                "admin",
+                sourceType,
+                referenceNo));
+        jdbcTemplate.update(
+                "update inventory_records set created_at = ?, updated_at = ? where id = ?",
+                Timestamp.valueOf(createdAt),
+                Timestamp.valueOf(createdAt),
+                saved.getId());
     }
 
     private String json(Object value) throws Exception {

@@ -20,7 +20,7 @@ spring:
         - id: inventory-service
           uri: ${INVENTORY_SERVICE_BASE_URL:http://localhost:8103}
           predicates:
-            - Path=/api/inventories/**,/api/admin/inventories/**
+            - Path=/api/inventories/**,/api/admin/inventories/**,/api/admin/operation-stats/inventory-trends
         - id: order-service
           uri: ${ORDER_SERVICE_BASE_URL:http://localhost:8104}
           predicates:

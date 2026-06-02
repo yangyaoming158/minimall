@@ -2250,7 +2250,7 @@
         "description": "Expose minimal read-only statistics for admin UI and future AI analysis.",
         "details": "Implement admin read-only statistics APIs under /api/admin/**, for example sales aggregation by product and inventory trend queries. Sales aggregation should support time ranges and return productId, orderCount, soldQuantity, and totalAmount. Inventory trend should support time ranges/buckets and return inboundQuantity, outboundQuantity, adjustmentQuantity, and endingStock. Do not mutate inventory or require callers to read service databases directly.",
         "testStrategy": "Run focused order-service and inventory-service tests for time range filters, aggregation totals, trend buckets, read-only route behavior, ADMIN enforcement, and ApiResponse/PageResponse envelopes.",
-        "status": "in-progress",
+        "status": "done",
         "dependencies": [
           "1"
         ],
@@ -2272,15 +2272,16 @@
             "title": "Add inventory-trends operation stats API",
             "description": "Expose a read-only admin inventory trend endpoint in inventory-service for future AI replenishment analysis.",
             "details": "Implement GET /api/admin/operation-stats/inventory-trends owned by inventory-service, routed through api-gateway with a precise path predicate. Support optional createdFrom and createdTo time range filters and a day bucket. Aggregate inventory_records into productId, bucketDate, inboundQuantity, outboundQuantity, adjustmentQuantity, and endingStock. Enforce ADMIN with ApiResponse output. The endpoint is read-only and must not mutate inventory.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "4.1"
             ],
             "parentTaskId": 4,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-06-02T16:07:02.634Z"
           }
         ],
-        "updatedAt": "2026-06-02T11:29:57.910Z"
+        "updatedAt": "2026-06-02T16:07:02.634Z"
       },
       {
         "id": 5,
@@ -2451,9 +2452,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-06-02T11:29:57.911Z",
+      "lastModified": "2026-06-02T16:07:02.634Z",
       "taskCount": 8,
-      "completedCount": 3,
+      "completedCount": 4,
       "tags": [
         "phase2-5-ai-inventory-readiness"
       ],
