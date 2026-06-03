@@ -10,4 +10,6 @@ public interface InboundOrderItemRepository extends JpaRepository<InboundOrderIt
     List<InboundOrderItem> findByInboundNoOrderByIdAsc(String inboundNo);
 
     List<InboundOrderItem> findByInboundNoIn(Collection<String> inboundNos);
+
+    List<InboundOrderItem> findByInboundNoInOrderByInboundNoAscIdAsc(Collection<String> inboundNos);
 }

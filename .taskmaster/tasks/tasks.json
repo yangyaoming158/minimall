@@ -2312,12 +2312,13 @@
             "title": "Implement draft create, query, detail, and cancel APIs",
             "description": "Expose admin draft APIs with ApiResponse/PageResponse, validation, ADMIN enforcement, and no inventory side effects.",
             "details": "Add gateway route /api/admin/inbound-orders/** -> inventory-service (mirror an existing admin route; X-Internal-Token now injected automatically). POST /api/admin/inbound-orders/drafts (multi-item), GET list (PageResponse) and GET /{inboundNo} detail. Creating or cancelling a draft must not touch inventory. Verify: create multi-item draft, list/detail pagination, cancel, 401 unauthenticated, 403 USER, and assert zero inventory mutation.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               1
             ],
             "parentTaskId": 5,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-06-03T11:43:20.507Z"
           },
           {
             "id": 3,
@@ -2332,7 +2333,7 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-06-03T11:27:23.435Z"
+        "updatedAt": "2026-06-03T11:43:20.507Z"
       },
       {
         "id": 6,
@@ -2454,7 +2455,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-06-03T11:27:23.438Z",
+      "lastModified": "2026-06-03T11:43:20.510Z",
       "taskCount": 8,
       "completedCount": 4,
       "tags": [
