@@ -2342,7 +2342,7 @@
         "description": "After an administrator confirms an inbound order, inventory-service applies the stock increase in a transaction and writes records and audit logs.",
         "details": "Implement POST /api/admin/inbound-orders/{inboundNo}/confirm with admin identity and requestId idempotency. Only DRAFT inbound orders can be confirmed. Successful confirmation increases inventory and moves the order to APPLIED. Repeated confirmation or duplicate requestId must not increase stock twice. If any item fails, the whole transaction rolls back. Each inventory record must link back to inboundNo, and audit logs must record admin, inbound number, item summary, and time.",
         "testStrategy": "Run transaction and API tests for DRAFT-only confirmation, duplicate requestId, repeated confirmation, rollback on item failure, inventory increase, inventory_records referenceNo, audit log content, and ApiResponse errors.",
-        "status": "pending",
+        "status": "in-progress",
         "dependencies": [
           "2",
           "5"
@@ -2354,10 +2354,11 @@
             "title": "Implement confirmation state machine and idempotency",
             "description": "Validate DRAFT-only confirmation, requestId uniqueness, and deterministic duplicate responses.",
             "details": "POST /api/admin/inbound-orders/{inboundNo}/confirm with a requestId idempotency key. Reject non-DRAFT orders via BusinessException/ApiResponse (conflict). A duplicate requestId returns the deterministic prior result without re-applying. Verify: DRAFT-only guard, duplicate requestId, and that a repeated confirm is a no-op.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 6,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-06-03T12:27:27.260Z"
           },
           {
             "id": 2,
@@ -2383,7 +2384,8 @@
             "parentTaskId": 6,
             "parentId": "undefined"
           }
-        ]
+        ],
+        "updatedAt": "2026-06-03T12:27:27.260Z"
       },
       {
         "id": 7,
@@ -2456,7 +2458,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-06-03T12:02:54.992Z",
+      "lastModified": "2026-06-03T12:27:27.264Z",
       "taskCount": 8,
       "completedCount": 5,
       "tags": [

@@ -61,6 +61,14 @@ public class AdminInboundOrderController {
                 inboundNo, AdminAccess.requireAdminAuditContext(servletRequest)));
     }
 
+    @PostMapping("/{inboundNo}/confirm")
+    public ApiResponse<InboundOrderResponse> confirm(
+            @PathVariable("inboundNo") String inboundNo,
+            HttpServletRequest servletRequest) {
+        return ApiResponse.success(inboundOrderDraftService.confirm(
+                inboundNo, AdminAccess.requireAdminAuditContext(servletRequest)));
+    }
+
     private InboundOrderStatus parseStatus(String status) {
         if (!StringUtils.hasText(status)) {
             return null;

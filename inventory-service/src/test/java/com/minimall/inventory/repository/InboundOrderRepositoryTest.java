@@ -73,6 +73,38 @@ class InboundOrderRepositoryTest {
     }
 
     @Test
+    void persistsConfirmationStateAndFindsByRequestId() {
+        InboundOrder order = new InboundOrder("INB-CONFIRM-REQ", 1001L, "ops-admin");
+        order.confirm(" REQ-CONFIRM-1 ", 1002L, " reviewer ");
+        inboundOrderRepository.saveAndFlush(order);
+
+        assertThat(inboundOrderRepository.findByConfirmRequestId("REQ-CONFIRM-1"))
+                .isPresent()
+                .get()
+                .satisfies(saved -> {
+                    assertThat(saved.getInboundNo()).isEqualTo("INB-CONFIRM-REQ");
+                    assertThat(saved.getStatus()).isEqualTo(InboundOrderStatus.CONFIRMED);
+                    assertThat(saved.getConfirmRequestId()).isEqualTo("REQ-CONFIRM-1");
+                    assertThat(saved.getConfirmedByAdminUserId()).isEqualTo(1002L);
+                    assertThat(saved.getConfirmedByAdminUsername()).isEqualTo("reviewer");
+                    assertThat(saved.getConfirmedAt()).isNotNull();
+                });
+    }
+
+    @Test
+    void duplicateConfirmRequestIdViolatesUniqueConstraint() {
+        InboundOrder first = new InboundOrder("INB-CONFIRM-DUP-1", 1001L, "ops-admin");
+        first.confirm("REQ-CONFIRM-DUP", 1002L, "reviewer");
+        inboundOrderRepository.saveAndFlush(first);
+
+        InboundOrder second = new InboundOrder("INB-CONFIRM-DUP-2", 1001L, "ops-admin");
+        second.confirm("REQ-CONFIRM-DUP", 1003L, "other-reviewer");
+
+        assertThatThrownBy(() -> inboundOrderRepository.saveAndFlush(second))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
     void duplicateInboundNoViolatesUniqueConstraint() {
         inboundOrderRepository.saveAndFlush(new InboundOrder("INB-DUP", 1001L, "ops-admin"));
 

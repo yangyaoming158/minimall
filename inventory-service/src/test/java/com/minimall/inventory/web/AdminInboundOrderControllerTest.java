@@ -255,6 +255,133 @@ class AdminInboundOrderControllerTest {
     }
 
     @Test
+    void confirmDraftRequiresAdminAndRequestId() throws Exception {
+        saveInboundOrder("INB-CONFIRM-AUTH", InboundOrderStatus.DRAFT, item("SKU-INB-CONFIRM-AUTH", 1));
+
+        mockMvc.perform(post("/api/admin/inbound-orders/INB-CONFIRM-AUTH/confirm"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(ErrorCode.UNAUTHORIZED.getCode()));
+
+        mockMvc.perform(post("/api/admin/inbound-orders/INB-CONFIRM-AUTH/confirm")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken())
+                        .header("X-Request-Id", "REQ-INB-CONFIRM-AUTH"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(ErrorCode.FORBIDDEN.getCode()));
+
+        mockMvc.perform(post("/api/admin/inbound-orders/INB-CONFIRM-AUTH/confirm")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(ErrorCode.BAD_REQUEST.getCode()))
+                .andExpect(jsonPath("$.message").value("X-Request-Id is required for inbound confirmation"));
+    }
+
+    @Test
+    void confirmDraftStoresStateAndDoesNotMutateInventory() throws Exception {
+        inventoryRepository.saveAndFlush(buildInventory("SKU-INB-CONFIRM", 7, 0, 2));
+        saveInboundOrder("INB-CONFIRM", InboundOrderStatus.DRAFT, item("SKU-INB-CONFIRM", 4));
+        long beforeRecordCount = inventoryRecordRepository.count();
+
+        mockMvc.perform(post("/api/admin/inbound-orders/INB-CONFIRM/confirm")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken())
+                        .header("X-Request-Id", " REQ-INB-CONFIRM ")
+                        .header("X-Forwarded-For", "203.0.113.12")
+                        .header(HttpHeaders.USER_AGENT, "AdminInboundTest/3.0"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.inboundNo").value("INB-CONFIRM"))
+                .andExpect(jsonPath("$.data.status").value("CONFIRMED"))
+                .andExpect(jsonPath("$.data.confirmRequestId").value("REQ-INB-CONFIRM"))
+                .andExpect(jsonPath("$.data.confirmedByAdminUserId").value(42))
+                .andExpect(jsonPath("$.data.confirmedByAdminUsername").value("admin"))
+                .andExpect(jsonPath("$.data.confirmedAt").exists())
+                .andExpect(jsonPath("$.data.items[0].productId").value("SKU-INB-CONFIRM"))
+                .andExpect(jsonPath("$.data.items[0].quantity").value(4));
+
+        assertThat(inboundOrderRepository.findByInboundNo("INB-CONFIRM"))
+                .get()
+                .satisfies(order -> {
+                    assertThat(order.getStatus()).isEqualTo(InboundOrderStatus.CONFIRMED);
+                    assertThat(order.getConfirmRequestId()).isEqualTo("REQ-INB-CONFIRM");
+                    assertThat(order.getConfirmedByAdminUserId()).isEqualTo(42L);
+                    assertThat(order.getConfirmedByAdminUsername()).isEqualTo("admin");
+                    assertThat(order.getConfirmedAt()).isNotNull();
+                });
+        assertThat(inventoryRecordRepository.count()).isEqualTo(beforeRecordCount);
+        assertThat(inventoryRepository.findByProductId("SKU-INB-CONFIRM"))
+                .get()
+                .satisfies(inventory -> {
+                    assertThat(inventory.getAvailableStock()).isEqualTo(7);
+                    assertThat(inventory.getLockedStock()).isZero();
+                    assertThat(inventory.getSafetyStock()).isEqualTo(2);
+                });
+    }
+
+    @Test
+    void confirmDuplicateRequestIdReturnsPriorResultAndRepeatedConfirmIsNoop() throws Exception {
+        saveInboundOrder("INB-CONFIRM-IDEMPOTENT", InboundOrderStatus.DRAFT, item("SKU-INB-IDEMPOTENT", 6));
+
+        mockMvc.perform(post("/api/admin/inbound-orders/INB-CONFIRM-IDEMPOTENT/confirm")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken())
+                        .header("X-Request-Id", "REQ-INB-IDEMPOTENT"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("CONFIRMED"))
+                .andExpect(jsonPath("$.data.confirmRequestId").value("REQ-INB-IDEMPOTENT"));
+
+        mockMvc.perform(post("/api/admin/inbound-orders/INB-CONFIRM-IDEMPOTENT/confirm")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken())
+                        .header("X-Request-Id", "REQ-INB-IDEMPOTENT"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.inboundNo").value("INB-CONFIRM-IDEMPOTENT"))
+                .andExpect(jsonPath("$.data.status").value("CONFIRMED"))
+                .andExpect(jsonPath("$.data.confirmRequestId").value("REQ-INB-IDEMPOTENT"));
+
+        mockMvc.perform(post("/api/admin/inbound-orders/INB-CONFIRM-IDEMPOTENT/confirm")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken())
+                        .header("X-Request-Id", "REQ-INB-IDEMPOTENT-NEW"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("CONFIRMED"))
+                .andExpect(jsonPath("$.data.confirmRequestId").value("REQ-INB-IDEMPOTENT"));
+
+        assertThat(inboundOrderRepository.findByInboundNo("INB-CONFIRM-IDEMPOTENT"))
+                .get()
+                .satisfies(order -> {
+                    assertThat(order.getStatus()).isEqualTo(InboundOrderStatus.CONFIRMED);
+                    assertThat(order.getConfirmRequestId()).isEqualTo("REQ-INB-IDEMPOTENT");
+                });
+    }
+
+    @Test
+    void confirmRejectsCancelledAndConflictingRequestIdForAnotherInboundOrder() throws Exception {
+        saveInboundOrder("INB-CONFIRM-FIRST", InboundOrderStatus.DRAFT, item("SKU-INB-FIRST", 2));
+        saveInboundOrder("INB-CONFIRM-CANCELLED", InboundOrderStatus.CANCELLED, item("SKU-INB-CANCELLED", 3));
+
+        mockMvc.perform(post("/api/admin/inbound-orders/INB-CONFIRM-FIRST/confirm")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken())
+                        .header("X-Request-Id", "REQ-INB-CONFLICT"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("CONFIRMED"));
+
+        mockMvc.perform(post("/api/admin/inbound-orders/INB-CONFIRM-CANCELLED/confirm")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken())
+                        .header("X-Request-Id", "REQ-INB-CANCELLED"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(ErrorCode.CONFLICT.getCode()))
+                .andExpect(jsonPath("$.message").value("Only draft inbound orders can be confirmed"));
+
+        mockMvc.perform(post("/api/admin/inbound-orders/INB-CONFIRM-CANCELLED/confirm")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken())
+                        .header("X-Request-Id", "REQ-INB-CONFLICT"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(ErrorCode.CONFLICT.getCode()))
+                .andExpect(jsonPath("$.message").value("requestId already used for another inbound order"));
+    }
+
+    @Test
     void detailReturnsItems() throws Exception {
         saveInboundOrder(
                 "INB-DETAIL",

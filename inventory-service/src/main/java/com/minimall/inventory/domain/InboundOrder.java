@@ -17,13 +17,19 @@ import java.time.LocalDateTime;
 @Entity
 @Table(
         name = "inbound_order",
-        uniqueConstraints = @UniqueConstraint(
-                name = "uk_inbound_order_inbound_no",
-                columnNames = "inbound_no"),
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_inbound_order_inbound_no",
+                        columnNames = "inbound_no"),
+                @UniqueConstraint(
+                        name = "uk_inbound_order_confirm_request_id",
+                        columnNames = "confirm_request_id")
+        },
         indexes = {
                 @Index(name = "idx_inbound_order_status_created", columnList = "status, created_at"),
                 @Index(name = "idx_inbound_order_source_created", columnList = "source, created_at"),
-                @Index(name = "idx_inbound_order_admin_created", columnList = "created_by_admin_user_id, created_at")
+                @Index(name = "idx_inbound_order_admin_created", columnList = "created_by_admin_user_id, created_at"),
+                @Index(name = "idx_inbound_order_confirmed_at", columnList = "confirmed_at")
         })
 public class InboundOrder {
 
@@ -47,6 +53,18 @@ public class InboundOrder {
 
     @Column(name = "created_by_admin_username", nullable = false, length = 64)
     private String createdByAdminUsername;
+
+    @Column(name = "confirm_request_id", length = 128)
+    private String confirmRequestId;
+
+    @Column(name = "confirmed_by_admin_user_id")
+    private Long confirmedByAdminUserId;
+
+    @Column(name = "confirmed_by_admin_username", length = 64)
+    private String confirmedByAdminUsername;
+
+    @Column(name = "confirmed_at")
+    private LocalDateTime confirmedAt;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
@@ -116,6 +134,22 @@ public class InboundOrder {
         return createdByAdminUsername;
     }
 
+    public String getConfirmRequestId() {
+        return confirmRequestId;
+    }
+
+    public Long getConfirmedByAdminUserId() {
+        return confirmedByAdminUserId;
+    }
+
+    public String getConfirmedByAdminUsername() {
+        return confirmedByAdminUsername;
+    }
+
+    public LocalDateTime getConfirmedAt() {
+        return confirmedAt;
+    }
+
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
@@ -126,6 +160,14 @@ public class InboundOrder {
 
     public void setStatus(InboundOrderStatus status) {
         this.status = status;
+    }
+
+    public void confirm(String requestId, Long adminUserId, String adminUsername) {
+        status = InboundOrderStatus.CONFIRMED;
+        confirmRequestId = normalize(requestId);
+        confirmedByAdminUserId = adminUserId;
+        confirmedByAdminUsername = normalize(adminUsername);
+        confirmedAt = LocalDateTime.now();
     }
 
     private static String normalize(String value) {

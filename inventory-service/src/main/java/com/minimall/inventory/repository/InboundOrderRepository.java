@@ -13,6 +13,8 @@ public interface InboundOrderRepository
 
     Optional<InboundOrder> findByInboundNo(String inboundNo);
 
+    Optional<InboundOrder> findByConfirmRequestId(String confirmRequestId);
+
     boolean existsByInboundNo(String inboundNo);
 
     Page<InboundOrder> findByStatus(InboundOrderStatus status, Pageable pageable);

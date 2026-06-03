@@ -118,9 +118,47 @@ public class InboundOrderDraftService {
         return after;
     }
 
+    @Transactional
+    public InboundOrderResponse confirm(String inboundNo, InventoryAdminAuditContext auditContext) {
+        String requestId = requireRequestId(auditContext.requestId());
+        InboundOrder priorByRequestId = inboundOrderRepository.findByConfirmRequestId(requestId).orElse(null);
+        if (priorByRequestId != null) {
+            if (!priorByRequestId.getInboundNo().equals(inboundNo)) {
+                throw new BusinessException(
+                        ErrorCode.CONFLICT,
+                        "requestId already used for another inbound order");
+            }
+            return response(priorByRequestId);
+        }
+
+        InboundOrder order = getByInboundNo(inboundNo);
+        if (order.getStatus() == InboundOrderStatus.CONFIRMED
+                || order.getStatus() == InboundOrderStatus.APPLIED) {
+            return response(order);
+        }
+        if (order.getStatus() != InboundOrderStatus.DRAFT) {
+            throw new BusinessException(ErrorCode.CONFLICT, "Only draft inbound orders can be confirmed");
+        }
+
+        order.confirm(requestId, auditContext.adminUserId(), auditContext.adminUsername());
+        return response(inboundOrderRepository.saveAndFlush(order));
+    }
+
     private InboundOrder getByInboundNo(String inboundNo) {
         return inboundOrderRepository.findByInboundNo(inboundNo)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Inbound order not found"));
+    }
+
+    private InboundOrderResponse response(InboundOrder order) {
+        return InboundOrderResponse.from(
+                order, inboundOrderItemRepository.findByInboundNoOrderByIdAsc(order.getInboundNo()));
+    }
+
+    private String requireRequestId(String requestId) {
+        if (requestId == null || requestId.isBlank()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "X-Request-Id is required for inbound confirmation");
+        }
+        return requestId.trim();
     }
 
     private List<CreateInboundOrderDraftItemRequest> normalizedItems(CreateInboundOrderDraftRequest request) {
