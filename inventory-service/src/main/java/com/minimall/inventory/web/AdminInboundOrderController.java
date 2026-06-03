@@ -9,6 +9,7 @@ import com.minimall.inventory.dto.CreateInboundOrderDraftRequest;
 import com.minimall.inventory.dto.InboundOrderResponse;
 import com.minimall.inventory.service.InboundOrderDraftService;
 import jakarta.validation.Valid;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.Locale;
 import org.springframework.data.domain.Pageable;
 import org.springframework.util.StringUtils;
@@ -32,8 +33,10 @@ public class AdminInboundOrderController {
 
     @PostMapping("/drafts")
     public ApiResponse<InboundOrderResponse> createDraft(
-            @Valid @RequestBody CreateInboundOrderDraftRequest request) {
-        return ApiResponse.success(inboundOrderDraftService.createDraft(request, AdminAccess.requireAdmin()));
+            @Valid @RequestBody CreateInboundOrderDraftRequest request,
+            HttpServletRequest servletRequest) {
+        return ApiResponse.success(inboundOrderDraftService.createDraft(
+                request, AdminAccess.requireAdminAuditContext(servletRequest)));
     }
 
     @GetMapping
@@ -51,9 +54,11 @@ public class AdminInboundOrderController {
     }
 
     @PostMapping("/{inboundNo}/cancel")
-    public ApiResponse<InboundOrderResponse> cancel(@PathVariable("inboundNo") String inboundNo) {
-        AdminAccess.requireAdmin();
-        return ApiResponse.success(inboundOrderDraftService.cancel(inboundNo));
+    public ApiResponse<InboundOrderResponse> cancel(
+            @PathVariable("inboundNo") String inboundNo,
+            HttpServletRequest servletRequest) {
+        return ApiResponse.success(inboundOrderDraftService.cancel(
+                inboundNo, AdminAccess.requireAdminAuditContext(servletRequest)));
     }
 
     private InboundOrderStatus parseStatus(String status) {

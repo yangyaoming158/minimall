@@ -14,6 +14,8 @@ class AdminAuditTaxonomyTest {
         assertEquals(AdminAuditAction.PRODUCT_OFF_SHELF, AdminAuditAction.valueOf("PRODUCT_OFF_SHELF"));
         assertEquals(AdminAuditAction.INVENTORY_INITIALIZE, AdminAuditAction.valueOf("INVENTORY_INITIALIZE"));
         assertEquals(AdminAuditAction.INVENTORY_ADJUST, AdminAuditAction.valueOf("INVENTORY_ADJUST"));
+        assertEquals(AdminAuditAction.INBOUND_ORDER_CREATE, AdminAuditAction.valueOf("INBOUND_ORDER_CREATE"));
+        assertEquals(AdminAuditAction.INBOUND_ORDER_CANCEL, AdminAuditAction.valueOf("INBOUND_ORDER_CANCEL"));
     }
 
     @Test

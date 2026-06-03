@@ -1,7 +1,9 @@
 package com.minimall.inventory.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -10,6 +12,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.minimall.common.auth.context.AuthRole;
 import com.minimall.common.auth.jwt.JwtUtils;
+import com.minimall.common.core.audit.AdminAuditAction;
+import com.minimall.common.core.audit.AdminAuditLogWriteRequest;
+import com.minimall.common.core.audit.AdminAuditResourceType;
+import com.minimall.common.core.audit.AdminAuditSourceType;
 import com.minimall.common.core.audit.AdminAuditWriter;
 import com.minimall.common.core.exception.ErrorCode;
 import com.minimall.inventory.domain.InboundOrder;
@@ -25,6 +31,7 @@ import com.minimall.inventory.repository.InventoryRepository;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -33,6 +40,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -108,8 +116,11 @@ class AdminInboundOrderControllerTest {
         long beforeInventoryCount = inventoryRepository.count();
         long beforeRecordCount = inventoryRecordRepository.count();
 
-        mockMvc.perform(post("/api/admin/inbound-orders/drafts")
+        MvcResult result = mockMvc.perform(post("/api/admin/inbound-orders/drafts")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken())
+                        .header("X-Request-Id", "REQ-INB-CREATE")
+                        .header("X-Forwarded-For", "203.0.113.10")
+                        .header(HttpHeaders.USER_AGENT, "AdminInboundTest/1.0")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(draftRequest(
                                 item(" SKU-INB-CREATE-1 ", 5),
@@ -128,7 +139,10 @@ class AdminInboundOrderControllerTest {
                 .andExpect(jsonPath("$.data.items[0].productId").value("SKU-INB-CREATE-1"))
                 .andExpect(jsonPath("$.data.items[0].quantity").value(5))
                 .andExpect(jsonPath("$.data.items[1].productId").value("SKU-INB-CREATE-2"))
-                .andExpect(jsonPath("$.data.items[1].quantity").value(8));
+                .andExpect(jsonPath("$.data.items[1].quantity").value(8))
+                .andReturn();
+
+        String inboundNo = responseInboundNo(result);
 
         assertThat(inboundOrderRepository.count()).isEqualTo(1);
         assertThat(inboundOrderItemRepository.count()).isEqualTo(2);
@@ -141,6 +155,34 @@ class AdminInboundOrderControllerTest {
                     assertThat(inventory.getLockedStock()).isEqualTo(2);
                     assertThat(inventory.getSafetyStock()).isEqualTo(5);
                 });
+
+        ArgumentCaptor<AdminAuditLogWriteRequest> auditCaptor =
+                ArgumentCaptor.forClass(AdminAuditLogWriteRequest.class);
+        verify(adminAuditWriter).write(auditCaptor.capture());
+        AdminAuditLogWriteRequest audit = auditCaptor.getValue();
+        assertThat(audit.adminUserId()).isEqualTo(42L);
+        assertThat(audit.adminUsername()).isEqualTo("admin");
+        assertThat(audit.action()).isEqualTo(AdminAuditAction.INBOUND_ORDER_CREATE);
+        assertThat(audit.resourceType()).isEqualTo(AdminAuditResourceType.INBOUND_ORDER);
+        assertThat(audit.resourceId()).isEqualTo(inboundNo);
+        assertThat(audit.referenceNo()).isEqualTo(inboundNo);
+        assertThat(audit.requestId()).isEqualTo("REQ-INB-CREATE");
+        assertThat(audit.sourceType()).isEqualTo(AdminAuditSourceType.ADMIN_MANUAL);
+        assertThat(audit.ip()).isEqualTo("203.0.113.10");
+        assertThat(audit.userAgent()).isEqualTo("AdminInboundTest/1.0");
+        assertThat(audit.beforeSnapshot()).isNull();
+        assertThat(audit.afterSnapshot().path("inboundNo").asText()).isEqualTo(inboundNo);
+        assertThat(audit.afterSnapshot().path("status").asText()).isEqualTo("DRAFT");
+        assertThat(audit.afterSnapshot().path("items").size()).isEqualTo(2);
+        assertThat(audit.afterSnapshot().path("items").get(0).path("productId").asText())
+                .isEqualTo("SKU-INB-CREATE-1");
+        assertThat(audit.summary()).contains(
+                "Create inbound order draft",
+                inboundNo,
+                "2 item(s)",
+                "totalQuantity=13",
+                "SKU-INB-CREATE-1 x5",
+                "SKU-INB-CREATE-2 x8");
     }
 
     @Test
@@ -202,6 +244,17 @@ class AdminInboundOrderControllerTest {
     }
 
     @Test
+    void inboundDraftEnumNamesRemainStable() {
+        assertThat(InboundOrderStatus.values())
+                .extracting(InboundOrderStatus::name)
+                .containsExactly("DRAFT", "CONFIRMED", "APPLIED", "CANCELLED");
+        assertThat(AdminAuditAction.valueOf("INBOUND_ORDER_CREATE"))
+                .isEqualTo(AdminAuditAction.INBOUND_ORDER_CREATE);
+        assertThat(AdminAuditAction.valueOf("INBOUND_ORDER_CANCEL"))
+                .isEqualTo(AdminAuditAction.INBOUND_ORDER_CANCEL);
+    }
+
+    @Test
     void detailReturnsItems() throws Exception {
         saveInboundOrder(
                 "INB-DETAIL",
@@ -249,7 +302,10 @@ class AdminInboundOrderControllerTest {
         long beforeRecordCount = inventoryRecordRepository.count();
 
         mockMvc.perform(post("/api/admin/inbound-orders/INB-CANCEL/cancel")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken()))
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken())
+                        .header("X-Request-Id", "REQ-INB-CANCEL")
+                        .header("X-Forwarded-For", "203.0.113.11")
+                        .header(HttpHeaders.USER_AGENT, "AdminInboundTest/2.0"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.inboundNo").value("INB-CANCEL"))
@@ -274,6 +330,31 @@ class AdminInboundOrderControllerTest {
                     assertThat(inventory.getLockedStock()).isEqualTo(1);
                     assertThat(inventory.getSafetyStock()).isEqualTo(3);
                 });
+
+        ArgumentCaptor<AdminAuditLogWriteRequest> auditCaptor =
+                ArgumentCaptor.forClass(AdminAuditLogWriteRequest.class);
+        verify(adminAuditWriter, times(1)).write(auditCaptor.capture());
+        AdminAuditLogWriteRequest audit = auditCaptor.getValue();
+        assertThat(audit.adminUserId()).isEqualTo(42L);
+        assertThat(audit.adminUsername()).isEqualTo("admin");
+        assertThat(audit.action()).isEqualTo(AdminAuditAction.INBOUND_ORDER_CANCEL);
+        assertThat(audit.resourceType()).isEqualTo(AdminAuditResourceType.INBOUND_ORDER);
+        assertThat(audit.resourceId()).isEqualTo("INB-CANCEL");
+        assertThat(audit.referenceNo()).isEqualTo("INB-CANCEL");
+        assertThat(audit.requestId()).isEqualTo("REQ-INB-CANCEL");
+        assertThat(audit.sourceType()).isEqualTo(AdminAuditSourceType.ADMIN_MANUAL);
+        assertThat(audit.ip()).isEqualTo("203.0.113.11");
+        assertThat(audit.userAgent()).isEqualTo("AdminInboundTest/2.0");
+        assertThat(audit.beforeSnapshot().path("status").asText()).isEqualTo("DRAFT");
+        assertThat(audit.afterSnapshot().path("status").asText()).isEqualTo("CANCELLED");
+        assertThat(audit.afterSnapshot().path("items").get(0).path("productId").asText())
+                .isEqualTo("SKU-INB-CANCEL");
+        assertThat(audit.summary()).contains(
+                "Cancel inbound order draft",
+                "INB-CANCEL",
+                "1 item(s)",
+                "totalQuantity=10",
+                "SKU-INB-CANCEL x10");
     }
 
     @Test
@@ -316,6 +397,13 @@ class AdminInboundOrderControllerTest {
 
     private String json(Object value) throws Exception {
         return objectMapper.writeValueAsString(value);
+    }
+
+    private String responseInboundNo(MvcResult result) throws Exception {
+        return objectMapper.readTree(result.getResponse().getContentAsString())
+                .path("data")
+                .path("inboundNo")
+                .asText();
     }
 
     private String adminToken() {

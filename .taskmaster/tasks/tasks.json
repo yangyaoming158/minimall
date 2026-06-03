@@ -2289,7 +2289,7 @@
         "description": "Create an inbound order draft model that can later be generated from AI recommendations.",
         "details": "Add inbound_order and inbound_order_item persistence, with status enum DRAFT, CONFIRMED, APPLIED, CANCELLED and draft source values ADMIN_MANUAL plus reserved AI_SUGGESTION. Implement admin draft create, list, detail, and cancel APIs. Creating or cancelling a draft must not change inventory. All responses must use ApiResponse and list responses must use PageResponse.",
         "testStrategy": "Run inbound order API tests for multi-item draft creation, list/detail pagination, enum serialization, cancel behavior, no inventory mutation, ADMIN enforcement, USER/unauthenticated rejection, and audit records.",
-        "status": "in-progress",
+        "status": "done",
         "dependencies": [
           "1",
           "2"
@@ -2325,15 +2325,16 @@
             "title": "Add inbound draft audit and regression tests",
             "description": "Write audit logs and tests covering draft lifecycle, permissions, enum stability, and no stock changes.",
             "details": "Write an admin audit log on draft create and cancel (action + inboundNo + item summary + operator + time). Tests: full draft lifecycle, enum-name stability, ADMIN enforcement, no stock change, and audit entries present.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               2
             ],
             "parentTaskId": 5,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-06-03T12:02:54.989Z"
           }
         ],
-        "updatedAt": "2026-06-03T11:43:20.507Z"
+        "updatedAt": "2026-06-03T12:02:54.989Z"
       },
       {
         "id": 6,
@@ -2455,9 +2456,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-06-03T11:43:20.510Z",
+      "lastModified": "2026-06-03T12:02:54.992Z",
       "taskCount": 8,
-      "completedCount": 4,
+      "completedCount": 5,
       "tags": [
         "phase2-5-ai-inventory-readiness"
       ],
