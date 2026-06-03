@@ -170,6 +170,10 @@ public class InboundOrder {
         confirmedAt = LocalDateTime.now();
     }
 
+    public void apply() {
+        status = InboundOrderStatus.APPLIED;
+    }
+
     private static String normalize(String value) {
         return value == null || value.isBlank() ? null : value.trim();
     }

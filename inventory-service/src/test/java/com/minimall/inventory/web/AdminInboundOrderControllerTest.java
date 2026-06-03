@@ -279,9 +279,14 @@ class AdminInboundOrderControllerTest {
     }
 
     @Test
-    void confirmDraftStoresStateAndDoesNotMutateInventory() throws Exception {
-        inventoryRepository.saveAndFlush(buildInventory("SKU-INB-CONFIRM", 7, 0, 2));
-        saveInboundOrder("INB-CONFIRM", InboundOrderStatus.DRAFT, item("SKU-INB-CONFIRM", 4));
+    void confirmDraftAppliesMultiItemInventoryTransactionally() throws Exception {
+        inventoryRepository.saveAndFlush(buildInventory("SKU-INB-CONFIRM-1", 7, 0, 2));
+        inventoryRepository.saveAndFlush(buildInventory("SKU-INB-CONFIRM-2", 0, 1, 3));
+        saveInboundOrder(
+                "INB-CONFIRM",
+                InboundOrderStatus.DRAFT,
+                item("SKU-INB-CONFIRM-1", 4),
+                item("SKU-INB-CONFIRM-2", 6));
         long beforeRecordCount = inventoryRecordRepository.count();
 
         mockMvc.perform(post("/api/admin/inbound-orders/INB-CONFIRM/confirm")
@@ -292,42 +297,53 @@ class AdminInboundOrderControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.inboundNo").value("INB-CONFIRM"))
-                .andExpect(jsonPath("$.data.status").value("CONFIRMED"))
+                .andExpect(jsonPath("$.data.status").value("APPLIED"))
                 .andExpect(jsonPath("$.data.confirmRequestId").value("REQ-INB-CONFIRM"))
                 .andExpect(jsonPath("$.data.confirmedByAdminUserId").value(42))
                 .andExpect(jsonPath("$.data.confirmedByAdminUsername").value("admin"))
                 .andExpect(jsonPath("$.data.confirmedAt").exists())
-                .andExpect(jsonPath("$.data.items[0].productId").value("SKU-INB-CONFIRM"))
-                .andExpect(jsonPath("$.data.items[0].quantity").value(4));
+                .andExpect(jsonPath("$.data.items[0].productId").value("SKU-INB-CONFIRM-1"))
+                .andExpect(jsonPath("$.data.items[0].quantity").value(4))
+                .andExpect(jsonPath("$.data.items[1].productId").value("SKU-INB-CONFIRM-2"))
+                .andExpect(jsonPath("$.data.items[1].quantity").value(6));
 
         assertThat(inboundOrderRepository.findByInboundNo("INB-CONFIRM"))
                 .get()
                 .satisfies(order -> {
-                    assertThat(order.getStatus()).isEqualTo(InboundOrderStatus.CONFIRMED);
+                    assertThat(order.getStatus()).isEqualTo(InboundOrderStatus.APPLIED);
                     assertThat(order.getConfirmRequestId()).isEqualTo("REQ-INB-CONFIRM");
                     assertThat(order.getConfirmedByAdminUserId()).isEqualTo(42L);
                     assertThat(order.getConfirmedByAdminUsername()).isEqualTo("admin");
                     assertThat(order.getConfirmedAt()).isNotNull();
                 });
         assertThat(inventoryRecordRepository.count()).isEqualTo(beforeRecordCount);
-        assertThat(inventoryRepository.findByProductId("SKU-INB-CONFIRM"))
+        assertThat(inventoryRepository.findByProductId("SKU-INB-CONFIRM-1"))
                 .get()
                 .satisfies(inventory -> {
-                    assertThat(inventory.getAvailableStock()).isEqualTo(7);
+                    assertThat(inventory.getAvailableStock()).isEqualTo(11);
                     assertThat(inventory.getLockedStock()).isZero();
                     assertThat(inventory.getSafetyStock()).isEqualTo(2);
+                });
+        assertThat(inventoryRepository.findByProductId("SKU-INB-CONFIRM-2"))
+                .get()
+                .satisfies(inventory -> {
+                    assertThat(inventory.getAvailableStock()).isEqualTo(6);
+                    assertThat(inventory.getLockedStock()).isEqualTo(1);
+                    assertThat(inventory.getSafetyStock()).isEqualTo(3);
                 });
     }
 
     @Test
     void confirmDuplicateRequestIdReturnsPriorResultAndRepeatedConfirmIsNoop() throws Exception {
+        inventoryRepository.saveAndFlush(buildInventory("SKU-INB-IDEMPOTENT", 3, 0, 0));
         saveInboundOrder("INB-CONFIRM-IDEMPOTENT", InboundOrderStatus.DRAFT, item("SKU-INB-IDEMPOTENT", 6));
+        long beforeRecordCount = inventoryRecordRepository.count();
 
         mockMvc.perform(post("/api/admin/inbound-orders/INB-CONFIRM-IDEMPOTENT/confirm")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken())
                         .header("X-Request-Id", "REQ-INB-IDEMPOTENT"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.status").value("CONFIRMED"))
+                .andExpect(jsonPath("$.data.status").value("APPLIED"))
                 .andExpect(jsonPath("$.data.confirmRequestId").value("REQ-INB-IDEMPOTENT"));
 
         mockMvc.perform(post("/api/admin/inbound-orders/INB-CONFIRM-IDEMPOTENT/confirm")
@@ -335,26 +351,64 @@ class AdminInboundOrderControllerTest {
                         .header("X-Request-Id", "REQ-INB-IDEMPOTENT"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.inboundNo").value("INB-CONFIRM-IDEMPOTENT"))
-                .andExpect(jsonPath("$.data.status").value("CONFIRMED"))
+                .andExpect(jsonPath("$.data.status").value("APPLIED"))
                 .andExpect(jsonPath("$.data.confirmRequestId").value("REQ-INB-IDEMPOTENT"));
 
         mockMvc.perform(post("/api/admin/inbound-orders/INB-CONFIRM-IDEMPOTENT/confirm")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken())
                         .header("X-Request-Id", "REQ-INB-IDEMPOTENT-NEW"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.status").value("CONFIRMED"))
+                .andExpect(jsonPath("$.data.status").value("APPLIED"))
                 .andExpect(jsonPath("$.data.confirmRequestId").value("REQ-INB-IDEMPOTENT"));
 
         assertThat(inboundOrderRepository.findByInboundNo("INB-CONFIRM-IDEMPOTENT"))
                 .get()
                 .satisfies(order -> {
-                    assertThat(order.getStatus()).isEqualTo(InboundOrderStatus.CONFIRMED);
+                    assertThat(order.getStatus()).isEqualTo(InboundOrderStatus.APPLIED);
                     assertThat(order.getConfirmRequestId()).isEqualTo("REQ-INB-IDEMPOTENT");
                 });
+        assertThat(inventoryRepository.findByProductId("SKU-INB-IDEMPOTENT"))
+                .get()
+                .extracting(Inventory::getAvailableStock)
+                .isEqualTo(9);
+        assertThat(inventoryRecordRepository.count()).isEqualTo(beforeRecordCount);
+    }
+
+    @Test
+    void confirmRollsBackStateAndStockWhenAnyItemFails() throws Exception {
+        inventoryRepository.saveAndFlush(buildInventory("SKU-INB-ROLLBACK-1", 5, 0, 0));
+        saveInboundOrder(
+                "INB-CONFIRM-ROLLBACK",
+                InboundOrderStatus.DRAFT,
+                item("SKU-INB-ROLLBACK-1", 4),
+                item("SKU-INB-ROLLBACK-MISSING", 3));
+        long beforeRecordCount = inventoryRecordRepository.count();
+
+        mockMvc.perform(post("/api/admin/inbound-orders/INB-CONFIRM-ROLLBACK/confirm")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken())
+                        .header("X-Request-Id", "REQ-INB-ROLLBACK"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(ErrorCode.NOT_FOUND.getCode()))
+                .andExpect(jsonPath("$.message").value("Inventory not found"));
+
+        assertThat(inboundOrderRepository.findByInboundNo("INB-CONFIRM-ROLLBACK"))
+                .get()
+                .satisfies(order -> {
+                    assertThat(order.getStatus()).isEqualTo(InboundOrderStatus.DRAFT);
+                    assertThat(order.getConfirmRequestId()).isNull();
+                    assertThat(order.getConfirmedAt()).isNull();
+                });
+        assertThat(inventoryRepository.findByProductId("SKU-INB-ROLLBACK-1"))
+                .get()
+                .extracting(Inventory::getAvailableStock)
+                .isEqualTo(5);
+        assertThat(inventoryRecordRepository.count()).isEqualTo(beforeRecordCount);
     }
 
     @Test
     void confirmRejectsCancelledAndConflictingRequestIdForAnotherInboundOrder() throws Exception {
+        inventoryRepository.saveAndFlush(buildInventory("SKU-INB-FIRST", 1, 0, 0));
         saveInboundOrder("INB-CONFIRM-FIRST", InboundOrderStatus.DRAFT, item("SKU-INB-FIRST", 2));
         saveInboundOrder("INB-CONFIRM-CANCELLED", InboundOrderStatus.CANCELLED, item("SKU-INB-CANCELLED", 3));
 
@@ -362,7 +416,7 @@ class AdminInboundOrderControllerTest {
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken())
                         .header("X-Request-Id", "REQ-INB-CONFLICT"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.status").value("CONFIRMED"));
+                .andExpect(jsonPath("$.data.status").value("APPLIED"));
 
         mockMvc.perform(post("/api/admin/inbound-orders/INB-CONFIRM-CANCELLED/confirm")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken())

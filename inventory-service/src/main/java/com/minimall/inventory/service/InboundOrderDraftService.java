@@ -12,11 +12,13 @@ import com.minimall.common.core.response.PageResponse;
 import com.minimall.inventory.domain.InboundOrder;
 import com.minimall.inventory.domain.InboundOrderItem;
 import com.minimall.inventory.domain.InboundOrderStatus;
+import com.minimall.inventory.domain.Inventory;
 import com.minimall.inventory.dto.CreateInboundOrderDraftItemRequest;
 import com.minimall.inventory.dto.CreateInboundOrderDraftRequest;
 import com.minimall.inventory.dto.InboundOrderResponse;
 import com.minimall.inventory.repository.InboundOrderItemRepository;
 import com.minimall.inventory.repository.InboundOrderRepository;
+import com.minimall.inventory.repository.InventoryRepository;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -41,16 +43,19 @@ public class InboundOrderDraftService {
 
     private final InboundOrderRepository inboundOrderRepository;
     private final InboundOrderItemRepository inboundOrderItemRepository;
+    private final InventoryRepository inventoryRepository;
     private final AdminAuditWriter adminAuditWriter;
     private final ObjectMapper objectMapper;
 
     public InboundOrderDraftService(
             InboundOrderRepository inboundOrderRepository,
             InboundOrderItemRepository inboundOrderItemRepository,
+            InventoryRepository inventoryRepository,
             AdminAuditWriter adminAuditWriter,
             ObjectMapper objectMapper) {
         this.inboundOrderRepository = inboundOrderRepository;
         this.inboundOrderItemRepository = inboundOrderItemRepository;
+        this.inventoryRepository = inventoryRepository;
         this.adminAuditWriter = adminAuditWriter;
         this.objectMapper = objectMapper;
     }
@@ -140,8 +145,12 @@ public class InboundOrderDraftService {
             throw new BusinessException(ErrorCode.CONFLICT, "Only draft inbound orders can be confirmed");
         }
 
+        List<InboundOrderItem> items = inboundOrderItemRepository.findByInboundNoOrderByIdAsc(order.getInboundNo());
         order.confirm(requestId, auditContext.adminUserId(), auditContext.adminUsername());
-        return response(inboundOrderRepository.saveAndFlush(order));
+        applyInboundInventory(items);
+        order.apply();
+        InboundOrder saved = inboundOrderRepository.saveAndFlush(order);
+        return InboundOrderResponse.from(saved, items);
     }
 
     private InboundOrder getByInboundNo(String inboundNo) {
@@ -152,6 +161,15 @@ public class InboundOrderDraftService {
     private InboundOrderResponse response(InboundOrder order) {
         return InboundOrderResponse.from(
                 order, inboundOrderItemRepository.findByInboundNoOrderByIdAsc(order.getInboundNo()));
+    }
+
+    private void applyInboundInventory(List<InboundOrderItem> items) {
+        for (InboundOrderItem item : items) {
+            Inventory inventory = inventoryRepository.findByProductId(item.getProductId())
+                    .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Inventory not found"));
+            inventory.adjustAvailableStock(item.getQuantity());
+        }
+        inventoryRepository.flush();
     }
 
     private String requireRequestId(String requestId) {
