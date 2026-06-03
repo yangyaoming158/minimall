@@ -2289,7 +2289,7 @@
         "description": "Create an inbound order draft model that can later be generated from AI recommendations.",
         "details": "Add inbound_order and inbound_order_item persistence, with status enum DRAFT, CONFIRMED, APPLIED, CANCELLED and draft source values ADMIN_MANUAL plus reserved AI_SUGGESTION. Implement admin draft create, list, detail, and cancel APIs. Creating or cancelling a draft must not change inventory. All responses must use ApiResponse and list responses must use PageResponse.",
         "testStrategy": "Run inbound order API tests for multi-item draft creation, list/detail pagination, enum serialization, cancel behavior, no inventory mutation, ADMIN enforcement, USER/unauthenticated rejection, and audit records.",
-        "status": "pending",
+        "status": "in-progress",
         "dependencies": [
           "1",
           "2"
@@ -2301,10 +2301,11 @@
             "title": "Add inbound order schema and domain model",
             "description": "Create inbound_order and inbound_order_item migrations/entities/repositories plus status and source enums.",
             "details": "Owner: inventory-service (co-located with confirm/apply so Task 6 is one local transaction). Flyway migration + entities/repositories for inbound_order (inboundNo, status, source, createdBy admin id/username, timestamps) and inbound_order_item (inboundNo FK, productId, quantity). Status enum DRAFT/CONFIRMED/APPLIED/CANCELLED; source enum ADMIN_MANUAL with AI_SUGGESTION reserved; both stored and serialized as stable enum names. Verify: migration applies cleanly; entity/enum round-trip unit test.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 5,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-06-03T11:27:23.435Z"
           },
           {
             "id": 2,
@@ -2330,7 +2331,8 @@
             "parentTaskId": 5,
             "parentId": "undefined"
           }
-        ]
+        ],
+        "updatedAt": "2026-06-03T11:27:23.435Z"
       },
       {
         "id": 6,
@@ -2452,7 +2454,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-06-02T16:07:02.634Z",
+      "lastModified": "2026-06-03T11:27:23.438Z",
       "taskCount": 8,
       "completedCount": 4,
       "tags": [
