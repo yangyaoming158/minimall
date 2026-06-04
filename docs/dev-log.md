@@ -2371,3 +2371,14 @@ Append one entry per implementation task so future sessions can recover project 
 - Test result: `mvn -pl inventory-service -am test` passed with common-core 39 tests, common-auth 38 tests, and inventory-service 76 tests, 0 failures/errors. Updated coverage verifies per-item inbound inventory records, shared requestId across multiple products, referenceNo linking back to inboundNo, operator fields, confirmation audit snapshots/summary, repeat-confirm no duplicate writes, rollback still leaves no records, and the new `(source_type, request_id, product_id)` unique key shape. `mvn clean package -DskipTests` passed for all 10 reactor modules. `git diff --check` and TaskMaster JSON parse passed.
 - Issues: Docker is unavailable in the current WSL distro (`docker: command not found`), so V10 was not executed against local MySQL in this run. The same Docker availability error appeared on the parallel ps/cp checks, so Docker was not retried. Existing H2 duplicate-key logs from uniqueness assertion tests remain expected and did not fail the build.
 - Next: Task 7.1 - Add AI suggestion schema and domain model.
+
+## Task 6.3 follow-up - Verify V10 migration on Docker MySQL
+- Date: 2026-06-04
+- Status: Done
+- TaskMaster tag: `phase2-5-ai-inventory-readiness`
+- Implemented: Completed the Docker/MySQL verification gap left after Task 6.3. With the local Compose stack running, copied `V10__relax_inventory_record_request_id_for_inbound_orders.sql` into the MySQL container and executed it twice against `minimall_order` to prove the migration is idempotent. Verified through `information_schema.statistics` that the old `uk_inventory_records_source_request` index is absent and the new unique `uk_inventory_records_source_request_product` index exists with columns in order: `source_type`, `request_id`, `product_id`.
+- Changed files: `docs/dev-log.md`
+- Commands run: `docker compose --env-file .env.example ps`; `docker compose --env-file .env.example cp docs/sql/migrations/V10__relax_inventory_record_request_id_for_inbound_orders.sql mysql:/tmp/V10__relax_inventory_record_request_id_for_inbound_orders.sql`; Docker MySQL `source /tmp/V10__relax_inventory_record_request_id_for_inbound_orders.sql` twice; Docker MySQL `information_schema.statistics` index query; TaskMaster JSON parse.
+- Test result: Docker Compose stack was running and MySQL was healthy. V10 executed successfully twice. Index verification returned only `uk_inventory_records_source_request_product` with `NON_UNIQUE=0` and column order `source_type`, `request_id`, `product_id`; no row was returned for the old `uk_inventory_records_source_request` index.
+- Issues: MySQL CLI printed the expected command-line password warning. No code changes were made in this follow-up.
+- Next: Task 7.1 - Add AI suggestion schema and domain model.
