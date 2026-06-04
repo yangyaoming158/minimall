@@ -26,8 +26,8 @@ import java.time.LocalDateTime;
                 @Index(name = "idx_inventory_records_request_id", columnList = "request_id"),
                 @Index(name = "idx_inventory_records_reference_no", columnList = "reference_no"),
                 @Index(
-                        name = "uk_inventory_records_source_request",
-                        columnList = "source_type, request_id",
+                        name = "uk_inventory_records_source_request_product",
+                        columnList = "source_type, request_id, product_id",
                         unique = true)
         })
 public class InventoryRecord {

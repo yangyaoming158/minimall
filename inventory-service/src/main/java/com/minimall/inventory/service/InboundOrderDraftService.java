@@ -13,11 +13,15 @@ import com.minimall.inventory.domain.InboundOrder;
 import com.minimall.inventory.domain.InboundOrderItem;
 import com.minimall.inventory.domain.InboundOrderStatus;
 import com.minimall.inventory.domain.Inventory;
+import com.minimall.inventory.domain.InventoryChangeType;
+import com.minimall.inventory.domain.InventoryRecord;
+import com.minimall.inventory.domain.InventoryRecordSourceType;
 import com.minimall.inventory.dto.CreateInboundOrderDraftItemRequest;
 import com.minimall.inventory.dto.CreateInboundOrderDraftRequest;
 import com.minimall.inventory.dto.InboundOrderResponse;
 import com.minimall.inventory.repository.InboundOrderItemRepository;
 import com.minimall.inventory.repository.InboundOrderRepository;
+import com.minimall.inventory.repository.InventoryRecordRepository;
 import com.minimall.inventory.repository.InventoryRepository;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -44,6 +48,7 @@ public class InboundOrderDraftService {
     private final InboundOrderRepository inboundOrderRepository;
     private final InboundOrderItemRepository inboundOrderItemRepository;
     private final InventoryRepository inventoryRepository;
+    private final InventoryRecordRepository inventoryRecordRepository;
     private final AdminAuditWriter adminAuditWriter;
     private final ObjectMapper objectMapper;
 
@@ -51,11 +56,13 @@ public class InboundOrderDraftService {
             InboundOrderRepository inboundOrderRepository,
             InboundOrderItemRepository inboundOrderItemRepository,
             InventoryRepository inventoryRepository,
+            InventoryRecordRepository inventoryRecordRepository,
             AdminAuditWriter adminAuditWriter,
             ObjectMapper objectMapper) {
         this.inboundOrderRepository = inboundOrderRepository;
         this.inboundOrderItemRepository = inboundOrderItemRepository;
         this.inventoryRepository = inventoryRepository;
+        this.inventoryRecordRepository = inventoryRecordRepository;
         this.adminAuditWriter = adminAuditWriter;
         this.objectMapper = objectMapper;
     }
@@ -146,11 +153,21 @@ public class InboundOrderDraftService {
         }
 
         List<InboundOrderItem> items = inboundOrderItemRepository.findByInboundNoOrderByIdAsc(order.getInboundNo());
+        InboundOrderResponse before = InboundOrderResponse.from(order, items);
         order.confirm(requestId, auditContext.adminUserId(), auditContext.adminUsername());
         applyInboundInventory(items);
+        writeInboundInventoryRecords(order, items, requestId);
         order.apply();
         InboundOrder saved = inboundOrderRepository.saveAndFlush(order);
-        return InboundOrderResponse.from(saved, items);
+        InboundOrderResponse after = InboundOrderResponse.from(saved, items);
+        writeAudit(
+                auditContext,
+                AdminAuditAction.INBOUND_ORDER_CONFIRM,
+                saved.getInboundNo(),
+                before,
+                after,
+                "Confirm inbound order " + saved.getInboundNo() + " with " + itemSummary(items));
+        return after;
     }
 
     private InboundOrder getByInboundNo(String inboundNo) {
@@ -170,6 +187,22 @@ public class InboundOrderDraftService {
             inventory.adjustAvailableStock(item.getQuantity());
         }
         inventoryRepository.flush();
+    }
+
+    private void writeInboundInventoryRecords(InboundOrder order, List<InboundOrderItem> items, String requestId) {
+        inventoryRecordRepository.saveAllAndFlush(items.stream()
+                .map(item -> new InventoryRecord(
+                        item.getProductId(),
+                        null,
+                        InventoryChangeType.ADJUST_INCREASE,
+                        item.getQuantity(),
+                        requestId,
+                        "Confirm inbound order " + order.getInboundNo(),
+                        order.getConfirmedByAdminUserId(),
+                        order.getConfirmedByAdminUsername(),
+                        InventoryRecordSourceType.INBOUND_ORDER,
+                        order.getInboundNo()))
+                .toList());
     }
 
     private String requireRequestId(String requestId) {

@@ -22,6 +22,9 @@ import com.minimall.inventory.domain.InboundOrder;
 import com.minimall.inventory.domain.InboundOrderItem;
 import com.minimall.inventory.domain.InboundOrderStatus;
 import com.minimall.inventory.domain.Inventory;
+import com.minimall.inventory.domain.InventoryChangeType;
+import com.minimall.inventory.domain.InventoryRecord;
+import com.minimall.inventory.domain.InventoryRecordSourceType;
 import com.minimall.inventory.dto.CreateInboundOrderDraftItemRequest;
 import com.minimall.inventory.dto.CreateInboundOrderDraftRequest;
 import com.minimall.inventory.repository.InboundOrderItemRepository;
@@ -250,6 +253,8 @@ class AdminInboundOrderControllerTest {
                 .containsExactly("DRAFT", "CONFIRMED", "APPLIED", "CANCELLED");
         assertThat(AdminAuditAction.valueOf("INBOUND_ORDER_CREATE"))
                 .isEqualTo(AdminAuditAction.INBOUND_ORDER_CREATE);
+        assertThat(AdminAuditAction.valueOf("INBOUND_ORDER_CONFIRM"))
+                .isEqualTo(AdminAuditAction.INBOUND_ORDER_CONFIRM);
         assertThat(AdminAuditAction.valueOf("INBOUND_ORDER_CANCEL"))
                 .isEqualTo(AdminAuditAction.INBOUND_ORDER_CANCEL);
     }
@@ -316,7 +321,23 @@ class AdminInboundOrderControllerTest {
                     assertThat(order.getConfirmedByAdminUsername()).isEqualTo("admin");
                     assertThat(order.getConfirmedAt()).isNotNull();
                 });
-        assertThat(inventoryRecordRepository.count()).isEqualTo(beforeRecordCount);
+        assertThat(inventoryRecordRepository.count()).isEqualTo(beforeRecordCount + 2);
+        assertThat(inventoryRecordRepository.findByProductId("SKU-INB-CONFIRM-1"))
+                .singleElement()
+                .satisfies(record -> assertInboundRecord(
+                        record,
+                        "SKU-INB-CONFIRM-1",
+                        4,
+                        "REQ-INB-CONFIRM",
+                        "INB-CONFIRM"));
+        assertThat(inventoryRecordRepository.findByProductId("SKU-INB-CONFIRM-2"))
+                .singleElement()
+                .satisfies(record -> assertInboundRecord(
+                        record,
+                        "SKU-INB-CONFIRM-2",
+                        6,
+                        "REQ-INB-CONFIRM",
+                        "INB-CONFIRM"));
         assertThat(inventoryRepository.findByProductId("SKU-INB-CONFIRM-1"))
                 .get()
                 .satisfies(inventory -> {
@@ -331,6 +352,31 @@ class AdminInboundOrderControllerTest {
                     assertThat(inventory.getLockedStock()).isEqualTo(1);
                     assertThat(inventory.getSafetyStock()).isEqualTo(3);
                 });
+
+        ArgumentCaptor<AdminAuditLogWriteRequest> auditCaptor =
+                ArgumentCaptor.forClass(AdminAuditLogWriteRequest.class);
+        verify(adminAuditWriter, times(1)).write(auditCaptor.capture());
+        AdminAuditLogWriteRequest audit = auditCaptor.getValue();
+        assertThat(audit.adminUserId()).isEqualTo(42L);
+        assertThat(audit.adminUsername()).isEqualTo("admin");
+        assertThat(audit.action()).isEqualTo(AdminAuditAction.INBOUND_ORDER_CONFIRM);
+        assertThat(audit.resourceType()).isEqualTo(AdminAuditResourceType.INBOUND_ORDER);
+        assertThat(audit.resourceId()).isEqualTo("INB-CONFIRM");
+        assertThat(audit.referenceNo()).isEqualTo("INB-CONFIRM");
+        assertThat(audit.requestId()).isEqualTo("REQ-INB-CONFIRM");
+        assertThat(audit.sourceType()).isEqualTo(AdminAuditSourceType.ADMIN_MANUAL);
+        assertThat(audit.ip()).isEqualTo("203.0.113.12");
+        assertThat(audit.userAgent()).isEqualTo("AdminInboundTest/3.0");
+        assertThat(audit.beforeSnapshot().path("status").asText()).isEqualTo("DRAFT");
+        assertThat(audit.afterSnapshot().path("status").asText()).isEqualTo("APPLIED");
+        assertThat(audit.afterSnapshot().path("items").size()).isEqualTo(2);
+        assertThat(audit.summary()).contains(
+                "Confirm inbound order",
+                "INB-CONFIRM",
+                "2 item(s)",
+                "totalQuantity=10",
+                "SKU-INB-CONFIRM-1 x4",
+                "SKU-INB-CONFIRM-2 x6");
     }
 
     @Test
@@ -371,7 +417,16 @@ class AdminInboundOrderControllerTest {
                 .get()
                 .extracting(Inventory::getAvailableStock)
                 .isEqualTo(9);
-        assertThat(inventoryRecordRepository.count()).isEqualTo(beforeRecordCount);
+        assertThat(inventoryRecordRepository.count()).isEqualTo(beforeRecordCount + 1);
+        assertThat(inventoryRecordRepository.findByProductId("SKU-INB-IDEMPOTENT"))
+                .singleElement()
+                .satisfies(record -> assertInboundRecord(
+                        record,
+                        "SKU-INB-IDEMPOTENT",
+                        6,
+                        "REQ-INB-IDEMPOTENT",
+                        "INB-CONFIRM-IDEMPOTENT"));
+        verify(adminAuditWriter, times(1)).write(org.mockito.ArgumentMatchers.any());
     }
 
     @Test
@@ -574,6 +629,24 @@ class AdminInboundOrderControllerTest {
 
     private CreateInboundOrderDraftItemRequest item(String productId, int quantity) {
         return new CreateInboundOrderDraftItemRequest(productId, quantity);
+    }
+
+    private void assertInboundRecord(
+            InventoryRecord record,
+            String productId,
+            int quantity,
+            String requestId,
+            String inboundNo) {
+        assertThat(record.getProductId()).isEqualTo(productId);
+        assertThat(record.getOrderNo()).isNull();
+        assertThat(record.getChangeType()).isEqualTo(InventoryChangeType.ADJUST_INCREASE);
+        assertThat(record.getSourceType()).isEqualTo(InventoryRecordSourceType.INBOUND_ORDER);
+        assertThat(record.getQuantity()).isEqualTo(quantity);
+        assertThat(record.getRequestId()).isEqualTo(requestId);
+        assertThat(record.getReason()).isEqualTo("Confirm inbound order " + inboundNo);
+        assertThat(record.getAdminUserId()).isEqualTo(42L);
+        assertThat(record.getAdminUsername()).isEqualTo("admin");
+        assertThat(record.getReferenceNo()).isEqualTo(inboundNo);
     }
 
     private String json(Object value) throws Exception {

@@ -2342,7 +2342,7 @@
         "description": "After an administrator confirms an inbound order, inventory-service applies the stock increase in a transaction and writes records and audit logs.",
         "details": "Implement POST /api/admin/inbound-orders/{inboundNo}/confirm with admin identity and requestId idempotency. Only DRAFT inbound orders can be confirmed. Successful confirmation increases inventory and moves the order to APPLIED. Repeated confirmation or duplicate requestId must not increase stock twice. If any item fails, the whole transaction rolls back. Each inventory record must link back to inboundNo, and audit logs must record admin, inbound number, item summary, and time.",
         "testStrategy": "Run transaction and API tests for DRAFT-only confirmation, duplicate requestId, repeated confirmation, rollback on item failure, inventory increase, inventory_records referenceNo, audit log content, and ApiResponse errors.",
-        "status": "in-progress",
+        "status": "done",
         "dependencies": [
           "2",
           "5"
@@ -2378,15 +2378,16 @@
             "title": "Write inbound inventory records and audit logs",
             "description": "Record sourceType INBOUND_ORDER, referenceNo inboundNo, requestId, operator, item summary, and admin audit entries.",
             "details": "Each stock change writes an inventory_record with sourceType=INBOUND_ORDER, referenceNo=inboundNo, requestId, and operator; plus one admin audit log (admin, inboundNo, item summary, time). Verify: record referenceNo links inboundNo, audit content is complete, and ApiResponse error shapes on failure.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               2
             ],
             "parentTaskId": 6,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-06-04T11:32:19.415Z"
           }
         ],
-        "updatedAt": "2026-06-03T13:03:54.883Z"
+        "updatedAt": "2026-06-04T11:32:19.415Z"
       },
       {
         "id": "7",
@@ -2459,9 +2460,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-06-03T13:03:54.886Z",
+      "lastModified": "2026-06-04T11:32:19.415Z",
       "taskCount": 8,
-      "completedCount": 5,
+      "completedCount": 6,
       "tags": [
         "phase2-5-ai-inventory-readiness"
       ]

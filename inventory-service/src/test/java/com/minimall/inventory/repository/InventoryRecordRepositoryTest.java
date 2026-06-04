@@ -83,7 +83,7 @@ class InventoryRecordRepositoryTest {
     }
 
     @Test
-    void duplicateSourceTypeAndRequestIdViolatesUniqueConstraint() {
+    void duplicateSourceTypeRequestIdAndProductIdViolatesUniqueConstraint() {
         inventoryRecordRepository.saveAndFlush(new InventoryRecord(
                 "SKU-INV-2004",
                 null,
@@ -96,8 +96,8 @@ class InventoryRecordRepositoryTest {
                 InventoryRecordSourceType.ADMIN_ADJUSTMENT,
                 "ADJ-1"));
 
-        assertThatThrownBy(() -> inventoryRecordRepository.saveAndFlush(new InventoryRecord(
-                "SKU-INV-2004",
+        inventoryRecordRepository.saveAndFlush(new InventoryRecord(
+                "SKU-INV-2004-OTHER",
                 null,
                 InventoryChangeType.RELEASE,
                 1,
@@ -106,7 +106,22 @@ class InventoryRecordRepositoryTest {
                 99L,
                 "admin",
                 InventoryRecordSourceType.ADMIN_ADJUSTMENT,
-                "ADJ-2")))
+                "ADJ-2"));
+
+        assertThat(inventoryRecordRepository.findByProductId("SKU-INV-2004")).hasSize(1);
+        assertThat(inventoryRecordRepository.findByProductId("SKU-INV-2004-OTHER")).hasSize(1);
+
+        assertThatThrownBy(() -> inventoryRecordRepository.saveAndFlush(new InventoryRecord(
+                "SKU-INV-2004",
+                null,
+                InventoryChangeType.RELEASE,
+                1,
+                "REQ-DUP",
+                "same product duplicate",
+                99L,
+                "admin",
+                InventoryRecordSourceType.ADMIN_ADJUSTMENT,
+                "ADJ-3")))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 
