@@ -54,6 +54,14 @@ public class AdminAiSuggestionController {
                 suggestionNo, request, AdminAccess.requireAdminAuditContext(servletRequest)));
     }
 
+    @PostMapping("/{suggestionNo}/convert-inbound-draft")
+    public ApiResponse<AiSuggestionResponse> convertToInboundDraft(
+            @PathVariable("suggestionNo") String suggestionNo,
+            HttpServletRequest servletRequest) {
+        return ApiResponse.success(suggestionService.convertToInboundDraft(
+                suggestionNo, AdminAccess.requireAdminAuditContext(servletRequest)));
+    }
+
     private AiOperationSuggestionStatus parseStatus(String status) {
         if (!StringUtils.hasText(status)) {
             return null;

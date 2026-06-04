@@ -5,12 +5,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.minimall.common.core.audit.AdminAuditAction;
 import com.minimall.common.core.audit.AdminAuditLogWriteRequest;
 import com.minimall.common.core.audit.AdminAuditResourceType;
+import com.minimall.common.core.audit.AdminAuditSourceType;
 import com.minimall.common.core.audit.AdminAuditWriter;
 import com.minimall.common.core.exception.BusinessException;
 import com.minimall.common.core.exception.ErrorCode;
 import com.minimall.common.core.response.PageResponse;
 import com.minimall.inventory.domain.InboundOrder;
 import com.minimall.inventory.domain.InboundOrderItem;
+import com.minimall.inventory.domain.InboundOrderSource;
 import com.minimall.inventory.domain.InboundOrderStatus;
 import com.minimall.inventory.domain.Inventory;
 import com.minimall.inventory.domain.InventoryChangeType;
@@ -70,10 +72,40 @@ public class InboundOrderDraftService {
     @Transactional
     public InboundOrderResponse createDraft(
             CreateInboundOrderDraftRequest request, InventoryAdminAuditContext auditContext) {
-        List<CreateInboundOrderDraftItemRequest> items = normalizedItems(request);
+        return createDraft(
+                request.items(),
+                InboundOrderSource.ADMIN_MANUAL,
+                auditContext,
+                AdminAuditSourceType.ADMIN_MANUAL,
+                null,
+                "Create inbound order draft");
+    }
+
+    @Transactional
+    public InboundOrderResponse createDraftFromAiSuggestion(
+            String suggestionNo,
+            List<CreateInboundOrderDraftItemRequest> items,
+            InventoryAdminAuditContext auditContext) {
+        return createDraft(
+                items,
+                InboundOrderSource.AI_SUGGESTION,
+                auditContext,
+                AdminAuditSourceType.AI_SUGGESTION,
+                suggestionNo,
+                "Create inbound order draft from AI suggestion " + suggestionNo);
+    }
+
+    private InboundOrderResponse createDraft(
+            List<CreateInboundOrderDraftItemRequest> requestItems,
+            InboundOrderSource source,
+            InventoryAdminAuditContext auditContext,
+            AdminAuditSourceType auditSourceType,
+            String auditReferenceNo,
+            String summaryPrefix) {
+        List<CreateInboundOrderDraftItemRequest> items = normalizedItems(requestItems);
         String inboundNo = generateInboundNo();
         InboundOrder order = inboundOrderRepository.saveAndFlush(
-                new InboundOrder(inboundNo, auditContext.adminUserId(), auditContext.adminUsername()));
+                new InboundOrder(inboundNo, source, auditContext.adminUserId(), auditContext.adminUsername()));
 
         List<InboundOrderItem> savedItems = inboundOrderItemRepository.saveAllAndFlush(items.stream()
                 .map(item -> new InboundOrderItem(order.getInboundNo(), item.productId().trim(), item.quantity()))
@@ -83,9 +115,11 @@ public class InboundOrderDraftService {
                 auditContext,
                 AdminAuditAction.INBOUND_ORDER_CREATE,
                 order.getInboundNo(),
+                auditSourceType,
+                auditReferenceNo == null ? order.getInboundNo() : auditReferenceNo,
                 null,
                 response,
-                "Create inbound order draft " + order.getInboundNo() + " with " + itemSummary(savedItems));
+                summaryPrefix + " " + order.getInboundNo() + " with " + itemSummary(savedItems));
         return response;
     }
 
@@ -123,6 +157,8 @@ public class InboundOrderDraftService {
         writeAudit(
                 auditContext,
                 AdminAuditAction.INBOUND_ORDER_CANCEL,
+                saved.getInboundNo(),
+                AdminAuditSourceType.ADMIN_MANUAL,
                 saved.getInboundNo(),
                 before,
                 after,
@@ -163,6 +199,8 @@ public class InboundOrderDraftService {
         writeAudit(
                 auditContext,
                 AdminAuditAction.INBOUND_ORDER_CONFIRM,
+                saved.getInboundNo(),
+                AdminAuditSourceType.ADMIN_MANUAL,
                 saved.getInboundNo(),
                 before,
                 after,
@@ -212,8 +250,9 @@ public class InboundOrderDraftService {
         return requestId.trim();
     }
 
-    private List<CreateInboundOrderDraftItemRequest> normalizedItems(CreateInboundOrderDraftRequest request) {
-        List<CreateInboundOrderDraftItemRequest> items = new ArrayList<>(request.items());
+    private List<CreateInboundOrderDraftItemRequest> normalizedItems(
+            List<CreateInboundOrderDraftItemRequest> requestItems) {
+        List<CreateInboundOrderDraftItemRequest> items = new ArrayList<>(requestItems);
         Set<String> productIds = new HashSet<>();
         for (CreateInboundOrderDraftItemRequest item : items) {
             String productId = item.productId().trim();
@@ -239,6 +278,8 @@ public class InboundOrderDraftService {
             InventoryAdminAuditContext auditContext,
             AdminAuditAction action,
             String inboundNo,
+            AdminAuditSourceType sourceType,
+            String referenceNo,
             InboundOrderResponse before,
             InboundOrderResponse after,
             String summary) {
@@ -249,8 +290,8 @@ public class InboundOrderDraftService {
                 AdminAuditResourceType.INBOUND_ORDER,
                 inboundNo,
                 auditContext.requestId(),
-                null,
-                inboundNo,
+                sourceType,
+                referenceNo,
                 toSnapshot(before),
                 toSnapshot(after),
                 auditContext.ip(),

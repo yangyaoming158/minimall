@@ -2395,7 +2395,7 @@
         "description": "Provide a minimal suggestion review model without implementing model calls.",
         "details": "Add ai_operation_suggestion persistence and status enum PENDING_REVIEW, CONVERTED_TO_DRAFT, REJECTED, APPLIED. Implement admin query, reject, and convert-to-inbound-draft APIs. Suggestion records must not directly modify inventory. Converted suggestions must link to the generated inbound order number and keep an input snapshot reference or structured input summary for auditability. Phase 2.5 stores/routes suggestion records only; it does not generate suggestions with AI.",
         "testStrategy": "Run suggestion API tests for query, reject with reason, convert-to-draft, status transitions, inboundNo linkage, no inventory mutation, ADMIN enforcement, and auditability fields.",
-        "status": "in-progress",
+        "status": "done",
         "dependencies": [
           "4",
           "5"
@@ -2431,15 +2431,16 @@
             "title": "Implement convert suggestion to inbound draft",
             "description": "Convert a pending suggestion to an inbound draft, link inboundNo, update suggestion status, and avoid inventory mutation.",
             "details": "POST /{suggestionNo}/convert-inbound-draft builds an inbound draft (Task 5) from the suggestion's items, sets suggestion.linkedInboundNo and status CONVERTED_TO_DRAFT. No inventory change at convert time. Verify: convert creates a DRAFT, the inboundNo linkage is recorded, status transitions correctly, and no stock is mutated.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               1
             ],
             "parentTaskId": 7,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-06-04T13:05:10.973Z"
           }
         ],
-        "updatedAt": "2026-06-04T12:43:59.278Z"
+        "updatedAt": "2026-06-04T13:05:10.973Z"
       },
       {
         "id": "8",
@@ -2463,9 +2464,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-06-04T12:43:59.278Z",
+      "lastModified": "2026-06-04T13:05:10.976Z",
       "taskCount": 8,
-      "completedCount": 6,
+      "completedCount": 7,
       "tags": [
         "phase2-5-ai-inventory-readiness"
       ]

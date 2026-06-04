@@ -26,10 +26,16 @@ import com.minimall.inventory.domain.AiOperationSuggestionSource;
 import com.minimall.inventory.domain.AiOperationSuggestionStatus;
 import com.minimall.inventory.domain.AiOperationSuggestionType;
 import com.minimall.inventory.domain.AiSuggestionRiskLevel;
+import com.minimall.inventory.domain.InboundOrder;
+import com.minimall.inventory.domain.InboundOrderItem;
+import com.minimall.inventory.domain.InboundOrderSource;
+import com.minimall.inventory.domain.InboundOrderStatus;
 import com.minimall.inventory.domain.Inventory;
 import com.minimall.inventory.dto.RejectAiSuggestionRequest;
 import com.minimall.inventory.repository.AiOperationSuggestionItemRepository;
 import com.minimall.inventory.repository.AiOperationSuggestionRepository;
+import com.minimall.inventory.repository.InboundOrderItemRepository;
+import com.minimall.inventory.repository.InboundOrderRepository;
 import com.minimall.inventory.repository.InventoryRecordRepository;
 import com.minimall.inventory.repository.InventoryRepository;
 import java.util.List;
@@ -44,6 +50,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -75,6 +82,12 @@ class AdminAiSuggestionControllerTest {
     private AiOperationSuggestionItemRepository itemRepository;
 
     @Autowired
+    private InboundOrderRepository inboundOrderRepository;
+
+    @Autowired
+    private InboundOrderItemRepository inboundOrderItemRepository;
+
+    @Autowired
     private InventoryRepository inventoryRepository;
 
     @Autowired
@@ -87,6 +100,8 @@ class AdminAiSuggestionControllerTest {
     void setUp() {
         itemRepository.deleteAll();
         suggestionRepository.deleteAll();
+        inboundOrderItemRepository.deleteAll();
+        inboundOrderRepository.deleteAll();
         inventoryRecordRepository.deleteAll();
         inventoryRepository.deleteAll();
         reset(adminAuditWriter);
@@ -352,6 +367,189 @@ class AdminAiSuggestionControllerTest {
     }
 
     @Test
+    void convertRequiresAuthenticationAndAdmin() throws Exception {
+        saveSuggestion(
+                "AIS-CONVERT-AUTH",
+                AiOperationSuggestionStatus.PENDING_REVIEW,
+                item("AIS-CONVERT-AUTH", "SKU-AIS-CONVERT-AUTH", 2, AiSuggestionRiskLevel.MEDIUM));
+
+        mockMvc.perform(post("/api/admin/ai-suggestions/AIS-CONVERT-AUTH/convert-inbound-draft"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(ErrorCode.UNAUTHORIZED.getCode()));
+
+        mockMvc.perform(post("/api/admin/ai-suggestions/AIS-CONVERT-AUTH/convert-inbound-draft")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(ErrorCode.FORBIDDEN.getCode()));
+
+        assertThat(suggestionRepository.findBySuggestionNo("AIS-CONVERT-AUTH"))
+                .get()
+                .extracting(AiOperationSuggestion::getStatus)
+                .isEqualTo(AiOperationSuggestionStatus.PENDING_REVIEW);
+        assertThat(inboundOrderRepository.count()).isZero();
+        assertThat(inboundOrderItemRepository.count()).isZero();
+        verify(adminAuditWriter, never()).write(any());
+    }
+
+    @Test
+    void convertPendingSuggestionCreatesInboundDraftAndDoesNotMutateInventory() throws Exception {
+        inventoryRepository.saveAndFlush(new Inventory("SKU-AIS-CONVERT-1", 12, 2));
+        saveSuggestion(
+                "AIS-CONVERT",
+                AiOperationSuggestionStatus.PENDING_REVIEW,
+                item("AIS-CONVERT", "SKU-AIS-CONVERT-1", 7, AiSuggestionRiskLevel.HIGH),
+                item("AIS-CONVERT", "SKU-AIS-CONVERT-2", 4, AiSuggestionRiskLevel.MEDIUM));
+        long beforeInventoryCount = inventoryRepository.count();
+        long beforeRecordCount = inventoryRecordRepository.count();
+
+        MvcResult result = mockMvc.perform(post("/api/admin/ai-suggestions/AIS-CONVERT/convert-inbound-draft")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken())
+                        .header("X-Request-Id", "REQ-AIS-CONVERT")
+                        .header("X-Forwarded-For", "203.0.113.21")
+                        .header(HttpHeaders.USER_AGENT, "AdminAiSuggestionTest/2.0"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.suggestionNo").value("AIS-CONVERT"))
+                .andExpect(jsonPath("$.data.status").value("CONVERTED_TO_DRAFT"))
+                .andExpect(jsonPath("$.data.linkedInboundNo").exists())
+                .andExpect(jsonPath("$.data.reviewedByAdminUserId").value(42))
+                .andExpect(jsonPath("$.data.reviewedByAdminUsername").value("admin"))
+                .andExpect(jsonPath("$.data.reviewedAt").exists())
+                .andExpect(jsonPath("$.data.itemCount").value(2))
+                .andExpect(jsonPath("$.data.totalSuggestedQuantity").value(11))
+                .andExpect(jsonPath("$.data.items[0].productId").value("SKU-AIS-CONVERT-1"))
+                .andExpect(jsonPath("$.data.items[0].suggestedQuantity").value(7))
+                .andExpect(jsonPath("$.data.items[1].productId").value("SKU-AIS-CONVERT-2"))
+                .andExpect(jsonPath("$.data.items[1].suggestedQuantity").value(4))
+                .andReturn();
+
+        String inboundNo = responseLinkedInboundNo(result);
+
+        assertThat(suggestionRepository.findBySuggestionNo("AIS-CONVERT"))
+                .get()
+                .satisfies(suggestion -> {
+                    assertThat(suggestion.getStatus()).isEqualTo(AiOperationSuggestionStatus.CONVERTED_TO_DRAFT);
+                    assertThat(suggestion.getLinkedInboundNo()).isEqualTo(inboundNo);
+                    assertThat(suggestion.getReviewedByAdminUserId()).isEqualTo(42L);
+                    assertThat(suggestion.getReviewedByAdminUsername()).isEqualTo("admin");
+                    assertThat(suggestion.getReviewedAt()).isNotNull();
+                });
+        assertThat(inboundOrderRepository.findByInboundNo(inboundNo))
+                .get()
+                .satisfies(order -> {
+                    assertThat(order.getStatus()).isEqualTo(InboundOrderStatus.DRAFT);
+                    assertThat(order.getSource()).isEqualTo(InboundOrderSource.AI_SUGGESTION);
+                    assertThat(order.getCreatedByAdminUserId()).isEqualTo(42L);
+                    assertThat(order.getCreatedByAdminUsername()).isEqualTo("admin");
+                });
+        assertThat(inboundOrderItemRepository.findByInboundNoOrderByIdAsc(inboundNo))
+                .extracting(InboundOrderItem::getProductId)
+                .containsExactly("SKU-AIS-CONVERT-1", "SKU-AIS-CONVERT-2");
+        assertThat(inboundOrderItemRepository.findByInboundNoOrderByIdAsc(inboundNo))
+                .extracting(InboundOrderItem::getQuantity)
+                .containsExactly(7, 4);
+        assertThat(inventoryRepository.count()).isEqualTo(beforeInventoryCount);
+        assertThat(inventoryRepository.findByProductId("SKU-AIS-CONVERT-1"))
+                .get()
+                .satisfies(inventory -> {
+                    assertThat(inventory.getAvailableStock()).isEqualTo(12);
+                    assertThat(inventory.getLockedStock()).isEqualTo(2);
+                });
+        assertThat(inventoryRecordRepository.count()).isEqualTo(beforeRecordCount);
+
+        ArgumentCaptor<AdminAuditLogWriteRequest> auditCaptor =
+                ArgumentCaptor.forClass(AdminAuditLogWriteRequest.class);
+        verify(adminAuditWriter, times(1)).write(auditCaptor.capture());
+        AdminAuditLogWriteRequest audit = auditCaptor.getValue();
+        assertThat(audit.adminUserId()).isEqualTo(42L);
+        assertThat(audit.adminUsername()).isEqualTo("admin");
+        assertThat(audit.action()).isEqualTo(AdminAuditAction.INBOUND_ORDER_CREATE);
+        assertThat(audit.resourceType()).isEqualTo(AdminAuditResourceType.INBOUND_ORDER);
+        assertThat(audit.resourceId()).isEqualTo(inboundNo);
+        assertThat(audit.referenceNo()).isEqualTo("AIS-CONVERT");
+        assertThat(audit.requestId()).isEqualTo("REQ-AIS-CONVERT");
+        assertThat(audit.sourceType()).isEqualTo(AdminAuditSourceType.AI_SUGGESTION);
+        assertThat(audit.ip()).isEqualTo("203.0.113.21");
+        assertThat(audit.userAgent()).isEqualTo("AdminAiSuggestionTest/2.0");
+        assertThat(audit.beforeSnapshot()).isNull();
+        assertThat(audit.afterSnapshot().path("inboundNo").asText()).isEqualTo(inboundNo);
+        assertThat(audit.afterSnapshot().path("source").asText()).isEqualTo("AI_SUGGESTION");
+        assertThat(audit.afterSnapshot().path("status").asText()).isEqualTo("DRAFT");
+        assertThat(audit.afterSnapshot().path("items").size()).isEqualTo(2);
+        assertThat(audit.summary()).contains(
+                "Create inbound order draft from AI suggestion",
+                "AIS-CONVERT",
+                inboundNo,
+                "2 item(s)",
+                "totalQuantity=11",
+                "SKU-AIS-CONVERT-1 x7",
+                "SKU-AIS-CONVERT-2 x4");
+    }
+
+    @Test
+    void convertAlreadyConvertedSuggestionIsRepeatSafe() throws Exception {
+        String inboundNo = "INB-AIS-CONVERT-REPEAT";
+        saveInboundOrder(
+                inboundNo,
+                InboundOrderSource.AI_SUGGESTION,
+                new InboundOrderItem(inboundNo, "SKU-AIS-CONVERT-REPEAT", 1));
+        saveSuggestion(
+                "AIS-CONVERT-REPEAT",
+                AiOperationSuggestionStatus.CONVERTED_TO_DRAFT,
+                item("AIS-CONVERT-REPEAT", "SKU-AIS-CONVERT-REPEAT", 1, AiSuggestionRiskLevel.LOW));
+        long beforeInboundCount = inboundOrderRepository.count();
+        long beforeInboundItemCount = inboundOrderItemRepository.count();
+
+        mockMvc.perform(post("/api/admin/ai-suggestions/AIS-CONVERT-REPEAT/convert-inbound-draft")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("CONVERTED_TO_DRAFT"))
+                .andExpect(jsonPath("$.data.linkedInboundNo").value(inboundNo));
+
+        assertThat(inboundOrderRepository.count()).isEqualTo(beforeInboundCount);
+        assertThat(inboundOrderItemRepository.count()).isEqualTo(beforeInboundItemCount);
+        verify(adminAuditWriter, never()).write(any());
+    }
+
+    @Test
+    void convertNonPendingSuggestionReturnsConflict() throws Exception {
+        saveSuggestion(
+                "AIS-CONVERT-REJECTED",
+                AiOperationSuggestionStatus.REJECTED,
+                item("AIS-CONVERT-REJECTED", "SKU-AIS-CONVERT-REJECTED", 3, AiSuggestionRiskLevel.LOW));
+
+        mockMvc.perform(post("/api/admin/ai-suggestions/AIS-CONVERT-REJECTED/convert-inbound-draft")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(ErrorCode.CONFLICT.getCode()))
+                .andExpect(jsonPath("$.message")
+                        .value("Only pending AI suggestions can be converted to inbound draft"));
+
+        assertThat(inboundOrderRepository.count()).isZero();
+        assertThat(inboundOrderItemRepository.count()).isZero();
+        verify(adminAuditWriter, never()).write(any());
+    }
+
+    @Test
+    void convertSuggestionWithoutItemsReturnsConflict() throws Exception {
+        saveSuggestion("AIS-CONVERT-EMPTY", AiOperationSuggestionStatus.PENDING_REVIEW);
+
+        mockMvc.perform(post("/api/admin/ai-suggestions/AIS-CONVERT-EMPTY/convert-inbound-draft")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(ErrorCode.CONFLICT.getCode()))
+                .andExpect(jsonPath("$.message").value("AI suggestion has no items to convert"));
+
+        assertThat(inboundOrderRepository.count()).isZero();
+        assertThat(inboundOrderItemRepository.count()).isZero();
+        verify(adminAuditWriter, never()).write(any());
+    }
+
+    @Test
     void aiSuggestionEnumNamesRemainStable() {
         assertThat(AiOperationSuggestionStatus.values())
                 .extracting(AiOperationSuggestionStatus::name)
@@ -385,6 +583,14 @@ class AdminAiSuggestionControllerTest {
         itemRepository.saveAllAndFlush(List.of(items));
     }
 
+    private void saveInboundOrder(
+            String inboundNo,
+            InboundOrderSource source,
+            InboundOrderItem... items) {
+        inboundOrderRepository.saveAndFlush(new InboundOrder(inboundNo, source, 42L, "admin"));
+        inboundOrderItemRepository.saveAllAndFlush(List.of(items));
+    }
+
     private AiOperationSuggestionItem item(
             String suggestionNo,
             String productId,
@@ -405,6 +611,13 @@ class AdminAiSuggestionControllerTest {
 
     private String json(Object value) throws Exception {
         return objectMapper.writeValueAsString(value);
+    }
+
+    private String responseLinkedInboundNo(MvcResult result) throws Exception {
+        return objectMapper.readTree(result.getResponse().getContentAsString())
+                .path("data")
+                .path("linkedInboundNo")
+                .asText();
     }
 
     private String adminToken() {

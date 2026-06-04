@@ -14,6 +14,8 @@ import com.minimall.inventory.domain.AiOperationSuggestion;
 import com.minimall.inventory.domain.AiOperationSuggestionItem;
 import com.minimall.inventory.domain.AiOperationSuggestionStatus;
 import com.minimall.inventory.dto.AiSuggestionResponse;
+import com.minimall.inventory.dto.CreateInboundOrderDraftItemRequest;
+import com.minimall.inventory.dto.InboundOrderResponse;
 import com.minimall.inventory.dto.RejectAiSuggestionRequest;
 import com.minimall.inventory.repository.AiOperationSuggestionItemRepository;
 import com.minimall.inventory.repository.AiOperationSuggestionRepository;
@@ -32,16 +34,19 @@ public class AiOperationSuggestionService {
 
     private final AiOperationSuggestionRepository suggestionRepository;
     private final AiOperationSuggestionItemRepository itemRepository;
+    private final InboundOrderDraftService inboundOrderDraftService;
     private final AdminAuditWriter adminAuditWriter;
     private final ObjectMapper objectMapper;
 
     public AiOperationSuggestionService(
             AiOperationSuggestionRepository suggestionRepository,
             AiOperationSuggestionItemRepository itemRepository,
+            InboundOrderDraftService inboundOrderDraftService,
             AdminAuditWriter adminAuditWriter,
             ObjectMapper objectMapper) {
         this.suggestionRepository = suggestionRepository;
         this.itemRepository = itemRepository;
+        this.inboundOrderDraftService = inboundOrderDraftService;
         this.adminAuditWriter = adminAuditWriter;
         this.objectMapper = objectMapper;
     }
@@ -88,6 +93,35 @@ public class AiOperationSuggestionService {
         return after;
     }
 
+    @Transactional
+    public AiSuggestionResponse convertToInboundDraft(
+            String suggestionNo,
+            InventoryAdminAuditContext auditContext) {
+        AiOperationSuggestion suggestion = getBySuggestionNo(suggestionNo);
+        if (suggestion.getStatus() == AiOperationSuggestionStatus.CONVERTED_TO_DRAFT) {
+            return response(suggestion);
+        }
+        if (suggestion.getStatus() != AiOperationSuggestionStatus.PENDING_REVIEW) {
+            throw new BusinessException(
+                    ErrorCode.CONFLICT,
+                    "Only pending AI suggestions can be converted to inbound draft");
+        }
+
+        List<AiOperationSuggestionItem> items =
+                itemRepository.findBySuggestionNoOrderByIdAsc(suggestion.getSuggestionNo());
+        if (items.isEmpty()) {
+            throw new BusinessException(ErrorCode.CONFLICT, "AI suggestion has no items to convert");
+        }
+        InboundOrderResponse inboundDraft = inboundOrderDraftService.createDraftFromAiSuggestion(
+                suggestion.getSuggestionNo(), toInboundDraftItems(items), auditContext);
+        suggestion.convertToDraft(
+                inboundDraft.inboundNo(),
+                auditContext.adminUserId(),
+                auditContext.adminUsername());
+        AiOperationSuggestion saved = suggestionRepository.saveAndFlush(suggestion);
+        return AiSuggestionResponse.from(saved, items);
+    }
+
     private AiOperationSuggestion getBySuggestionNo(String suggestionNo) {
         return suggestionRepository.findBySuggestionNo(suggestionNo)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "AI suggestion not found"));
@@ -108,6 +142,14 @@ public class AiOperationSuggestionService {
                 .toList();
         return itemRepository.findBySuggestionNoInOrderBySuggestionNoAscIdAsc(suggestionNos).stream()
                 .collect(Collectors.groupingBy(AiOperationSuggestionItem::getSuggestionNo));
+    }
+
+    private List<CreateInboundOrderDraftItemRequest> toInboundDraftItems(List<AiOperationSuggestionItem> items) {
+        return items.stream()
+                .map(item -> new CreateInboundOrderDraftItemRequest(
+                        item.getProductId(),
+                        item.getSuggestedQuantity()))
+                .toList();
     }
 
     private void writeRejectAudit(
