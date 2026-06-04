@@ -2395,7 +2395,7 @@
         "description": "Provide a minimal suggestion review model without implementing model calls.",
         "details": "Add ai_operation_suggestion persistence and status enum PENDING_REVIEW, CONVERTED_TO_DRAFT, REJECTED, APPLIED. Implement admin query, reject, and convert-to-inbound-draft APIs. Suggestion records must not directly modify inventory. Converted suggestions must link to the generated inbound order number and keep an input snapshot reference or structured input summary for auditability. Phase 2.5 stores/routes suggestion records only; it does not generate suggestions with AI.",
         "testStrategy": "Run suggestion API tests for query, reject with reason, convert-to-draft, status transitions, inboundNo linkage, no inventory mutation, ADMIN enforcement, and auditability fields.",
-        "status": "pending",
+        "status": "in-progress",
         "dependencies": [
           "4",
           "5"
@@ -2407,10 +2407,11 @@
             "title": "Add AI suggestion schema and domain model",
             "description": "Create ai_operation_suggestion persistence, status enum, source/input snapshot fields, and repositories.",
             "details": "Owner: inventory-service (co-located with inbound drafts/records). Flyway migration + model for ai_operation_suggestion (suggestionNo, type, status, source, suggested items/quantities, reason, inputSnapshotRef or structured input summary, linkedInboundNo, timestamps). Status enum PENDING_REVIEW/CONVERTED_TO_DRAFT/REJECTED/APPLIED with stable names. No model calls — store/route only. Verify: migration applies; enum/field round-trip.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 7,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-06-04T12:11:08.762Z"
           },
           {
             "id": 2,
@@ -2436,7 +2437,8 @@
             "parentTaskId": 7,
             "parentId": "undefined"
           }
-        ]
+        ],
+        "updatedAt": "2026-06-04T12:11:08.762Z"
       },
       {
         "id": "8",
@@ -2460,7 +2462,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-06-04T11:32:19.415Z",
+      "lastModified": "2026-06-04T12:11:08.765Z",
       "taskCount": 8,
       "completedCount": 6,
       "tags": [
