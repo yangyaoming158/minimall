@@ -2418,12 +2418,13 @@
             "title": "Implement suggestion query and reject APIs",
             "description": "Expose admin list/detail/reject behavior with reason capture, ApiResponse/PageResponse, and ADMIN enforcement.",
             "details": "Add gateway route /api/admin/ai-suggestions/** -> inventory-service with ADMIN enforcement. GET list (PageResponse) and detail; POST /{suggestionNo}/reject capturing a reason and moving status to REJECTED. Suggestions never mutate inventory. Verify: list/detail, reject-with-reason transition, 403 USER, 401 unauthenticated.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               1
             ],
             "parentTaskId": 7,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-06-04T12:43:59.278Z"
           },
           {
             "id": 3,
@@ -2438,7 +2439,7 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-06-04T12:11:08.762Z"
+        "updatedAt": "2026-06-04T12:43:59.278Z"
       },
       {
         "id": "8",
@@ -2462,7 +2463,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-06-04T12:11:08.765Z",
+      "lastModified": "2026-06-04T12:43:59.278Z",
       "taskCount": 8,
       "completedCount": 6,
       "tags": [
