@@ -2448,7 +2448,7 @@
         "description": "Prove Phase 2.5 is ready for Phase 3 without breaking Phase 1 storefront or Phase 2 admin platform behavior.",
         "details": "Create docs/phase2-5-ai-inventory-readiness-acceptance.md. Document verification that inventory records expose traceability fields, low-stock query works, operation statistics are read-only, draft creation does not change inventory, confirmation increases inventory with records and audit logs, reconfirmation is idempotent, AI suggestions cannot directly change inventory, /internal/** remains unavailable to browser/AI clients, Phase 1 purchase flow still passes, and Phase 2 admin basics still pass.",
         "testStrategy": "Run the Phase 2.5 focused backend tests plus Phase 1 register/login/product/order/payment/PAID regression and Phase 2 admin login/product/inventory/audit basics; record commands and results in the acceptance document.",
-        "status": "pending",
+        "status": "in-progress",
         "dependencies": [
           "1",
           "2",
@@ -2459,12 +2459,49 @@
           "7"
         ],
         "priority": "high",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Document Phase 2.5 focused inventory acceptance",
+            "description": "Create the acceptance document skeleton and record focused Phase 2.5 inventory readiness verification.",
+            "details": "Cover inventory record traceability fields, low-stock query behavior, read-only operation statistics, draft creation without inventory mutation, confirmation inventory increase with records and audit logs, reconfirmation idempotency, AI suggestions unable to directly change inventory, and internal path unavailability for browser or AI clients. Test strategy: run focused Phase 2.5 backend tests and record commands and results in docs/phase2-5-ai-inventory-readiness-acceptance.md.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 8,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-05T13:25:37.880Z"
+          },
+          {
+            "id": 2,
+            "title": "Document Phase 1 storefront regression",
+            "description": "Record Phase 1 storefront regression evidence for the customer purchase flow.",
+            "details": "Verify register, login, product browsing/detail, order creation, payment, and PAID order behavior still pass after Phase 2.5 inventory readiness changes. Test strategy: run the Phase 1 regression backend tests or focused equivalent commands and record commands and results in docs/phase2-5-ai-inventory-readiness-acceptance.md.",
+            "status": "pending",
+            "dependencies": [
+              "8.1"
+            ],
+            "parentTaskId": 8,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Document Phase 2 admin regression and readiness closeout",
+            "description": "Record Phase 2 admin regression evidence and complete the Phase 2.5 readiness acceptance document.",
+            "details": "Verify admin login, product basics, inventory basics, audit basics, and final readiness summary. Include final commands, Maven package result, residual risks, and Phase 3 readiness conclusion in docs/phase2-5-ai-inventory-readiness-acceptance.md. Test strategy: run Phase 2 admin basics tests plus mvn clean package -DskipTests and record commands and results.",
+            "status": "pending",
+            "dependencies": [
+              "8.2"
+            ],
+            "parentTaskId": 8,
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2026-06-05T13:25:37.880Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-06-04T13:05:10.976Z",
+      "lastModified": "2026-06-05T13:25:37.880Z",
       "taskCount": 8,
       "completedCount": 7,
       "tags": [
