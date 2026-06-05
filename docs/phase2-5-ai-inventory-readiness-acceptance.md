@@ -3,12 +3,12 @@
 - Date: 2026-06-05
 - TaskMaster tag: `phase2-5-ai-inventory-readiness`
 - Parent task: 8, `Phase 2.5 Acceptance And Regression Documentation`
-- Current subtask: 8.2, `Document Phase 1 storefront regression`
+- Current subtask: 8.3, `Document Phase 2 admin regression and readiness closeout`
 
 This report records the Phase 2.5 readiness gate for Phase 3 AI inventory work.
 Subtask 8.1 covers the focused backend inventory boundaries. Subtask 8.2 covers
-the Phase 1 storefront regression. Phase 2 admin regression and final package
-closeout remain pending for subtask 8.3.
+the Phase 1 storefront regression. Subtask 8.3 covers Phase 2 admin regression
+and final package closeout.
 
 ## Verification Commands
 
@@ -16,6 +16,8 @@ closeout remain pending for subtask 8.3.
 | --- | --- |
 | `mvn -pl inventory-service,api-gateway,common-auth -am test` | Passed. Reactor modules `common-core`, `common-auth`, `api-gateway`, and `inventory-service` all ended with `BUILD SUCCESS`. Test totals: `common-core` 39, `common-auth` 38, `api-gateway` 37, `inventory-service` 100. |
 | `mvn -pl user-service,product-service,inventory-service,order-service,payment-service,api-gateway -am test` | Passed. Reactor modules `common-core`, `common-auth`, `api-gateway`, `user-service`, `product-service`, `inventory-service`, `order-service`, and `payment-service` all ended with `BUILD SUCCESS`. Test totals: `common-core` 39, `common-auth` 38, `api-gateway` 37, `user-service` 34, `product-service` 20, `inventory-service` 100, `order-service` 100, `payment-service` 32. |
+| `mvn -pl user-service,product-service,inventory-service,order-service,payment-service,notification-service,api-gateway -am test` | Passed. Reactor modules `common-core`, `common-auth`, `api-gateway`, `user-service`, `product-service`, `inventory-service`, `order-service`, `payment-service`, and `notification-service` all ended with `BUILD SUCCESS`. Test totals: `common-core` 39, `common-auth` 38, `api-gateway` 37, `user-service` 34, `product-service` 20, `inventory-service` 100, `order-service` 100, `payment-service` 32, `notification-service` 20. |
+| `mvn clean package -DskipTests` | Passed. All 10 reactor modules ended with `BUILD SUCCESS`: root pom, `common-core`, `common-auth`, `api-gateway`, `user-service`, `product-service`, `inventory-service`, `order-service`, `payment-service`, and `notification-service`. |
 
 Notes:
 
@@ -23,6 +25,8 @@ Notes:
   sandbox, but the command completed successfully.
 - H2 duplicate-key errors in repository tests are expected assertion inputs for
   uniqueness and idempotency checks; the Maven result was still successful.
+- The final package command intentionally used `-DskipTests`; the regression
+  test commands above are the test evidence for this readiness gate.
 
 ## Phase 2.5 Focused Acceptance
 
@@ -40,7 +44,7 @@ Notes:
 | `/internal/**` remains unavailable to browser and AI clients | Pass | `GatewayIntegrationRegressionTest.internalPathsReturnForbiddenApiResponseBeforeRoutingOrRateLimiting` verifies gateway requests to `/internal/products/SKU-1` and `/internal/inventories/deduct` return forbidden `ApiResponse` before routing or rate limiting. `InternalAuthFilterTest` verifies downstream `/internal/**` access requires the internal token. |
 | Trusted headers remain protected | Pass | `GatewayIntegrationRegressionTest.routesFrontendServicePrefixesAndPropagatesTrustedUserHeaders` and `routesAdminPrefixesToOwnersWithTrustedAdminRoleHeaders` verify forged `X-User-Id`, `X-Username`, and role headers are stripped and replaced with gateway-authenticated identity. |
 
-## Phase 3 Boundary Conclusion For 8.1
+## Phase 2.5 Boundary Conclusion
 
 The focused Phase 2.5 backend checks pass. Current backend behavior supports
 Phase 3 AI inventory planning only as an advisory workflow:
@@ -72,9 +76,37 @@ Phase 3 AI inventory planning only as an advisory workflow:
 | Paid-order transition still works | Pass | `PaymentSuccessEventConsumerTest.pendingPaymentOrderTransitionsToPaidAndRecordsProcessedEvent` verifies the order-service consumer handles `PaymentSuccessEvent`, transitions the order from `PENDING_PAYMENT` to `PAID`, sets `paidAt`, and records the processed event. `duplicateEventIdDoesNotProcessAgain` verifies duplicate payment events are idempotent. |
 | Customer auth boundaries still work | Pass | `OrderControllerTest.createOrderMissingAuthenticationReturnsUnauthorized`, `PaymentControllerTest.payMissingAuthenticationReturnsUnauthorized`, `OrderControllerTest.orderOwnedByAnotherUserReturnsNotFound`, and `PaymentControllerTest.payAnotherUsersOrderReturnsNotFound` verify unauthenticated access and cross-user reads/payments remain blocked with frontend-safe responses. |
 
-## Pending Regression Sections
+## Phase 2 Admin Regression
 
-| Section | Status | Owner subtask |
+| Area | Status | Evidence |
 | --- | --- | --- |
-| Phase 2 admin login/product/inventory/audit basics | Pending | 8.3 |
-| Final Maven package check and readiness closeout | Pending | 8.3 |
+| Admin login and profile still work | Pass | `AdminAuthControllerTest.adminLoginReturnsAdminTokenAndResponse` verifies admin login token and response. `adminMeReturnsAdminFromBearerToken`, `adminMeWithUserBearerTokenReturnsForbidden`, and `adminMeWithoutAuthenticationReturnsUnauthorized` verify `/api/admin/me` identity and role boundaries. |
+| Gateway admin boundary still works | Pass | `GatewayAuthenticationFilterTest.adminLoginPathBypassesJwtAndStripsSpoofedHeaders`, `adminRouteWithoutJwtReturnsUnauthorizedApiResponse`, `adminRouteWithUserJwtReturnsForbiddenApiResponse`, and `adminRouteWithAdminJwtInjectsTrustedRoleAndStripsSpoofedHeaders` verify admin gateway authentication and trusted-header handling. `GatewayIntegrationRegressionTest.adminApiRequiresAdminBeforeRateLimiting` and `routesAdminPrefixesToOwnersWithTrustedAdminRoleHeaders` verify admin routing to owning services. |
+| Admin product basics still work | Pass | `ProductControllerTest.adminProductEndpointsListDetailCreateUpdateAndMutateStatus` verifies admin product list/detail/create/update/status mutation. `adminCreateWritesAuditLogWithRequestMetadata`, `adminUpdateWritesBeforeAndAfterAuditSnapshots`, and `adminStatusMutationsWriteShelfAuditActions` verify product audit coverage. `adminProductEndpointsRejectUserRoleAndInvalidStatus` verifies role and enum validation. |
+| Admin inventory basics still work | Pass | `AdminInventoryControllerTest.adminListReturnsPagedAdminFields`, `adminListFiltersLowStock`, `updateSafetyStockUpdatesThresholdAndWritesAudit`, and `recordsReturnTimelineNewestFirst` verify admin inventory list/filter/update/record contracts and audit writes. |
+| Admin audit query still works | Pass | `AdminAuditLogControllerTest.listFiltersAuditLogsAndReturnsApiResponsePage` verifies audit-log pagination, filters, and `ApiResponse`/page shape. Audit write evidence also remains covered by product, inventory, inbound order, and AI suggestion admin tests. |
+| Admin order basics still work | Pass | `AdminOrderControllerTest.adminOrderListReturnsNewestFirstWithUsernameForAdmin`, `adminOrderListFiltersByStatusUserIdAndProductId`, `adminOrderDetailReturnsOrderForAdmin`, and `adminOrderEventsUsesRecordedEventsForPaidOrder` verify list/detail/events. `adminOrderRoutesAreReadOnly` verifies admin order routes do not mutate order state. |
+| Admin payment basics still work | Pass | `AdminPaymentControllerTest.adminPaymentListReturnsNewestFirstWithEnrichmentForAdmin`, `adminPaymentListFiltersByStatusAndOrderNo`, `adminPaymentDetailByPaymentNoReturnsForAdmin`, and `adminPaymentLookupByOrderNoReturnsForAdmin` verify payment list/detail/order lookup. Auth and validation boundaries are covered by the same class. |
+| Admin notification basics still work | Pass | `AdminNotificationControllerTest.adminNotificationListReturnsNewestFirstForAdmin`, `adminNotificationListFiltersByEventIdOrderNoAndStatus`, `adminNotificationListFiltersByChannelAndCreatedRange`, and `adminNotificationDetailReturnsForAdmin` verify notification list/detail/filter contracts. Role and validation boundaries are covered by the same class. |
+| Admin operation statistics remain read-only | Pass | `AdminOrderControllerTest.salesByProductStatsReturnsReadOnlyAggregationForAdmin` verifies sales aggregation does not mutate orders. `AdminInventoryControllerTest.inventoryTrendsReturnsDailyBucketsAndDoesNotMutateInventory` verifies inventory trends do not mutate inventory or records. |
+
+## Final Readiness Closeout
+
+| Area | Status | Evidence |
+| --- | --- | --- |
+| Phase 2.5 focused backend checks | Pass | Task 8.1 evidence above confirms Phase 2.5 inventory, inbound order, AI suggestion, and trust-boundary behavior. |
+| Phase 1 storefront regression | Pass | Task 8.2 evidence above confirms register/login/product/inventory/order/payment/PAID flows still pass. |
+| Phase 2 admin regression | Pass | Task 8.3 evidence above confirms admin auth, routing, product, inventory, audit, order, payment, notification, and stats basics still pass. |
+| Final package check | Pass | `mvn clean package -DskipTests` built all 10 reactor modules successfully. |
+
+Phase 2.5 is ready to hand off to Phase 3 AI inventory planning. The backend
+contract remains explicit: AI may read structured admin data and create/review
+suggestions or inbound drafts through backend APIs, but it must not directly
+write inventory, execute SQL, call `/internal/**`, or bypass admin confirmation.
+
+Residual risks:
+
+- This closeout validates backend tests and package output, not a live browser UI
+  or production Docker deployment.
+- Future Phase 3 model integration still needs its own PRD, prompts, provider
+  configuration, and end-to-end approval workflow tests.

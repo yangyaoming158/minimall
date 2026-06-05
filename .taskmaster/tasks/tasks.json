@@ -2448,7 +2448,7 @@
         "description": "Prove Phase 2.5 is ready for Phase 3 without breaking Phase 1 storefront or Phase 2 admin platform behavior.",
         "details": "Create docs/phase2-5-ai-inventory-readiness-acceptance.md. Document verification that inventory records expose traceability fields, low-stock query works, operation statistics are read-only, draft creation does not change inventory, confirmation increases inventory with records and audit logs, reconfirmation is idempotent, AI suggestions cannot directly change inventory, /internal/** remains unavailable to browser/AI clients, Phase 1 purchase flow still passes, and Phase 2 admin basics still pass.",
         "testStrategy": "Run the Phase 2.5 focused backend tests plus Phase 1 register/login/product/order/payment/PAID regression and Phase 2 admin login/product/inventory/audit basics; record commands and results in the acceptance document.",
-        "status": "in-progress",
+        "status": "done",
         "dependencies": [
           "1",
           "2",
@@ -2489,28 +2489,29 @@
             "title": "Document Phase 2 admin regression and readiness closeout",
             "description": "Record Phase 2 admin regression evidence and complete the Phase 2.5 readiness acceptance document.",
             "details": "Verify admin login, product basics, inventory basics, audit basics, and final readiness summary. Include final commands, Maven package result, residual risks, and Phase 3 readiness conclusion in docs/phase2-5-ai-inventory-readiness-acceptance.md. Test strategy: run Phase 2 admin basics tests plus mvn clean package -DskipTests and record commands and results.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "8.2"
             ],
             "parentTaskId": 8,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-06-05T14:23:56.856Z"
           }
         ],
-        "updatedAt": "2026-06-05T14:12:28.514Z"
+        "updatedAt": "2026-06-05T14:23:56.856Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-06-05T14:12:28.514Z",
+      "lastModified": "2026-06-05T14:23:56.856Z",
       "taskCount": 8,
-      "completedCount": 7,
+      "completedCount": 8,
       "tags": [
         "phase2-5-ai-inventory-readiness"
       ],
-      "created": "2026-06-05T14:13:13.773Z",
+      "created": "2026-06-05T14:24:58.375Z",
       "description": "Tasks for phase2-5-ai-inventory-readiness context",
-      "updated": "2026-06-05T14:13:13.773Z"
+      "updated": "2026-06-05T14:24:58.375Z"
     }
   }
 }
