@@ -2448,3 +2448,14 @@ Append one entry per implementation task so future sessions can recover project 
 - Test result: `mvn -pl user-service,product-service,inventory-service,order-service,payment-service,notification-service,api-gateway -am test` passed in 02:07. Reactor modules `common-core`, `common-auth`, `api-gateway`, `user-service`, `product-service`, `inventory-service`, `order-service`, `payment-service`, and `notification-service` all ended with `BUILD SUCCESS`; test totals were common-core 39, common-auth 38, api-gateway 37, user-service 34, product-service 20, inventory-service 100, order-service 100, payment-service 32, and notification-service 20. `mvn clean package -DskipTests` passed for all 10 reactor modules in 8.995s.
 - Issues: The api-gateway startup emitted the existing sandbox Netty network-interface warning while exiting 0. Existing H2 duplicate-key logs from uniqueness/idempotency assertion tests remain expected and did not fail the build. The final closeout validates backend tests and package output, not a live browser UI or production Docker deployment.
 - Next: Phase 2.5 TaskMaster tree is complete; next work should come from the user's Phase 3 PRD/task tree.
+
+## Development quickstart update - Customer and admin frontend launch docs
+- Date: 2026-06-05
+- Status: Done
+- TaskMaster tag: `phase2-5-ai-inventory-readiness` (all tasks already complete; no new TaskMaster task was opened)
+- Implemented: Updated the local development quickstart to document customer frontend and admin frontend startup separately. Added admin-frontend `npm run dev` instructions for `http://localhost:5174/`, admin background logging guidance, frontend/admin build and test commands, port-specific shutdown commands for `5173` and `5174`, and a combined local smoke workflow. Closed the previously started customer and admin Vite dev servers.
+- Changed files: `docs/dev-quickstart.md`; `docs/dev-log.md`
+- Commands run: `node node_modules/task-master-ai/dist/task-master.js tags`; `node node_modules/task-master-ai/dist/task-master.js next`; `sed` reads for `docs/dev-quickstart.md`, `frontend` config, and `admin-frontend` config; `git diff --check`; `lsof -tiTCP:5173 -sTCP:LISTEN -P -n`; `lsof -tiTCP:5174 -sTCP:LISTEN -P -n`; `ps -p 98548,99259 -o pid,ppid,cmd`; `kill 98548 99259`; follow-up `lsof` checks for `5173` and `5174`.
+- Test result: Documentation-only change; `git diff --check` passed. Follow-up `lsof` checks returned no listener for `5173` or `5174`.
+- Issues: `ss -ltnp` cannot inspect host listeners inside the current sandbox (`Cannot open netlink socket: Operation not permitted`), so host port checks and process cleanup were run with approved escalated commands.
+- Next: Start customer frontend with `frontend` on `5173` and admin frontend with `admin-frontend` on `5174` when the next manual UI smoke is needed.
