@@ -37,7 +37,7 @@ class AiProviderPropertiesTest {
         contextRunner
                 .withPropertyValues(
                         "minimall.ai.provider=DEEPSEEK",
-                        "minimall.ai.model=deepseek-chat",
+                        "minimall.ai.model=deepseek-v4-pro",
                         "minimall.ai.base-url=https://api.deepseek.example",
                         "minimall.ai.api-key=test-api-key",
                         "minimall.ai.request-timeout-ms=12000",
@@ -47,7 +47,7 @@ class AiProviderPropertiesTest {
                     AiProviderProperties properties = context.getBean(AiProviderProperties.class);
 
                     assertThat(properties.getProvider()).isEqualTo(AiProviderType.DEEPSEEK);
-                    assertThat(properties.getModel()).isEqualTo("deepseek-chat");
+                    assertThat(properties.getModel()).isEqualTo("deepseek-v4-pro");
                     assertThat(properties.getBaseUrl()).isEqualTo("https://api.deepseek.example");
                     assertThat(properties.getApiKey()).isEqualTo("test-api-key");
                     assertThat(properties.getRequestTimeoutMs()).isEqualTo(12_000L);
