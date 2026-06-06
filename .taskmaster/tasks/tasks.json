@@ -2522,10 +2522,11 @@
         "description": "Create the Phase 3 AI assistant contract aligned with completed Phase 2.5 boundaries before implementation.",
         "details": "Document that AI cannot modify inventory, run SQL, call /internal/**, bypass services, or confirm inbound orders. Lock existing suggestion statuses PENDING_REVIEW, CONVERTED_TO_DRAFT, REJECTED, and APPLIED. List reused Phase 2.5 APIs, new Phase 3 AI APIs, provider strategy, prompt constraints, data sources, and output validation rules.",
         "testStrategy": "",
-        "status": "pending",
+        "status": "done",
         "dependencies": [],
         "priority": "high",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-06-06T07:38:16.742Z"
       },
       {
         "id": 2,
@@ -2535,7 +2536,7 @@
         "testStrategy": "",
         "status": "pending",
         "dependencies": [
-          1
+          "1"
         ],
         "priority": "high",
         "subtasks": []
@@ -2548,7 +2549,7 @@
         "testStrategy": "",
         "status": "pending",
         "dependencies": [
-          1
+          "1"
         ],
         "priority": "high",
         "subtasks": []
@@ -2561,7 +2562,7 @@
         "testStrategy": "",
         "status": "pending",
         "dependencies": [
-          1
+          "1"
         ],
         "priority": "high",
         "subtasks": []
@@ -2574,8 +2575,8 @@
         "testStrategy": "",
         "status": "pending",
         "dependencies": [
-          1,
-          3
+          "1",
+          "3"
         ],
         "priority": "high",
         "subtasks": []
@@ -2588,9 +2589,9 @@
         "testStrategy": "",
         "status": "pending",
         "dependencies": [
-          3,
-          4,
-          5
+          "3",
+          "4",
+          "5"
         ],
         "priority": "high",
         "subtasks": []
@@ -2603,9 +2604,9 @@
         "testStrategy": "",
         "status": "pending",
         "dependencies": [
-          3,
-          4,
-          5
+          "3",
+          "4",
+          "5"
         ],
         "priority": "high",
         "subtasks": []
@@ -2618,11 +2619,11 @@
         "testStrategy": "",
         "status": "pending",
         "dependencies": [
-          2,
-          3,
-          4,
-          5,
-          7
+          "2",
+          "3",
+          "4",
+          "5",
+          "7"
         ],
         "priority": "high",
         "subtasks": []
@@ -2635,7 +2636,7 @@
         "testStrategy": "",
         "status": "pending",
         "dependencies": [
-          8
+          "8"
         ],
         "priority": "high",
         "subtasks": []
@@ -2648,10 +2649,10 @@
         "testStrategy": "",
         "status": "pending",
         "dependencies": [
-          6,
-          7,
-          8,
-          9
+          "6",
+          "7",
+          "8",
+          "9"
         ],
         "priority": "medium",
         "subtasks": []
@@ -2664,8 +2665,8 @@
         "testStrategy": "",
         "status": "pending",
         "dependencies": [
-          8,
-          10
+          "8",
+          "10"
         ],
         "priority": "medium",
         "subtasks": []
@@ -2678,7 +2679,7 @@
         "testStrategy": "",
         "status": "pending",
         "dependencies": [
-          4
+          "4"
         ],
         "priority": "low",
         "subtasks": []
@@ -2691,19 +2692,26 @@
         "testStrategy": "",
         "status": "pending",
         "dependencies": [
-          9,
-          10,
-          11,
-          12
+          "9",
+          "10",
+          "11",
+          "12"
         ],
         "priority": "high",
         "subtasks": []
       }
     ],
     "metadata": {
-      "created": "2026-06-06T07:02:46.736Z",
-      "updated": "2026-06-06T07:10:59.613Z",
-      "description": "Phase 3 AI inventory assistant"
+      "version": "1.0.0",
+      "lastModified": "2026-06-06T07:38:16.743Z",
+      "taskCount": 13,
+      "completedCount": 1,
+      "tags": [
+        "phase3-ai-inventory-assistant"
+      ],
+      "created": "2026-06-06T07:38:30.911Z",
+      "description": "Tasks for phase3-ai-inventory-assistant context",
+      "updated": "2026-06-06T07:38:30.911Z"
     }
   }
 }
