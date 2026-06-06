@@ -9,6 +9,8 @@ import com.minimall.inventory.domain.AiOperationSuggestionSource;
 import com.minimall.inventory.domain.AiOperationSuggestionStatus;
 import com.minimall.inventory.domain.AiOperationSuggestionType;
 import com.minimall.inventory.domain.AiSuggestionRiskLevel;
+import com.minimall.inventory.domain.AiSuggestionValidationStatus;
+import jakarta.persistence.EntityManager;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +30,9 @@ class AiOperationSuggestionRepositoryTest {
 
     @Autowired
     private AiOperationSuggestionItemRepository itemRepository;
+
+    @Autowired
+    private EntityManager entityManager;
 
     @Test
     void savesSuggestionAndFindsBySuggestionNo() {
@@ -53,10 +58,99 @@ class AiOperationSuggestionRepositoryTest {
                     assertThat(suggestion.getReason()).isEqualTo("Low stock replenishment");
                     assertThat(suggestion.getInputSnapshotRef()).isEqualTo("snapshot:low-stock:20260604");
                     assertThat(suggestion.getInputSummary()).isEqualTo("SKU-A is below safety stock");
+                    assertThat(suggestion.getModelProvider()).isNull();
+                    assertThat(suggestion.getModelName()).isNull();
+                    assertThat(suggestion.getPromptVersion()).isNull();
+                    assertThat(suggestion.getOutputSchemaVersion()).isNull();
+                    assertThat(suggestion.getValidationStatus()).isNull();
+                    assertThat(suggestion.getValidationError()).isNull();
+                    assertThat(suggestion.getInputSnapshotJson()).isNull();
+                    assertThat(suggestion.getValidatedOutputJson()).isNull();
+                    assertThat(suggestion.getRawModelOutputJson()).isNull();
                     assertThat(suggestion.getLinkedInboundNo()).isNull();
                     assertThat(suggestion.getRejectedReason()).isNull();
                 });
         assertThat(suggestionRepository.existsBySuggestionNo("AIS-20260604-001")).isTrue();
+    }
+
+    @Test
+    void persistsAiMetadataAndJsonSnapshots() {
+        String inputSnapshotJson =
+                "{\"products\":[{\"productId\":\"SKU-A\",\"availableStock\":2,\"safetyStock\":10}]}";
+        String validatedOutputJson =
+                "{\"analysisType\":\"LOW_STOCK\",\"items\":[{\"productId\":\"SKU-A\",\"suggestedQuantity\":8}]}";
+        String rawModelOutputJson =
+                "{\"choices\":[{\"message\":{\"content\":\"{\\\"summary\\\":\\\"restock\\\"}\"}}]}";
+        AiOperationSuggestion suggestion = new AiOperationSuggestion(
+                "AIS-META",
+                AiOperationSuggestionType.REPLENISHMENT,
+                AiOperationSuggestionSource.AI_MODEL,
+                "metadata",
+                "snapshot:meta",
+                "metadata summary");
+        suggestion.recordAiMetadata(
+                " deepseek ",
+                " deepseek-chat ",
+                " prompt-v1 ",
+                " ai-suggestion-output-v1 ",
+                AiSuggestionValidationStatus.VALID,
+                null,
+                inputSnapshotJson,
+                validatedOutputJson,
+                rawModelOutputJson);
+        suggestionRepository.saveAndFlush(suggestion);
+        entityManager.clear();
+
+        assertThat(suggestionRepository.findBySuggestionNo("AIS-META"))
+                .isPresent()
+                .get()
+                .satisfies(saved -> {
+                    assertThat(saved.getModelProvider()).isEqualTo("deepseek");
+                    assertThat(saved.getModelName()).isEqualTo("deepseek-chat");
+                    assertThat(saved.getPromptVersion()).isEqualTo("prompt-v1");
+                    assertThat(saved.getOutputSchemaVersion()).isEqualTo("ai-suggestion-output-v1");
+                    assertThat(saved.getValidationStatus()).isEqualTo(AiSuggestionValidationStatus.VALID);
+                    assertThat(saved.getValidationError()).isNull();
+                    assertThat(saved.getInputSnapshotJson()).isEqualTo(inputSnapshotJson);
+                    assertThat(saved.getValidatedOutputJson()).isEqualTo(validatedOutputJson);
+                    assertThat(saved.getRawModelOutputJson()).isEqualTo(rawModelOutputJson);
+                    assertThat(saved.getStatus()).isEqualTo(AiOperationSuggestionStatus.PENDING_REVIEW);
+                });
+    }
+
+    @Test
+    void persistsInvalidValidationMetadataWithoutChangingSuggestionStatusEnum() {
+        AiOperationSuggestion suggestion = new AiOperationSuggestion(
+                "AIS-META-INVALID",
+                AiOperationSuggestionType.REPLENISHMENT,
+                AiOperationSuggestionSource.AI_MODEL,
+                "metadata invalid",
+                "snapshot:invalid",
+                "metadata invalid summary");
+        suggestion.recordAiMetadata(
+                "mock",
+                "mock-model",
+                "prompt-v1",
+                "ai-suggestion-output-v1",
+                AiSuggestionValidationStatus.INVALID,
+                " productId SKU-MISSING is not in input snapshot ",
+                "{\"products\":[]}",
+                null,
+                "{\"summary\":\"bad product\"}");
+        suggestionRepository.saveAndFlush(suggestion);
+        entityManager.clear();
+
+        assertThat(suggestionRepository.findBySuggestionNo("AIS-META-INVALID"))
+                .isPresent()
+                .get()
+                .satisfies(saved -> {
+                    assertThat(saved.getValidationStatus()).isEqualTo(AiSuggestionValidationStatus.INVALID);
+                    assertThat(saved.getValidationError())
+                            .isEqualTo("productId SKU-MISSING is not in input snapshot");
+                    assertThat(saved.getValidatedOutputJson()).isNull();
+                    assertThat(saved.getRawModelOutputJson()).isEqualTo("{\"summary\":\"bad product\"}");
+                    assertThat(saved.getStatus()).isEqualTo(AiOperationSuggestionStatus.PENDING_REVIEW);
+                });
     }
 
     @Test
@@ -277,5 +371,9 @@ class AiOperationSuggestionRepositoryTest {
                         AiSuggestionRiskLevel.LOW,
                         AiSuggestionRiskLevel.MEDIUM,
                         AiSuggestionRiskLevel.HIGH);
+        assertThat(AiSuggestionValidationStatus.values())
+                .containsExactly(
+                        AiSuggestionValidationStatus.VALID,
+                        AiSuggestionValidationStatus.INVALID);
     }
 }

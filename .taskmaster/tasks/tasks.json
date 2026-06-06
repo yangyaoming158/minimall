@@ -2534,12 +2534,13 @@
         "description": "Extend existing ai_operation_suggestion records with provider, prompt, schema, validation, and JSON snapshot metadata.",
         "details": "Add an idempotent migration for nullable model_provider, model_name, prompt_version, output_schema_version, validation_status, validation_error, input_snapshot_json, validated_output_json, and raw_model_output_json or equivalent persistence. Preserve existing Phase 2.5 records, keep the suggestion status enum unchanged, and add repository tests for metadata persistence and JSON round-trip behavior.",
         "testStrategy": "",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           "1"
         ],
         "priority": "high",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-06-06T08:00:41.131Z"
       },
       {
         "id": 3,
@@ -2703,15 +2704,15 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-06-06T07:38:16.743Z",
+      "lastModified": "2026-06-06T08:00:41.133Z",
       "taskCount": 13,
-      "completedCount": 1,
+      "completedCount": 2,
       "tags": [
         "phase3-ai-inventory-assistant"
       ],
-      "created": "2026-06-06T07:38:30.911Z",
+      "created": "2026-06-06T08:00:54.967Z",
       "description": "Tasks for phase3-ai-inventory-assistant context",
-      "updated": "2026-06-06T07:38:30.911Z"
+      "updated": "2026-06-06T08:00:54.967Z"
     }
   }
 }

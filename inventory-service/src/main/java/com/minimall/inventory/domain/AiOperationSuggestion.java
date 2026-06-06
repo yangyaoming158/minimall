@@ -56,6 +56,34 @@ public class AiOperationSuggestion {
     @Column(name = "input_summary", length = 4096)
     private String inputSummary;
 
+    @Column(name = "model_provider", length = 64)
+    private String modelProvider;
+
+    @Column(name = "model_name", length = 128)
+    private String modelName;
+
+    @Column(name = "prompt_version", length = 64)
+    private String promptVersion;
+
+    @Column(name = "output_schema_version", length = 64)
+    private String outputSchemaVersion;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "validation_status", length = 32)
+    private AiSuggestionValidationStatus validationStatus;
+
+    @Column(name = "validation_error", length = 512)
+    private String validationError;
+
+    @Column(name = "input_snapshot_json", length = 16384)
+    private String inputSnapshotJson;
+
+    @Column(name = "validated_output_json", length = 16384)
+    private String validatedOutputJson;
+
+    @Column(name = "raw_model_output_json", length = 16384)
+    private String rawModelOutputJson;
+
     @Column(name = "linked_inbound_no", length = 64)
     private String linkedInboundNo;
 
@@ -150,6 +178,42 @@ public class AiOperationSuggestion {
         return inputSummary;
     }
 
+    public String getModelProvider() {
+        return modelProvider;
+    }
+
+    public String getModelName() {
+        return modelName;
+    }
+
+    public String getPromptVersion() {
+        return promptVersion;
+    }
+
+    public String getOutputSchemaVersion() {
+        return outputSchemaVersion;
+    }
+
+    public AiSuggestionValidationStatus getValidationStatus() {
+        return validationStatus;
+    }
+
+    public String getValidationError() {
+        return validationError;
+    }
+
+    public String getInputSnapshotJson() {
+        return inputSnapshotJson;
+    }
+
+    public String getValidatedOutputJson() {
+        return validatedOutputJson;
+    }
+
+    public String getRawModelOutputJson() {
+        return rawModelOutputJson;
+    }
+
     public String getLinkedInboundNo() {
         return linkedInboundNo;
     }
@@ -198,7 +262,32 @@ public class AiOperationSuggestion {
         status = AiOperationSuggestionStatus.APPLIED;
     }
 
+    public void recordAiMetadata(
+            String modelProvider,
+            String modelName,
+            String promptVersion,
+            String outputSchemaVersion,
+            AiSuggestionValidationStatus validationStatus,
+            String validationError,
+            String inputSnapshotJson,
+            String validatedOutputJson,
+            String rawModelOutputJson) {
+        this.modelProvider = normalize(modelProvider);
+        this.modelName = normalize(modelName);
+        this.promptVersion = normalize(promptVersion);
+        this.outputSchemaVersion = normalize(outputSchemaVersion);
+        this.validationStatus = validationStatus;
+        this.validationError = normalize(validationError);
+        this.inputSnapshotJson = nullIfBlank(inputSnapshotJson);
+        this.validatedOutputJson = nullIfBlank(validatedOutputJson);
+        this.rawModelOutputJson = nullIfBlank(rawModelOutputJson);
+    }
+
     private static String normalize(String value) {
         return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private static String nullIfBlank(String value) {
+        return value == null || value.isBlank() ? null : value;
     }
 }
