@@ -2548,12 +2548,45 @@
         "description": "Add provider adapters for DeepSeek, MiniMax, and MOCK without exposing provider calls to browser code.",
         "details": "Introduce AiProvider and environment-driven Spring configuration for AI_PROVIDER, AI_MODEL, AI_BASE_URL, AI_API_KEY, timeout, strict JSON mode, and mock mode. Implement DeepSeek, optional MiniMax, and MOCK adapters using Spring RestClient unless a later task proves WebFlux is required. Map provider failures to controlled ApiResponse errors and cover request/response mapping with unit tests.",
         "testStrategy": "",
-        "status": "pending",
+        "status": "in-progress",
         "dependencies": [
           "1"
         ],
         "priority": "high",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Add AI provider configuration and contracts",
+            "description": "Define the environment-driven AI provider configuration, provider selector enum, provider request and response contracts, and controlled provider exception shape for inventory-service.",
+            "details": "Add Spring Boot configuration properties for AI_PROVIDER, AI_MODEL, AI_BASE_URL, AI_API_KEY, AI_REQUEST_TIMEOUT_MS, AI_MODEL_STRICT_JSON, and AI_MOCK_ENABLED. Introduce AiProvider plus immutable request/response DTOs that downstream AI inventory tasks can call without provider-specific details. Add focused unit tests for configuration binding/defaults and contract serialization where applicable.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 3,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-06T08:21:46.812Z"
+          },
+          {
+            "id": 2,
+            "title": "Implement AI provider adapters",
+            "description": "Implement DeepSeek, MiniMax, and MOCK provider adapters behind AiProvider using Spring RestClient for HTTP providers and deterministic local behavior for MOCK.",
+            "details": "Use provider-specific request/response mapping without exposing provider calls to browser code. Keep base URL, model, API key, timeout, and strict JSON mode fully configuration-driven. Map HTTP, timeout, malformed response, and provider error payload failures into controlled backend exceptions that later API layers can convert to ApiResponse errors. Cover adapter request/response mapping with unit tests.",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 3,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Verify AI provider wiring and error contract",
+            "description": "Wire the selected AiProvider into Spring configuration and verify provider selection, bean creation, and controlled failure behavior.",
+            "details": "Add auto-configuration or inventory-service configuration that chooses MOCK, DeepSeek, or MiniMax based on AI_PROVIDER/AI_MOCK_ENABLED while keeping secrets out of source code. Add tests for provider selection, missing external-provider API key behavior, timeout configuration, and stable error codes/messages suitable for ApiResponse mapping. Run inventory-service tests and full reactor package verification.",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 3,
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2026-06-06T08:21:46.812Z"
       },
       {
         "id": 4,
@@ -2704,15 +2737,15 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-06-06T08:00:41.133Z",
+      "lastModified": "2026-06-06T08:21:46.813Z",
       "taskCount": 13,
       "completedCount": 2,
       "tags": [
         "phase3-ai-inventory-assistant"
       ],
-      "created": "2026-06-06T08:00:54.967Z",
+      "created": "2026-06-06T08:22:36.719Z",
       "description": "Tasks for phase3-ai-inventory-assistant context",
-      "updated": "2026-06-06T08:00:54.967Z"
+      "updated": "2026-06-06T08:22:36.719Z"
     }
   }
 }
