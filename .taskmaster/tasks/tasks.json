@@ -2513,5 +2513,197 @@
       "description": "Tasks for phase2-5-ai-inventory-readiness context",
       "updated": "2026-06-05T14:24:58.375Z"
     }
+  },
+  "phase3-ai-inventory-assistant": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Lock Phase 3 AI Contract",
+        "description": "Create the Phase 3 AI assistant contract aligned with completed Phase 2.5 boundaries before implementation.",
+        "details": "Document that AI cannot modify inventory, run SQL, call /internal/**, bypass services, or confirm inbound orders. Lock existing suggestion statuses PENDING_REVIEW, CONVERTED_TO_DRAFT, REJECTED, and APPLIED. List reused Phase 2.5 APIs, new Phase 3 AI APIs, provider strategy, prompt constraints, data sources, and output validation rules.",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 2,
+        "title": "Add AI Metadata Schema",
+        "description": "Extend existing ai_operation_suggestion records with provider, prompt, schema, validation, and JSON snapshot metadata.",
+        "details": "Add an idempotent migration for nullable model_provider, model_name, prompt_version, output_schema_version, validation_status, validation_error, input_snapshot_json, validated_output_json, and raw_model_output_json or equivalent persistence. Preserve existing Phase 2.5 records, keep the suggestion status enum unchanged, and add repository tests for metadata persistence and JSON round-trip behavior.",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [
+          1
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 3,
+        "title": "Implement AI Provider Abstraction",
+        "description": "Add provider adapters for DeepSeek, MiniMax, and MOCK without exposing provider calls to browser code.",
+        "details": "Introduce AiProvider and environment-driven Spring configuration for AI_PROVIDER, AI_MODEL, AI_BASE_URL, AI_API_KEY, timeout, strict JSON mode, and mock mode. Implement DeepSeek, optional MiniMax, and MOCK adapters using Spring RestClient unless a later task proves WebFlux is required. Map provider failures to controlled ApiResponse errors and cover request/response mapping with unit tests.",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [
+          1
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 4,
+        "title": "Implement AI Structured Data Facade",
+        "description": "Build backend services that assemble inventory, low-stock, sales, hot-product, and record evidence for AI features.",
+        "details": "Add read-only facade methods in the Phase 3 owner service, initially inventory-service. Read through application services, inventory-service owned repositories, or admin-safe API clients. Enforce ADMIN access on /api/admin/ai/** through gateway and downstream checks. Return structured evidence and data time ranges for later prompt context.",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [
+          1
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 5,
+        "title": "Implement Output Schema Validation And Prompt Templates",
+        "description": "Make prompt templates versioned and validate model output before returning trusted analysis or saving suggestions.",
+        "details": "Store prompt templates under backend resources with promptVersion and outputSchemaVersion. Validate JSON parseability, analysisType enum, riskLevel enum, known product ids, non-negative numeric fields, positive suggestedQuantity for replenishment, absence of SQL, absence of unsupported stock-change claims, and absence of invented facts. Add tests for valid and invalid outputs.",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [
+          1,
+          3
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 6,
+        "title": "Implement AI Inventory Q&A API",
+        "description": "Answer supported inventory questions through whitelisted read tools and LLM analysis.",
+        "details": "Add POST /api/admin/ai/inventory/ask. Support current stock lookup, low-stock list, specific product inventory status, and recent inventory record explanation. Unsupported questions return controlled unsupported-intent responses. Include answer, detected intent, query time, and structured evidence. Q&A endpoints must never execute write actions.",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [
+          3,
+          4,
+          5
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 7,
+        "title": "Implement Low-Stock And Hot-Product AI Analysis APIs",
+        "description": "Expose LLM-assisted low-stock and hot-product analysis endpoints with structured evidence.",
+        "details": "Add low-stock analysis and hot-product analysis APIs under /api/admin/ai/inventory. Low-stock analysis uses backend-computed low-stock candidates, default 7-day sales evidence, inventory records when available, and model-generated reasons, limitations, risk levels, and quantities. Hot-product analysis supports days=7 and days=30, sales aggregation, current inventory evidence, risk level, reasons, limitations, and time range. Reject invalid model output with controlled errors.",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [
+          3,
+          4,
+          5
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 8,
+        "title": "Implement AI Suggestion Generation",
+        "description": "Generate and save replenishment suggestions from validated model output.",
+        "details": "Add POST /api/admin/ai/replenishment-suggestions/generate. Read low-stock products, 7-day sales, hot-product stats, and optional records; send structured evidence to the provider; parse and validate JSON; persist one ai_operation_suggestion only after validation passes; persist suggested items with quantities and risk levels; set status PENDING_REVIEW; do not change inventory; do not create an inbound draft automatically.",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [
+          2,
+          3,
+          4,
+          5,
+          7
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 9,
+        "title": "Integrate Suggestion Draft Conversion And Applied Status",
+        "description": "Reuse existing suggestion conversion and inbound confirmation behavior, then reflect applied inbound orders in suggestion history.",
+        "details": "Reuse POST /api/admin/ai-suggestions/{suggestionNo}/convert-inbound-draft instead of creating duplicate review endpoints. Ensure converted suggestions move to CONVERTED_TO_DRAFT. When a linked inbound order reaches APPLIED, synchronize the suggestion to APPLIED. Repeated inbound confirmation must not duplicate stock changes. No AI endpoint may confirm inbound orders.",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [
+          8
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 10,
+        "title": "Build AI Inventory Assistant Admin Page",
+        "description": "Add the admin UI for Phase 3 AI inventory workflows.",
+        "details": "Add /ai-inventory route and AI 库存助手 navigation entry in admin-frontend. Build Q&A, low-stock analysis, hot-product analysis, suggestion generation, rejection, and draft conversion surfaces. Show status, evidence, risk level, time range, and distinct error states. Never present AI as directly executing stock changes, and call only gateway admin APIs.",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [
+          6,
+          7,
+          8,
+          9
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 11,
+        "title": "Add Daily Report And Suggestion History Enhancements",
+        "description": "Add P1 reporting and richer review surfaces once P0 is stable.",
+        "details": "Implement daily report and suggestion-history enhancements if P0 schedule allows. Daily report should summarize low-stock count, hot products, generated suggestions, rejected suggestions, converted drafts, and applied inbound orders. Suggestion history should support status filtering and detail view. This task can be deferred if P0 is at risk.",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [
+          8,
+          10
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 12,
+        "title": "Add Demo Data Generator",
+        "description": "Provide repeatable dev/test data for local Phase 3 demonstration.",
+        "details": "Create a deterministic or idempotent dev/test-only demo data generator for products, inventory, safety stock, orders, inventory records, and optional AI suggestions. It must be disabled by default, enabled only by dev/test profile or explicit environment property, and must never run in production profile. This task can be deferred if P0 is at risk.",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [
+          4
+        ],
+        "priority": "low",
+        "subtasks": []
+      },
+      {
+        "id": 13,
+        "title": "Complete Phase 3 Regression And Acceptance",
+        "description": "Verify the full AI assistant workflow and existing customer/admin regressions.",
+        "details": "Document and verify the full flow: analysis -> suggestion -> draft -> admin confirmation -> inventory increase -> inventory record -> operation log -> suggestion APPLIED. Prove AI cannot directly change inventory, /internal/** remains blocked, trusted headers remain protected, customer purchase flow remains valid, and Phase 2 admin login/base pages remain valid. Run focused backend tests, mvn clean package -DskipTests, and admin-frontend npm run test/build when UI changes are included.",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [
+          9,
+          10,
+          11,
+          12
+        ],
+        "priority": "high",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2026-06-06T07:02:46.736Z",
+      "updated": "2026-06-06T07:10:59.613Z",
+      "description": "Phase 3 AI inventory assistant"
+    }
   }
 }
