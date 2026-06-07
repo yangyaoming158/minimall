@@ -12,9 +12,11 @@ public class AiProviderRestClientFactory {
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout(properties.requestTimeout());
         requestFactory.setReadTimeout(properties.requestTimeout());
-        return RestClient.builder()
-                .baseUrl(properties.getBaseUrl())
-                .requestFactory(requestFactory)
-                .build();
+        RestClient.Builder builder = RestClient.builder()
+                .requestFactory(requestFactory);
+        if (properties.hasBaseUrl()) {
+            builder.baseUrl(properties.getBaseUrl());
+        }
+        return builder.build();
     }
 }
