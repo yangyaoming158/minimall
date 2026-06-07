@@ -2618,10 +2618,11 @@
             "title": "Add sales evidence client contract",
             "description": "Add an inventory-service client or adapter contract for admin-safe sales-by-product evidence needed by AI analysis without reading order-service databases directly.",
             "details": "Reuse the existing order-service admin sales aggregation contract through a configurable service client or equivalent internal adapter. Preserve read-only behavior, time range filters, productId filters, and stable DTO fields for soldQuantity, orderCount, and totalAmount. Keep hostnames and ports configuration-driven.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 4,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-06-07T12:27:25.437Z"
           },
           {
             "id": 3,
@@ -2644,7 +2645,7 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-06-07T12:11:10.727Z"
+        "updatedAt": "2026-06-07T12:27:25.437Z"
       },
       {
         "id": 5,
@@ -2782,15 +2783,15 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-06-07T12:11:10.727Z",
+      "lastModified": "2026-06-07T12:27:25.437Z",
       "taskCount": 13,
       "completedCount": 3,
       "tags": [
         "phase3-ai-inventory-assistant"
       ],
-      "created": "2026-06-07T12:11:51.896Z",
+      "created": "2026-06-07T12:28:20.999Z",
       "description": "Tasks for phase3-ai-inventory-assistant context",
-      "updated": "2026-06-07T12:11:51.896Z"
+      "updated": "2026-06-07T12:28:20.999Z"
     }
   }
 }

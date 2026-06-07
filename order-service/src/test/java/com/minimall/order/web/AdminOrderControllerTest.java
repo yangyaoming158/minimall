@@ -329,6 +329,42 @@ class AdminOrderControllerTest {
     }
 
     @Test
+    void salesByProductStatsSupportsProductFilter() throws Exception {
+        LocalDateTime createdAt = LocalDateTime.of(2026, 5, 26, 10, 0);
+        saveOrder(order(
+                "ORD-OP-STATS-FILTER-1001",
+                621L,
+                "SKU-OP-FILTER-A",
+                2,
+                new BigDecimal("20.00"),
+                OrderStatus.PAID),
+                createdAt);
+        saveOrder(order(
+                "ORD-OP-STATS-FILTER-1002",
+                622L,
+                "SKU-OP-FILTER-B",
+                3,
+                new BigDecimal("15.00"),
+                OrderStatus.PAID),
+                createdAt.plusHours(1));
+
+        mockMvc.perform(get("/api/admin/operation-stats/sales-by-product")
+                        .header(AuthHeaders.USER_ID, "900")
+                        .header(AuthHeaders.USERNAME, "admin")
+                        .header(AuthHeaders.USER_ROLE, "ADMIN")
+                        .param("productId", " SKU-OP-FILTER-A ")
+                        .param("page", "0")
+                        .param("size", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.totalElements").value(1))
+                .andExpect(jsonPath("$.data.content[0].productId").value("SKU-OP-FILTER-A"))
+                .andExpect(jsonPath("$.data.content[0].soldQuantity").value(2))
+                .andExpect(jsonPath("$.data.content[0].orderCount").value(1))
+                .andExpect(jsonPath("$.data.content[0].totalAmount").value(40.00));
+    }
+
+    @Test
     void salesByProductStatsRejectsInvalidDateRange() throws Exception {
         mockMvc.perform(get("/api/admin/operation-stats/sales-by-product")
                         .header(AuthHeaders.USER_ID, "900")

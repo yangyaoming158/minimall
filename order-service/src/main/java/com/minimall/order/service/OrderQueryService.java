@@ -135,13 +135,14 @@ public class OrderQueryService {
 
     @Transactional(readOnly = true)
     public PageResponse<SalesByProductStatsResponse> salesByProductStats(
+            String productId,
             LocalDateTime createdFrom,
             LocalDateTime createdTo,
             Pageable pageable) {
         validateCreatedRange(createdFrom, createdTo);
         Pageable boundedPageable = boundedPageable(pageable);
         return PageResponse.from(orderRepository.aggregateProductSales(
-                        null, OrderStatus.PAID, createdFrom, createdTo, boundedPageable)
+                        normalize(productId), OrderStatus.PAID, createdFrom, createdTo, boundedPageable)
                 .map(this::toSalesByProductStatsResponse));
     }
 

@@ -24,6 +24,7 @@ public class AdminOperationStatsController {
 
     @GetMapping("/sales-by-product")
     public ApiResponse<PageResponse<SalesByProductStatsResponse>> salesByProduct(
+            @RequestParam(name = "productId", required = false) String productId,
             @RequestParam(name = "createdFrom", required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
             LocalDateTime createdFrom,
@@ -32,6 +33,6 @@ public class AdminOperationStatsController {
             LocalDateTime createdTo,
             Pageable pageable) {
         AdminAccess.requireAdmin();
-        return ApiResponse.success(orderQueryService.salesByProductStats(createdFrom, createdTo, pageable));
+        return ApiResponse.success(orderQueryService.salesByProductStats(productId, createdFrom, createdTo, pageable));
     }
 }

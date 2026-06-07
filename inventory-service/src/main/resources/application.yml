@@ -23,6 +23,9 @@ minimall:
     request-timeout-ms: ${AI_REQUEST_TIMEOUT_MS:5000}
     model-strict-json: ${AI_MODEL_STRICT_JSON:true}
     mock-enabled: ${AI_MOCK_ENABLED:true}
+  clients:
+    order-service:
+      base-url: ${ORDER_SERVICE_BASE_URL:http://127.0.0.1:8104}
 
 server:
   port: 8103

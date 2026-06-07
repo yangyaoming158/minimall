@@ -212,6 +212,7 @@ services:
     environment:
       <<: *java-service-environment
       SERVER_PORT: 8103
+      ORDER_SERVICE_BASE_URL: http://order-service:8104
     # Not published — gateway-only access (see user-service note).
     expose:
       - "8103"
