@@ -33,6 +33,7 @@ public interface InventoryRepository
              where inventory.status = :status
                and inventory.safetyStock > 0
                and inventory.availableStock <= inventory.safetyStock
+             order by inventory.productId asc
             """)
     Page<Inventory> findLowStock(@Param("status") InventoryStatus status, Pageable pageable);
 

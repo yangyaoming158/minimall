@@ -2596,12 +2596,55 @@
         "description": "Build backend services that assemble inventory, low-stock, sales, hot-product, and record evidence for AI features.",
         "details": "Add read-only facade methods in the Phase 3 owner service, initially inventory-service. Read through application services, inventory-service owned repositories, or admin-safe API clients. Enforce ADMIN access on /api/admin/ai/** through gateway and downstream checks. Return structured evidence and data time ranges for later prompt context.",
         "testStrategy": "",
-        "status": "pending",
+        "status": "in-progress",
         "dependencies": [
           "1"
         ],
         "priority": "high",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Add inventory evidence facade foundation",
+            "description": "Create read-only inventory-service facade contracts for current inventory, low-stock candidates, and recent inventory records used by later AI prompts.",
+            "details": "Add DTOs and a service/facade that read only through existing inventory-service repositories or query services. Include productId, stock quantities, safetyStock, stockState, lowStock, record evidence, and generated/data time range metadata. Do not add LLM calls, writes, frontend work, or public AI endpoints in this subtask.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 4,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-07T12:11:10.727Z"
+          },
+          {
+            "id": 2,
+            "title": "Add sales evidence client contract",
+            "description": "Add an inventory-service client or adapter contract for admin-safe sales-by-product evidence needed by AI analysis without reading order-service databases directly.",
+            "details": "Reuse the existing order-service admin sales aggregation contract through a configurable service client or equivalent internal adapter. Preserve read-only behavior, time range filters, productId filters, and stable DTO fields for soldQuantity, orderCount, and totalAmount. Keep hostnames and ports configuration-driven.",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 4,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Assemble low-stock and hot-product evidence",
+            "description": "Combine inventory evidence and sales evidence into bounded low-stock and hot-product evidence sets for later AI analysis.",
+            "details": "Build read-only facade methods that compute evidence windows, combine low-stock inventory candidates with default recent sales data, and derive hot products for supported day ranges. Include limitations/time ranges and avoid inventory mutation, suggestion persistence, or model calls.",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 4,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Expose AI structured evidence admin endpoints",
+            "description": "Expose read-only /api/admin/ai structured evidence endpoints through gateway and downstream ADMIN checks.",
+            "details": "Add controller endpoints under /api/admin/ai/** that return ApiResponse evidence DTOs from the facade, add precise gateway routing to inventory-service, and verify 401 unauthenticated, 403 USER, ADMIN success, stable error envelopes, and read-only behavior. Do not add frontend pages or LLM calls.",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 4,
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2026-06-07T12:11:10.727Z"
       },
       {
         "id": 5,
@@ -2739,15 +2782,15 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-06-07T11:52:52.409Z",
+      "lastModified": "2026-06-07T12:11:10.727Z",
       "taskCount": 13,
       "completedCount": 3,
       "tags": [
         "phase3-ai-inventory-assistant"
       ],
-      "created": "2026-06-07T11:53:48.430Z",
+      "created": "2026-06-07T12:11:51.896Z",
       "description": "Tasks for phase3-ai-inventory-assistant context",
-      "updated": "2026-06-07T11:53:48.430Z"
+      "updated": "2026-06-07T12:11:51.896Z"
     }
   }
 }
