@@ -2708,14 +2708,51 @@
         "description": "Answer supported inventory questions through whitelisted read tools and LLM analysis.",
         "details": "Add POST /api/admin/ai/inventory/ask. Support current stock lookup, low-stock list, specific product inventory status, and recent inventory record explanation. Unsupported questions return controlled unsupported-intent responses. Include answer, detected intent, query time, and structured evidence. Q&A endpoints must never execute write actions.",
         "testStrategy": "",
-        "status": "pending",
+        "status": "in-progress",
         "dependencies": [
           "3",
           "4",
           "5"
         ],
         "priority": "high",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Add AI inventory Q&A intent and evidence foundation",
+            "description": "Define Q&A request/response DTOs, supported intent enum, read-only intent detection, and evidence assembly service foundation for current stock, low-stock, product status, and recent records.",
+            "details": "Implement only internal inventory-service contracts and service logic. Reuse AiInventoryEvidenceFacade and existing repositories/services. Unsupported questions should map to a controlled unsupported intent result. Do not expose REST endpoints or call write paths in this subtask.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 6,
+            "updatedAt": "2026-06-08T13:07:30.495Z",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Wire Q&A provider analysis and validation",
+            "description": "Use prompt/provider/validator wiring to produce controlled AI inventory answers for supported read-only intents.",
+            "details": "Build on 6.1 intent and evidence service. Use AiInventoryAnalysisService with the INVENTORY_QA prompt and AiModelOutputValidator. Ensure invalid model output returns controlled BusinessException/ApiResponse behavior through service tests. Do not persist suggestions or mutate inventory.",
+            "status": "pending",
+            "dependencies": [
+              "6.1"
+            ],
+            "parentTaskId": 6,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Expose AI inventory Q&A admin endpoint",
+            "description": "Add POST /api/admin/ai/inventory/ask with ApiResponse contract, ADMIN-only enforcement, and gateway/security regression coverage.",
+            "details": "Expose the Q&A service through inventory-service controller. Ensure unauthenticated requests return 401, USER tokens return 403, ADMIN requests succeed for supported questions, unsupported intent is controlled, and Q&A executes no writes. Add gateway route/regression tests as needed.",
+            "status": "pending",
+            "dependencies": [
+              "6.2"
+            ],
+            "parentTaskId": 6,
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2026-06-08T13:07:30.495Z"
       },
       {
         "id": 7,
@@ -2824,15 +2861,15 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-06-08T12:44:48.269Z",
+      "lastModified": "2026-06-08T13:07:30.495Z",
       "taskCount": 13,
       "completedCount": 5,
       "tags": [
         "phase3-ai-inventory-assistant"
       ],
-      "created": "2026-06-08T12:45:50.219Z",
+      "created": "2026-06-08T13:08:24.562Z",
       "description": "Tasks for phase3-ai-inventory-assistant context",
-      "updated": "2026-06-08T12:45:50.219Z"
+      "updated": "2026-06-08T13:08:24.562Z"
     }
   }
 }
