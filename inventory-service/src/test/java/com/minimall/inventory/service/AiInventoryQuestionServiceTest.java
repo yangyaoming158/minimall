@@ -2,14 +2,28 @@ package com.minimall.inventory.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.minimall.common.core.exception.BusinessException;
 import com.minimall.common.core.exception.ErrorCode;
+import com.minimall.inventory.ai.AiProviderTokenUsage;
+import com.minimall.inventory.ai.AiProviderType;
+import com.minimall.inventory.ai.analysis.AiInventoryAnalysisRequest;
+import com.minimall.inventory.ai.analysis.AiInventoryAnalysisResult;
+import com.minimall.inventory.ai.analysis.AiInventoryAnalysisService;
+import com.minimall.inventory.ai.prompt.AiPromptTemplateId;
+import com.minimall.inventory.ai.validation.AiAnalysisType;
+import com.minimall.inventory.ai.validation.AiOutputValidationException;
 import com.minimall.inventory.client.order.SalesEvidenceClient;
 import com.minimall.inventory.domain.AiInventoryEvidenceType;
 import com.minimall.inventory.domain.AiInventoryQuestionIntent;
+import com.minimall.inventory.domain.AiSuggestionValidationStatus;
 import com.minimall.inventory.domain.Inventory;
 import com.minimall.inventory.domain.InventoryChangeType;
 import com.minimall.inventory.domain.InventoryRecord;
@@ -19,8 +33,11 @@ import com.minimall.inventory.dto.AiInventoryAskResponse;
 import com.minimall.inventory.repository.InventoryRecordRepository;
 import com.minimall.inventory.repository.InventoryRepository;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -45,10 +62,17 @@ class AiInventoryQuestionServiceTest {
     @MockBean
     private SalesEvidenceClient salesEvidenceClient;
 
+    @MockBean
+    private AiInventoryAnalysisService analysisService;
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
     @BeforeEach
     void setUp() {
         inventoryRecordRepository.deleteAll();
         inventoryRepository.deleteAll();
+        given(analysisService.generateValidatedAnalysis(any()))
+                .willReturn(analysisResult("AI inventory answer", List.of("AI limitation")));
     }
 
     @Test
@@ -66,7 +90,7 @@ class AiInventoryQuestionServiceTest {
         assertThat(response.intent()).isEqualTo(AiInventoryQuestionIntent.CURRENT_STOCK);
         assertThat(response.supported()).isTrue();
         assertThat(response.queryTime()).isNotNull();
-        assertThat(response.answer()).contains("SKU-QA-STOCK", "9 available", "2 locked");
+        assertThat(response.answer()).isEqualTo("AI inventory answer");
         assertThat(response.evidence().evidenceType()).isEqualTo(AiInventoryEvidenceType.CURRENT_INVENTORY);
         assertThat(response.evidence().inventories()).singleElement().satisfies(item -> {
             assertThat(item.productId()).isEqualTo("SKU-QA-STOCK");
@@ -74,12 +98,34 @@ class AiInventoryQuestionServiceTest {
             assertThat(item.lockedStock()).isEqualTo(2);
         });
         assertThat(response.limitations())
-                .contains("Inventory Q&A is read-only and does not reserve, deduct, or adjust stock.");
+                .contains(
+                        "Inventory Q&A is read-only and does not reserve, deduct, or adjust stock.",
+                        "AI limitation");
         assertThat(inventoryRepository.count()).isEqualTo(inventoryCount);
         assertThat(inventoryRecordRepository.count()).isEqualTo(recordCount);
         then(salesEvidenceClient).should(never())
                 .salesByProduct(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
                         org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+        ArgumentCaptor<AiInventoryAnalysisRequest> requestCaptor =
+                ArgumentCaptor.forClass(AiInventoryAnalysisRequest.class);
+        then(analysisService).should().generateValidatedAnalysis(requestCaptor.capture());
+        AiInventoryAnalysisRequest analysisRequest = requestCaptor.getValue();
+        assertThat(analysisRequest.templateId()).isEqualTo(AiPromptTemplateId.INVENTORY_QA);
+        assertThat(analysisRequest.expectedAnalysisType()).isEqualTo(AiAnalysisType.INVENTORY_QA);
+        assertThat(analysisRequest.productFacts()).singleElement().satisfies(facts -> {
+            assertThat(facts.productId()).isEqualTo("SKU-QA-STOCK");
+            assertThat(facts.availableStock()).isEqualTo(9);
+            assertThat(facts.lockedStock()).isEqualTo(2);
+            assertThat(facts.safetyStock()).isEqualTo(5);
+        });
+        assertThat(analysisRequest.allowedDateValues()).isNotEmpty();
+        assertThat(analysisRequest.inputSnapshot()).isInstanceOf(Map.class);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> snapshot = (Map<String, Object>) analysisRequest.inputSnapshot();
+        assertThat(snapshot).containsEntry("question", "What is the current stock for this SKU?");
+        assertThat(snapshot).containsEntry("productId", "SKU-QA-STOCK");
+        assertThat(snapshot).containsEntry("detectedIntent", "CURRENT_STOCK");
+        assertThat(snapshot).containsEntry("recordLimit", 0);
     }
 
     @Test
@@ -95,12 +141,14 @@ class AiInventoryQuestionServiceTest {
 
         assertThat(response.intent()).isEqualTo(AiInventoryQuestionIntent.LOW_STOCK_LIST);
         assertThat(response.supported()).isTrue();
-        assertThat(response.answer()).contains("1 low-stock");
+        assertThat(response.answer()).isEqualTo("AI inventory answer");
         assertThat(response.evidence().evidenceType()).isEqualTo(AiInventoryEvidenceType.LOW_STOCK_CANDIDATES);
         assertThat(response.evidence().inventories())
                 .extracting(item -> item.productId())
                 .containsExactly("SKU-QA-LOW");
         assertThat(response.evidence().records()).isEmpty();
+        assertThat(response.limitations())
+                .contains("Q&A evidence uses backend-computed low-stock candidates only.", "AI limitation");
     }
 
     @Test
@@ -115,11 +163,8 @@ class AiInventoryQuestionServiceTest {
 
         assertThat(response.intent()).isEqualTo(AiInventoryQuestionIntent.PRODUCT_STATUS);
         assertThat(response.supported()).isTrue();
-        assertThat(response.answer())
-                .contains("SKU-QA-STATUS")
-                .contains("ACTIVE")
-                .contains("OUT_OF_STOCK")
-                .contains("below safety stock");
+        assertThat(response.answer()).isEqualTo("AI inventory answer");
+        assertThat(response.limitations()).contains("Product status is derived from current inventory evidence.");
     }
 
     @Test
@@ -135,7 +180,7 @@ class AiInventoryQuestionServiceTest {
 
         assertThat(response.intent()).isEqualTo(AiInventoryQuestionIntent.RECENT_RECORDS);
         assertThat(response.supported()).isTrue();
-        assertThat(response.answer()).contains("1 recent inventory record");
+        assertThat(response.answer()).isEqualTo("AI inventory answer");
         assertThat(response.evidence().records()).singleElement().satisfies(record -> {
             assertThat(record.productId()).isEqualTo("SKU-QA-RECORDS");
             assertThat(record.requestId()).isEqualTo("REQ-QA-1");
@@ -158,6 +203,7 @@ class AiInventoryQuestionServiceTest {
         assertThat(response.answer()).isEqualTo("Unsupported inventory question intent.");
         assertThat(response.limitations()).singleElement()
                 .isEqualTo("Supported questions cover current stock, low-stock lists, product status, and recent records.");
+        then(analysisService).should(never()).generateValidatedAnalysis(any());
     }
 
     @Test
@@ -172,6 +218,7 @@ class AiInventoryQuestionServiceTest {
                     assertThat(exception.getMessage()).isEqualTo(
                             "productId is required for CURRENT_STOCK questions");
                 });
+        then(analysisService).should(never()).generateValidatedAnalysis(any());
     }
 
     @Test
@@ -184,6 +231,24 @@ class AiInventoryQuestionServiceTest {
                 .isInstanceOfSatisfying(BusinessException.class, exception -> {
                     assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR);
                     assertThat(exception.getMessage()).isEqualTo("question must not be blank");
+                });
+        then(analysisService).should(never()).generateValidatedAnalysis(any());
+    }
+
+    @Test
+    void invalidAiOutputUsesControlledValidationErrorBeforeReturningAnswer() {
+        inventoryRepository.saveAndFlush(inventory("SKU-QA-INVALID-AI", 9, 0, 5));
+        given(analysisService.generateValidatedAnalysis(any()))
+                .willThrow(new AiOutputValidationException("output must be valid JSON"));
+
+        assertThatThrownBy(() -> questionService.answer(new AiInventoryAskRequest(
+                        "What is the current stock?",
+                        "SKU-QA-INVALID-AI",
+                        null,
+                        0)))
+                .isInstanceOfSatisfying(BusinessException.class, exception -> {
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR);
+                    assertThat(exception.getMessage()).contains("AI output validation failed");
                 });
     }
 
@@ -205,5 +270,29 @@ class AiInventoryQuestionServiceTest {
                 "admin",
                 InventoryRecordSourceType.ADMIN_ADJUSTMENT,
                 requestId);
+    }
+
+    private AiInventoryAnalysisResult analysisResult(String summary, List<String> limitations) {
+        ObjectNode output = objectMapper.createObjectNode();
+        output.put("summary", summary);
+        output.put("analysisType", "INVENTORY_QA");
+        output.putArray("items");
+        ArrayNode limitationNodes = output.putArray("limitations");
+        limitations.forEach(limitationNodes::add);
+        String outputJson = output.toString();
+        return new AiInventoryAnalysisResult(
+                AiPromptTemplateId.INVENTORY_QA,
+                AiAnalysisType.INVENTORY_QA,
+                "inventory-qa-v1",
+                "inventory-analysis-output-v1",
+                AiProviderType.MOCK,
+                "mock-model",
+                "mock-request-id",
+                AiProviderTokenUsage.empty(),
+                AiSuggestionValidationStatus.VALID,
+                "{}",
+                outputJson,
+                outputJson,
+                output);
     }
 }
