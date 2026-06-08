@@ -2655,13 +2655,50 @@
         "description": "Make prompt templates versioned and validate model output before returning trusted analysis or saving suggestions.",
         "details": "Store prompt templates under backend resources with promptVersion and outputSchemaVersion. Validate JSON parseability, analysisType enum, riskLevel enum, known product ids, non-negative numeric fields, positive suggestedQuantity for replenishment, absence of SQL, absence of unsupported stock-change claims, and absence of invented facts. Add tests for valid and invalid outputs.",
         "testStrategy": "",
-        "status": "pending",
+        "status": "in-progress",
         "dependencies": [
           "1",
           "3"
         ],
         "priority": "high",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Add versioned prompt template resources",
+            "description": "Store inventory assistant prompt templates as backend resources with explicit promptVersion and outputSchemaVersion metadata.",
+            "details": "Add resource files and a small loader/model following existing backend patterns. Keep templates versioned and expose metadata needed by analysis code. Verification should cover resource loading and required metadata presence.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 5,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-08T12:02:26.995Z"
+          },
+          {
+            "id": 2,
+            "title": "Implement model output schema validation",
+            "description": "Validate parsed inventory assistant output before it is trusted or persisted.",
+            "details": "Implement JSON parseability checks, analysisType and riskLevel enum validation, known product id validation, non-negative numeric field validation, positive suggestedQuantity for replenishment, SQL rejection, unsupported stock-change claim rejection, and invented-fact rejection using available request/product context.",
+            "status": "pending",
+            "dependencies": [
+              "5.1"
+            ],
+            "parentTaskId": 5,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Add validation tests and analysis wiring",
+            "description": "Cover valid and invalid model outputs and invoke validation before returning analysis or saving suggestions.",
+            "details": "Add focused unit tests for valid output and invalid JSON, enum, product id, numeric, replenishment quantity, SQL, unsupported stock-change, and invented-fact cases. Wire validation into the inventory assistant analysis flow before API responses and suggestion persistence.",
+            "status": "pending",
+            "dependencies": [
+              "5.2"
+            ],
+            "parentTaskId": 5,
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2026-06-08T12:02:26.995Z"
       },
       {
         "id": 6,
@@ -2785,15 +2822,15 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-06-07T12:57:41.846Z",
+      "lastModified": "2026-06-08T12:02:26.995Z",
       "taskCount": 13,
       "completedCount": 4,
       "tags": [
         "phase3-ai-inventory-assistant"
       ],
-      "created": "2026-06-07T12:57:55.118Z",
+      "created": "2026-06-08T12:03:18.706Z",
       "description": "Tasks for phase3-ai-inventory-assistant context",
-      "updated": "2026-06-07T12:57:55.118Z"
+      "updated": "2026-06-08T12:03:18.706Z"
     }
   }
 }
