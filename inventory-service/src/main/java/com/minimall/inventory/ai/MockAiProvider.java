@@ -52,13 +52,38 @@ public class MockAiProvider implements AiProvider {
 
     private Map<String, Object> mockPayload(AiProviderRequest request) {
         Map<String, Object> payload = new LinkedHashMap<>();
+        String analysisType = stringInput(request, "analysisType", "REPLENISHMENT");
+        payload.put("summary", "Mock AI provider response");
+        payload.put("analysisType", analysisType);
+        payload.put("timeRange", mockTimeRange(request));
         payload.put("provider", "MOCK");
         payload.put("promptVersion", request.promptVersion());
         payload.put("outputSchemaVersion", request.outputSchemaVersion());
         payload.put("reason", "Mock AI provider response");
         payload.put("items", java.util.List.of());
+        payload.put("limitations", java.util.List.of("Mock provider uses only local request input."));
         payload.put("input", request.input());
         return payload;
+    }
+
+    private Map<String, String> mockTimeRange(AiProviderRequest request) {
+        Object allowedDateValues = request.input().get("allowedDateValues");
+        if (allowedDateValues instanceof java.util.List<?> values && !values.isEmpty()) {
+            String from = Objects.toString(values.get(0), null);
+            String to = Objects.toString(values.get(values.size() - 1), null);
+            if (from != null && to != null) {
+                return Map.of("from", from, "to", to);
+            }
+        }
+        return Map.of();
+    }
+
+    private String stringInput(AiProviderRequest request, String key, String fallback) {
+        Object value = request.input().get(key);
+        if (value == null || value.toString().isBlank()) {
+            return fallback;
+        }
+        return value.toString().trim();
     }
 
     private AiProviderTokenUsage usage(AiProviderRequest request, String content) {

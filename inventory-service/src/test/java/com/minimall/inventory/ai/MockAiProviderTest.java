@@ -27,10 +27,13 @@ class MockAiProviderTest {
         assertThat(first.tokenUsage().totalTokens()).isGreaterThan(0);
 
         JsonNode content = objectMapper.readTree(first.content());
+        assertThat(content.get("summary").asText()).isEqualTo("Mock AI provider response");
+        assertThat(content.get("analysisType").asText()).isEqualTo("REPLENISHMENT");
         assertThat(content.get("provider").asText()).isEqualTo("MOCK");
         assertThat(content.get("promptVersion").asText()).isEqualTo("replenishment-v1");
         assertThat(content.get("outputSchemaVersion").asText()).isEqualTo("inventory-suggestion-v1");
         assertThat(content.get("items")).isEmpty();
+        assertThat(content.get("limitations")).hasSize(1);
         assertThat(content.get("input").get("productId").asText()).isEqualTo("SKU-MOCK-1");
     }
 
