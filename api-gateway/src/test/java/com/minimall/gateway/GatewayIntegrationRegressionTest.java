@@ -119,6 +119,7 @@ class GatewayIntegrationRegressionTest {
         expectAdminRoute("/api/admin/inventories", "inventory", token);
         expectAdminRoute("/api/admin/inventories/SKU-1", "inventory", token);
         expectAdminRoute("/api/admin/ai/inventory/evidence/current/SKU-1", "inventory", token);
+        expectAdminPostRoute("/api/admin/ai/inventory/ask", "inventory", token);
         expectAdminRoute("/api/admin/orders", "order", token);
         expectAdminRoute("/api/admin/orders/ORDER-1", "order", token);
         expectAdminRoute("/api/admin/payments", "payment", token);
@@ -126,7 +127,7 @@ class GatewayIntegrationRegressionTest {
         expectAdminRoute("/api/admin/notifications", "notification", token);
         expectAdminRoute("/api/admin/notifications/1", "notification", token);
 
-        assertThat(rateLimiter.keys()).hasSize(13).allMatch("user:42"::equals);
+        assertThat(rateLimiter.keys()).hasSize(14).allMatch("user:42"::equals);
     }
 
     @Test
@@ -291,6 +292,22 @@ class GatewayIntegrationRegressionTest {
 
     private void expectAdminRoute(String uri, String expectedService, String token) {
         webTestClient.get()
+                .uri(uri)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                .header(AuthHeaders.USER_ID, "999")
+                .header(AuthHeaders.USERNAME, "mallory")
+                .header(AuthHeaders.USER_ROLE, AuthRole.USER.name())
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.service").isEqualTo(expectedService)
+                .jsonPath("$.userId").isEqualTo("42")
+                .jsonPath("$.username").isEqualTo("admin")
+                .jsonPath("$.role").isEqualTo(AuthRole.ADMIN.name());
+    }
+
+    private void expectAdminPostRoute(String uri, String expectedService, String token) {
+        webTestClient.post()
                 .uri(uri)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                 .header(AuthHeaders.USER_ID, "999")
