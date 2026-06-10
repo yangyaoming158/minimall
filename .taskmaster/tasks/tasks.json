@@ -2812,7 +2812,7 @@
         "description": "Generate and save replenishment suggestions from validated model output.",
         "details": "Add POST /api/admin/ai/replenishment-suggestions/generate. Read low-stock products, 7-day sales, hot-product stats, and optional records; send structured evidence to the provider; parse and validate JSON; persist one ai_operation_suggestion only after validation passes; persist suggested items with quantities and risk levels; set status PENDING_REVIEW; do not change inventory; do not create an inbound draft automatically.",
         "testStrategy": "",
-        "status": "pending",
+        "status": "in-progress",
         "dependencies": [
           "2",
           "3",
@@ -2821,7 +2821,40 @@
           "7"
         ],
         "priority": "high",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Enhance MockAiProvider with deterministic snapshot-derived items",
+            "description": "Derive mock output items deterministically from request input productFacts so the MOCK provider passes anti-hallucination validation and can demo replenishment generation end-to-end without network.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 8,
+            "updatedAt": "2026-06-10T16:09:20.047Z",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Implement replenishment suggestion generation service",
+            "description": "Assemble low-stock and hot-product evidence, call the provider with the REPLENISHMENT_SUGGESTION template, validate output, and persist one ai_operation_suggestion with items, PENDING_REVIEW status, and full AI metadata. No inventory change, no inbound draft.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 8,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Expose replenishment suggestion generation admin endpoint",
+            "description": "Add POST /api/admin/ai/replenishment-suggestions/generate with ADMIN enforcement, controller security and persistence regression tests, and gateway admin-route regression coverage.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 8,
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2026-06-10T16:09:20.047Z"
       },
       {
         "id": "9",
@@ -2898,7 +2931,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-06-10T15:56:42.939Z",
+      "lastModified": "2026-06-10T16:09:20.047Z",
       "taskCount": 13,
       "completedCount": 7,
       "tags": [
