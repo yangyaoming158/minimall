@@ -51,6 +51,7 @@ public class InboundOrderDraftService {
     private final InboundOrderItemRepository inboundOrderItemRepository;
     private final InventoryRepository inventoryRepository;
     private final InventoryRecordRepository inventoryRecordRepository;
+    private final AiSuggestionAppliedSynchronizer aiSuggestionAppliedSynchronizer;
     private final AdminAuditWriter adminAuditWriter;
     private final ObjectMapper objectMapper;
 
@@ -59,12 +60,14 @@ public class InboundOrderDraftService {
             InboundOrderItemRepository inboundOrderItemRepository,
             InventoryRepository inventoryRepository,
             InventoryRecordRepository inventoryRecordRepository,
+            AiSuggestionAppliedSynchronizer aiSuggestionAppliedSynchronizer,
             AdminAuditWriter adminAuditWriter,
             ObjectMapper objectMapper) {
         this.inboundOrderRepository = inboundOrderRepository;
         this.inboundOrderItemRepository = inboundOrderItemRepository;
         this.inventoryRepository = inventoryRepository;
         this.inventoryRecordRepository = inventoryRecordRepository;
+        this.aiSuggestionAppliedSynchronizer = aiSuggestionAppliedSynchronizer;
         this.adminAuditWriter = adminAuditWriter;
         this.objectMapper = objectMapper;
     }
@@ -205,6 +208,7 @@ public class InboundOrderDraftService {
                 before,
                 after,
                 "Confirm inbound order " + saved.getInboundNo() + " with " + itemSummary(items));
+        aiSuggestionAppliedSynchronizer.syncOnInboundApplied(saved.getInboundNo(), auditContext);
         return after;
     }
 

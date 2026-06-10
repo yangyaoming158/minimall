@@ -2864,12 +2864,13 @@
         "description": "Reuse existing suggestion conversion and inbound confirmation behavior, then reflect applied inbound orders in suggestion history.",
         "details": "Reuse POST /api/admin/ai-suggestions/{suggestionNo}/convert-inbound-draft instead of creating duplicate review endpoints. Ensure converted suggestions move to CONVERTED_TO_DRAFT. When a linked inbound order reaches APPLIED, synchronize the suggestion to APPLIED. Repeated inbound confirmation must not duplicate stock changes. No AI endpoint may confirm inbound orders.",
         "testStrategy": "",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           "8"
         ],
         "priority": "high",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-06-10T16:29:47.613Z"
       },
       {
         "id": "10",
@@ -2933,9 +2934,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-06-10T16:22:04.458Z",
+      "lastModified": "2026-06-10T16:29:47.614Z",
       "taskCount": 13,
-      "completedCount": 8,
+      "completedCount": 9,
       "tags": [
         "phase3-ai-inventory-assistant"
       ]

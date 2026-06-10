@@ -2,6 +2,7 @@ package com.minimall.inventory.repository;
 
 import com.minimall.inventory.domain.AiOperationSuggestion;
 import com.minimall.inventory.domain.AiOperationSuggestionStatus;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -14,6 +15,8 @@ public interface AiOperationSuggestionRepository
     Optional<AiOperationSuggestion> findBySuggestionNo(String suggestionNo);
 
     boolean existsBySuggestionNo(String suggestionNo);
+
+    List<AiOperationSuggestion> findByLinkedInboundNo(String linkedInboundNo);
 
     Page<AiOperationSuggestion> findByStatus(AiOperationSuggestionStatus status, Pageable pageable);
 }
