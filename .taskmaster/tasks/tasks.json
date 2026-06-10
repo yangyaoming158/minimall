@@ -2838,10 +2838,11 @@
             "title": "Implement replenishment suggestion generation service",
             "description": "Assemble low-stock and hot-product evidence, call the provider with the REPLENISHMENT_SUGGESTION template, validate output, and persist one ai_operation_suggestion with items, PENDING_REVIEW status, and full AI metadata. No inventory change, no inbound draft.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 8,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-06-10T16:16:51.573Z"
           },
           {
             "id": 3,
@@ -2854,7 +2855,7 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-06-10T16:09:20.047Z"
+        "updatedAt": "2026-06-10T16:16:51.573Z"
       },
       {
         "id": "9",
@@ -2931,7 +2932,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-06-10T16:09:20.047Z",
+      "lastModified": "2026-06-10T16:16:51.575Z",
       "taskCount": 13,
       "completedCount": 7,
       "tags": [
