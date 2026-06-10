@@ -35,6 +35,8 @@ import com.minimall.inventory.domain.InventoryChangeType;
 import com.minimall.inventory.domain.InventoryRecord;
 import com.minimall.inventory.domain.InventoryRecordSourceType;
 import com.minimall.inventory.dto.AiSalesEvidenceResponse;
+import com.minimall.inventory.repository.AiOperationSuggestionRepository;
+import com.minimall.inventory.repository.InboundOrderRepository;
 import com.minimall.inventory.repository.InventoryRecordRepository;
 import com.minimall.inventory.repository.InventoryRepository;
 import java.math.BigDecimal;
@@ -81,6 +83,12 @@ class AdminAiInventoryAnalysisControllerTest {
 
     @Autowired
     private InventoryRecordRepository inventoryRecordRepository;
+
+    @Autowired
+    private AiOperationSuggestionRepository suggestionRepository;
+
+    @Autowired
+    private InboundOrderRepository inboundOrderRepository;
 
     @MockBean
     private SalesEvidenceClient salesEvidenceClient;
@@ -165,6 +173,8 @@ class AdminAiInventoryAnalysisControllerTest {
 
         assertThat(inventoryRepository.count()).isEqualTo(beforeInventoryCount);
         assertThat(inventoryRecordRepository.count()).isEqualTo(beforeRecordCount);
+        assertThat(suggestionRepository.count()).isZero();
+        assertThat(inboundOrderRepository.count()).isZero();
         assertThat(inventoryRepository.findByProductId("SKU-LOW-ANALYSIS"))
                 .get()
                 .satisfies(saved -> {
@@ -220,6 +230,35 @@ class AdminAiInventoryAnalysisControllerTest {
     }
 
     @Test
+    void hotProductsAnalysisRequiresAuthentication() throws Exception {
+        mockMvc.perform(post("/api/admin/ai/inventory/hot-products-analysis")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(hotRequestJson(7, 2, 1)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(ErrorCode.UNAUTHORIZED.getCode()))
+                .andExpect(jsonPath("$.message").value("Unauthorized"));
+
+        verify(salesEvidenceClient, never()).salesByProduct(any(), any(), any(), any());
+        verify(analysisService, never()).generateValidatedAnalysis(any());
+    }
+
+    @Test
+    void hotProductsAnalysisRejectsNonAdmin() throws Exception {
+        mockMvc.perform(post("/api/admin/ai/inventory/hot-products-analysis")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(hotRequestJson(7, 2, 1)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(ErrorCode.FORBIDDEN.getCode()))
+                .andExpect(jsonPath("$.message").value(ErrorCode.FORBIDDEN.getMessage()));
+
+        verify(salesEvidenceClient, never()).salesByProduct(any(), any(), any(), any());
+        verify(analysisService, never()).generateValidatedAnalysis(any());
+    }
+
+    @Test
     void hotProductsAnalysisReturnsValidatedAnswerAndDoesNotMutateInventory() throws Exception {
         inventoryRepository.saveAndFlush(inventory("SKU-HOT-ANALYSIS", 4, 0, 10));
         inventoryRecordRepository.saveAndFlush(record("SKU-HOT-ANALYSIS", "REQ-HOT-ANALYSIS"));
@@ -265,6 +304,8 @@ class AdminAiInventoryAnalysisControllerTest {
 
         assertThat(inventoryRepository.count()).isEqualTo(beforeInventoryCount);
         assertThat(inventoryRecordRepository.count()).isEqualTo(beforeRecordCount);
+        assertThat(suggestionRepository.count()).isZero();
+        assertThat(inboundOrderRepository.count()).isZero();
         assertThat(inventoryRepository.findByProductId("SKU-HOT-ANALYSIS"))
                 .get()
                 .extracting(Inventory::getAvailableStock)

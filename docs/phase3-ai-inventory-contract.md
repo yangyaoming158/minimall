@@ -170,10 +170,22 @@ All new P0 endpoints live under `/api/admin/ai/**`, are gateway-routed to
 | Method | Path | Owner | Purpose |
 | --- | --- | --- | --- |
 | `POST` | `/api/admin/ai/inventory/ask` | `inventory-service` | Inventory Q&A through whitelisted read tools. |
-| `GET` | `/api/admin/ai/inventory/low-stock-analysis?days=7` | `inventory-service` | LLM-assisted low-stock analysis. |
-| `GET` | `/api/admin/ai/inventory/hot-products?days=7` | `inventory-service` | LLM-assisted 7-day hot-product analysis. |
-| `GET` | `/api/admin/ai/inventory/hot-products?days=30` | `inventory-service` | LLM-assisted 30-day hot-product analysis. |
+| `POST` | `/api/admin/ai/inventory/low-stock-analysis` | `inventory-service` | LLM-assisted low-stock analysis. Optional JSON body: `limit` (1–100), `recordLimit` (0–20). Sales window is fixed at 7 days. |
+| `POST` | `/api/admin/ai/inventory/hot-products-analysis` | `inventory-service` | LLM-assisted hot-product analysis. JSON body: `days` (7 or 30), optional `limit` (1–100), `recordLimit` (0–20). |
+| `GET` | `/api/admin/ai/inventory/evidence/current/{productId}` | `inventory-service` | Structured current-inventory evidence (read-only). |
+| `GET` | `/api/admin/ai/inventory/evidence/low-stock-candidates` | `inventory-service` | Structured low-stock candidate evidence (read-only). |
+| `GET` | `/api/admin/ai/inventory/evidence/low-stock-analysis` | `inventory-service` | Structured low-stock analysis evidence with sales and records (read-only). |
+| `GET` | `/api/admin/ai/inventory/evidence/hot-products?days=7` | `inventory-service` | Structured hot-product sales evidence; supports `days=7` and `days=30` (read-only). |
 | `POST` | `/api/admin/ai/replenishment-suggestions/generate` | `inventory-service` | Generate and persist one validated replenishment suggestion. |
+
+Contract change log:
+
+- 2026-06-10 (Task 7.3): aligned this table with the implemented analysis
+  APIs. Low-stock and hot-product analysis are `POST` endpoints with request
+  bodies (implemented in Tasks 7.1 and 7.2), not the `GET` query-parameter
+  forms originally drafted here. Also recorded the read-only evidence
+  endpoints shipped in Task 4.4. Review finding M5 in
+  `docs/architecture-ai-review-2026-06-10.md` is resolved by this update.
 
 P1 endpoints:
 
