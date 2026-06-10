@@ -2786,10 +2786,11 @@
             "title": "Wire hot-product AI analysis endpoint",
             "description": "Add the hot-product AI analysis flow under /api/admin/ai/inventory using 7-day or 30-day sales aggregation, current inventory evidence, recent records, provider analysis, and output validation.",
             "details": "Reuse AiInventoryEvidenceFacade.hotProductsEvidence and AiInventoryAnalysisService with the HOT_PRODUCTS_ANALYSIS prompt and expected analysis type. Support days=7 and days=30, reject unsupported ranges through controlled errors, return an ApiResponse-wrapped contract with validated summary, items, limitations, query time, and structured evidence, and keep the flow read-only.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 7,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-06-10T12:47:58.540Z"
           },
           {
             "id": 3,
@@ -2802,7 +2803,7 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-06-09T13:28:48.276Z"
+        "updatedAt": "2026-06-10T12:47:58.540Z"
       },
       {
         "id": 8,
@@ -2896,15 +2897,15 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-06-09T13:28:48.276Z",
+      "lastModified": "2026-06-10T12:47:58.542Z",
       "taskCount": 13,
       "completedCount": 6,
       "tags": [
         "phase3-ai-inventory-assistant"
       ],
-      "created": "2026-06-09T13:31:03.043Z",
+      "created": "2026-06-10T12:48:51.470Z",
       "description": "Tasks for phase3-ai-inventory-assistant context",
-      "updated": "2026-06-09T13:31:03.043Z"
+      "updated": "2026-06-10T12:48:51.470Z"
     }
   }
 }

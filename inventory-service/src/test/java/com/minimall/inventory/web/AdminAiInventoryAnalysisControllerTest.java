@@ -3,6 +3,7 @@ package com.minimall.inventory.web;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
@@ -218,6 +219,116 @@ class AdminAiInventoryAnalysisControllerTest {
         verify(analysisService, never()).generateValidatedAnalysis(any());
     }
 
+    @Test
+    void hotProductsAnalysisReturnsValidatedAnswerAndDoesNotMutateInventory() throws Exception {
+        inventoryRepository.saveAndFlush(inventory("SKU-HOT-ANALYSIS", 4, 0, 10));
+        inventoryRecordRepository.saveAndFlush(record("SKU-HOT-ANALYSIS", "REQ-HOT-ANALYSIS"));
+        givenHotSales(2, List.of(
+                new AiSalesEvidenceResponse("SKU-HOT-ANALYSIS", 21, 6, new BigDecimal("588.00")),
+                new AiSalesEvidenceResponse("SKU-HOT-MISSING", 7, 2, new BigDecimal("168.00"))), 2);
+        given(analysisService.generateValidatedAnalysis(any()))
+                .willReturn(hotProductsAnalysisResult("SKU-HOT-ANALYSIS is a hot product with stock risk."));
+        long beforeInventoryCount = inventoryRepository.count();
+        long beforeRecordCount = inventoryRecordRepository.count();
+
+        mockMvc.perform(post("/api/admin/ai/inventory/hot-products-analysis")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(hotRequestJson(30, 2, 1)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.code").value(ErrorCode.SUCCESS.getCode()))
+                .andExpect(jsonPath("$.data.analysisType").value("HOT_PRODUCTS"))
+                .andExpect(jsonPath("$.data.summary")
+                        .value("SKU-HOT-ANALYSIS is a hot product with stock risk."))
+                .andExpect(jsonPath("$.data.queryTime").exists())
+                .andExpect(jsonPath("$.data.evidence.evidenceType").value("HOT_PRODUCTS"))
+                .andExpect(jsonPath("$.data.evidence.days").value(30))
+                .andExpect(jsonPath("$.data.evidence.products[0].productId").value("SKU-HOT-ANALYSIS"))
+                .andExpect(jsonPath("$.data.evidence.products[0].inventory.availableStock").value(4))
+                .andExpect(jsonPath("$.data.evidence.products[0].sales.soldQuantity").value(21))
+                .andExpect(jsonPath("$.data.evidence.products[0].records[0].requestId")
+                        .value("REQ-HOT-ANALYSIS"))
+                .andExpect(jsonPath("$.data.evidence.products[1].productId").value("SKU-HOT-MISSING"))
+                .andExpect(jsonPath("$.data.evidence.products[1].inventory").doesNotExist())
+                .andExpect(jsonPath("$.data.items[0].productId").value("SKU-HOT-ANALYSIS"))
+                .andExpect(jsonPath("$.data.items[0].availableStock").value(4))
+                .andExpect(jsonPath("$.data.items[0].safetyStock").value(10))
+                .andExpect(jsonPath("$.data.items[0].soldQuantityLast7Days").value(21))
+                .andExpect(jsonPath("$.data.items[0].riskLevel").value("HIGH"))
+                .andExpect(jsonPath("$.data.items[0].reason")
+                        .value("Hot sales velocity may outpace current available stock."))
+                .andExpect(jsonPath("$.data.limitations[0]")
+                        .value("Sales evidence is limited to paid orders in the selected window."))
+                .andExpect(jsonPath("$.data.limitations[2]")
+                        .value("Model output is advisory and requires administrator review."));
+
+        assertThat(inventoryRepository.count()).isEqualTo(beforeInventoryCount);
+        assertThat(inventoryRecordRepository.count()).isEqualTo(beforeRecordCount);
+        assertThat(inventoryRepository.findByProductId("SKU-HOT-ANALYSIS"))
+                .get()
+                .extracting(Inventory::getAvailableStock)
+                .isEqualTo(4);
+        verify(adminAuditWriter, never()).write(any());
+        ArgumentCaptor<AiInventoryAnalysisRequest> requestCaptor =
+                ArgumentCaptor.forClass(AiInventoryAnalysisRequest.class);
+        verify(analysisService).generateValidatedAnalysis(requestCaptor.capture());
+        AiInventoryAnalysisRequest analysisRequest = requestCaptor.getValue();
+        assertThat(analysisRequest.templateId()).isEqualTo(AiPromptTemplateId.HOT_PRODUCTS_ANALYSIS);
+        assertThat(analysisRequest.expectedAnalysisType()).isEqualTo(AiAnalysisType.HOT_PRODUCTS);
+        assertThat(analysisRequest.productFacts())
+                .extracting(facts -> facts.productId())
+                .containsExactly("SKU-HOT-ANALYSIS", "SKU-HOT-MISSING");
+        assertThat(analysisRequest.productFacts().get(0)).satisfies(facts -> {
+            assertThat(facts.availableStock()).isEqualTo(4);
+            assertThat(facts.lockedStock()).isZero();
+            assertThat(facts.safetyStock()).isEqualTo(10);
+            assertThat(facts.soldQuantityLast7Days()).isEqualTo(21);
+        });
+        assertThat(analysisRequest.productFacts().get(1)).satisfies(facts -> {
+            assertThat(facts.availableStock()).isNull();
+            assertThat(facts.lockedStock()).isNull();
+            assertThat(facts.safetyStock()).isNull();
+            assertThat(facts.soldQuantityLast7Days()).isEqualTo(7);
+        });
+        assertThat(analysisRequest.allowedDateValues()).isNotEmpty();
+    }
+
+    @Test
+    void hotProductsAnalysisRejectsUnsupportedDaysWithStableEnvelope() throws Exception {
+        mockMvc.perform(post("/api/admin/ai/inventory/hot-products-analysis")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(hotRequestJson(14, 2, 1)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(ErrorCode.BAD_REQUEST.getCode()))
+                .andExpect(jsonPath("$.message").value("hot product evidence days must be 7 or 30"));
+
+        verify(salesEvidenceClient, never()).salesByProduct(any(), any(), any(), any());
+        verify(analysisService, never()).generateValidatedAnalysis(any());
+    }
+
+    @Test
+    void hotProductsAnalysisRejectsInvalidModelOutputWithStableEnvelope() throws Exception {
+        inventoryRepository.saveAndFlush(inventory("SKU-HOT-INVALID", 5, 0, 8));
+        givenHotSales(2, List.of(
+                new AiSalesEvidenceResponse("SKU-HOT-INVALID", 12, 4, new BigDecimal("320.00"))), 1);
+        given(analysisService.generateValidatedAnalysis(any()))
+                .willThrow(new AiOutputValidationException(
+                        "analysisType LOW_STOCK does not match expected HOT_PRODUCTS"));
+
+        mockMvc.perform(post("/api/admin/ai/inventory/hot-products-analysis")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(hotRequestJson(7, 2, 0)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION_ERROR.getCode()))
+                .andExpect(jsonPath("$.message")
+                        .value("AI output validation failed: analysisType LOW_STOCK does not match expected HOT_PRODUCTS"));
+    }
+
     private Inventory inventory(String productId, int availableStock, int lockedStock, int safetyStock) {
         Inventory inventory = new Inventory(productId, availableStock, lockedStock);
         inventory.setSafetyStock(safetyStock);
@@ -248,6 +359,12 @@ class AdminAiInventoryAnalysisControllerTest {
                         new BigDecimal(totalAmount))), 1));
     }
 
+    private void givenHotSales(int limit, List<AiSalesEvidenceResponse> sales, long totalElements) {
+        given(salesEvidenceClient.salesByProduct(
+                        isNull(), any(LocalDateTime.class), any(LocalDateTime.class), eq(PageRequest.of(0, limit))))
+                .willReturn(page(sales, totalElements));
+    }
+
     private PageResponse<AiSalesEvidenceResponse> page(List<AiSalesEvidenceResponse> content, long totalElements) {
         int totalPages = totalElements == 0 ? 0 : 1;
         return new PageResponse<>(content, 0, Math.max(1, content.size()), totalElements, totalPages);
@@ -255,6 +372,20 @@ class AdminAiInventoryAnalysisControllerTest {
 
     private String requestJson(Integer limit, Integer recordLimit) throws Exception {
         ObjectNode json = objectMapper.createObjectNode();
+        if (limit != null) {
+            json.put("limit", limit);
+        }
+        if (recordLimit != null) {
+            json.put("recordLimit", recordLimit);
+        }
+        return objectMapper.writeValueAsString(json);
+    }
+
+    private String hotRequestJson(Integer days, Integer limit, Integer recordLimit) throws Exception {
+        ObjectNode json = objectMapper.createObjectNode();
+        if (days != null) {
+            json.put("days", days);
+        }
         if (limit != null) {
             json.put("limit", limit);
         }
@@ -287,6 +418,41 @@ class AdminAiInventoryAnalysisControllerTest {
                 AiPromptTemplateId.LOW_STOCK_ANALYSIS,
                 AiAnalysisType.LOW_STOCK,
                 "low-stock-analysis-v1",
+                "inventory-analysis-output-v1",
+                AiProviderType.MOCK,
+                "mock-model",
+                "mock-request-id",
+                AiProviderTokenUsage.empty(),
+                AiSuggestionValidationStatus.VALID,
+                "{}",
+                outputJson,
+                outputJson,
+                output);
+    }
+
+    private AiInventoryAnalysisResult hotProductsAnalysisResult(String summary) {
+        ObjectNode output = objectMapper.createObjectNode();
+        output.put("summary", summary);
+        output.put("analysisType", "HOT_PRODUCTS");
+        ObjectNode timeRange = output.putObject("timeRange");
+        timeRange.put("from", "2026-05-10T00:00:00");
+        timeRange.put("to", "2026-06-09T00:00:00");
+        ArrayNode items = output.putArray("items");
+        ObjectNode item = items.addObject();
+        item.put("productId", "SKU-HOT-ANALYSIS");
+        item.put("availableStock", 4);
+        item.put("lockedStock", 0);
+        item.put("safetyStock", 10);
+        item.put("soldQuantityLast7Days", 21);
+        item.put("riskLevel", "HIGH");
+        item.put("reason", "Hot sales velocity may outpace current available stock.");
+        output.putArray("limitations")
+                .add("Model output is advisory and requires administrator review.");
+        String outputJson = output.toString();
+        return new AiInventoryAnalysisResult(
+                AiPromptTemplateId.HOT_PRODUCTS_ANALYSIS,
+                AiAnalysisType.HOT_PRODUCTS,
+                "hot-products-analysis-v1",
                 "inventory-analysis-output-v1",
                 AiProviderType.MOCK,
                 "mock-model",

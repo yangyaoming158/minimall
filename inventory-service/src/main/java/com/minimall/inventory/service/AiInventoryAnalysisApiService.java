@@ -10,6 +10,7 @@ import com.minimall.inventory.ai.validation.AiOutputProductFacts;
 import com.minimall.inventory.domain.AiSuggestionRiskLevel;
 import com.minimall.inventory.dto.AiInventoryAnalysisItemResponse;
 import com.minimall.inventory.dto.AiInventoryAnalysisResponse;
+import com.minimall.inventory.dto.AiInventoryHotProductsAnalysisRequest;
 import com.minimall.inventory.dto.AiInventoryLowStockAnalysisRequest;
 import com.minimall.inventory.dto.AiInventorySalesEvidenceResponse;
 import java.time.LocalDateTime;
@@ -26,6 +27,7 @@ public class AiInventoryAnalysisApiService {
 
     static final int DEFAULT_LIMIT = 20;
     static final int DEFAULT_RECORD_LIMIT = 5;
+    static final int DEFAULT_HOT_PRODUCT_DAYS = 7;
 
     private final AiInventoryEvidenceFacade evidenceFacade;
     private final AiInventoryAnalysisService analysisService;
@@ -55,6 +57,26 @@ public class AiInventoryAnalysisApiService {
                 limitations(evidence, analysis));
     }
 
+    public AiInventoryAnalysisResponse hotProductsAnalysis(AiInventoryHotProductsAnalysisRequest request) {
+        AiInventoryHotProductsAnalysisRequest normalized = request == null
+                ? new AiInventoryHotProductsAnalysisRequest(null, null, null)
+                : request;
+        LocalDateTime queryTime = LocalDateTime.now();
+        AiInventorySalesEvidenceResponse evidence = evidenceFacade.hotProductsEvidence(
+                days(normalized),
+                limit(normalized),
+                recordLimit(normalized));
+        AiInventoryAnalysisResult analysis = analysisService.generateValidatedAnalysis(
+                hotProductsAnalysisRequest(normalized, queryTime, evidence));
+        return new AiInventoryAnalysisResponse(
+                analysis.analysisType(),
+                summary(analysis),
+                queryTime,
+                evidence,
+                items(analysis),
+                limitations(evidence, analysis));
+    }
+
     private AiInventoryAnalysisRequest lowStockAnalysisRequest(
             AiInventoryLowStockAnalysisRequest request,
             LocalDateTime queryTime,
@@ -73,15 +95,33 @@ public class AiInventoryAnalysisApiService {
                 allowedDateValues(queryTime, evidence));
     }
 
+    private AiInventoryAnalysisRequest hotProductsAnalysisRequest(
+            AiInventoryHotProductsAnalysisRequest request,
+            LocalDateTime queryTime,
+            AiInventorySalesEvidenceResponse evidence) {
+        Map<String, Object> inputSnapshot = new LinkedHashMap<>();
+        inputSnapshot.put("analysisType", AiAnalysisType.HOT_PRODUCTS.name());
+        inputSnapshot.put("days", days(request));
+        inputSnapshot.put("limit", limit(request));
+        inputSnapshot.put("recordLimit", recordLimit(request));
+        inputSnapshot.put("queryTime", dateValue(queryTime));
+        inputSnapshot.put("evidence", evidence);
+        return new AiInventoryAnalysisRequest(
+                AiPromptTemplateId.HOT_PRODUCTS_ANALYSIS,
+                AiAnalysisType.HOT_PRODUCTS,
+                inputSnapshot,
+                productFacts(evidence),
+                allowedDateValues(queryTime, evidence));
+    }
+
     private List<AiOutputProductFacts> productFacts(AiInventorySalesEvidenceResponse evidence) {
         return evidence.products().stream()
-                .filter(product -> product.inventory() != null)
                 .map(product -> new AiOutputProductFacts(
                         product.productId(),
                         null,
-                        product.inventory().availableStock(),
-                        product.inventory().lockedStock(),
-                        product.inventory().safetyStock(),
+                        product.inventory() == null ? null : product.inventory().availableStock(),
+                        product.inventory() == null ? null : product.inventory().lockedStock(),
+                        product.inventory() == null ? null : product.inventory().safetyStock(),
                         product.sales() == null ? null : product.sales().soldQuantity()))
                 .toList();
     }
@@ -178,6 +218,18 @@ public class AiInventoryAnalysisApiService {
     }
 
     private int recordLimit(AiInventoryLowStockAnalysisRequest request) {
+        return request.recordLimit() == null ? DEFAULT_RECORD_LIMIT : request.recordLimit();
+    }
+
+    private int days(AiInventoryHotProductsAnalysisRequest request) {
+        return request.days() == null ? DEFAULT_HOT_PRODUCT_DAYS : request.days();
+    }
+
+    private int limit(AiInventoryHotProductsAnalysisRequest request) {
+        return request.limit() == null ? DEFAULT_LIMIT : request.limit();
+    }
+
+    private int recordLimit(AiInventoryHotProductsAnalysisRequest request) {
         return request.recordLimit() == null ? DEFAULT_RECORD_LIMIT : request.recordLimit();
     }
 }
