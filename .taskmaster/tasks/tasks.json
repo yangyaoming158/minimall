@@ -2812,7 +2812,7 @@
         "description": "Generate and save replenishment suggestions from validated model output.",
         "details": "Add POST /api/admin/ai/replenishment-suggestions/generate. Read low-stock products, 7-day sales, hot-product stats, and optional records; send structured evidence to the provider; parse and validate JSON; persist one ai_operation_suggestion only after validation passes; persist suggested items with quantities and risk levels; set status PENDING_REVIEW; do not change inventory; do not create an inbound draft automatically.",
         "testStrategy": "",
-        "status": "in-progress",
+        "status": "done",
         "dependencies": [
           "2",
           "3",
@@ -2849,13 +2849,14 @@
             "title": "Expose replenishment suggestion generation admin endpoint",
             "description": "Add POST /api/admin/ai/replenishment-suggestions/generate with ADMIN enforcement, controller security and persistence regression tests, and gateway admin-route regression coverage.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 8,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-06-10T16:22:04.456Z"
           }
         ],
-        "updatedAt": "2026-06-10T16:16:51.573Z"
+        "updatedAt": "2026-06-10T16:22:04.456Z"
       },
       {
         "id": "9",
@@ -2932,9 +2933,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-06-10T16:16:51.575Z",
+      "lastModified": "2026-06-10T16:22:04.458Z",
       "taskCount": 13,
-      "completedCount": 7,
+      "completedCount": 8,
       "tags": [
         "phase3-ai-inventory-assistant"
       ]
