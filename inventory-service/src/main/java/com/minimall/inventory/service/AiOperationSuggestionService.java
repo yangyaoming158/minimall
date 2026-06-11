@@ -67,7 +67,7 @@ public class AiOperationSuggestionService {
     @Transactional(readOnly = true)
     public AiSuggestionResponse detail(String suggestionNo) {
         AiOperationSuggestion suggestion = getBySuggestionNo(suggestionNo);
-        return response(suggestion);
+        return detailResponse(suggestion);
     }
 
     @Transactional
@@ -129,6 +129,11 @@ public class AiOperationSuggestionService {
 
     private AiSuggestionResponse response(AiOperationSuggestion suggestion) {
         return AiSuggestionResponse.from(
+                suggestion, itemRepository.findBySuggestionNoOrderByIdAsc(suggestion.getSuggestionNo()));
+    }
+
+    private AiSuggestionResponse detailResponse(AiOperationSuggestion suggestion) {
+        return AiSuggestionResponse.detailFrom(
                 suggestion, itemRepository.findBySuggestionNoOrderByIdAsc(suggestion.getSuggestionNo()));
     }
 

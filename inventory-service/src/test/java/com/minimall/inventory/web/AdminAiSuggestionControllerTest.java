@@ -26,6 +26,7 @@ import com.minimall.inventory.domain.AiOperationSuggestionSource;
 import com.minimall.inventory.domain.AiOperationSuggestionStatus;
 import com.minimall.inventory.domain.AiOperationSuggestionType;
 import com.minimall.inventory.domain.AiSuggestionRiskLevel;
+import com.minimall.inventory.domain.AiSuggestionValidationStatus;
 import com.minimall.inventory.domain.InboundOrder;
 import com.minimall.inventory.domain.InboundOrderItem;
 import com.minimall.inventory.domain.InboundOrderSource;
@@ -150,6 +151,14 @@ class AdminAiSuggestionControllerTest {
                 .andExpect(jsonPath("$.data.content[0].status").value("PENDING_REVIEW"))
                 .andExpect(jsonPath("$.data.content[0].type").value("REPLENISHMENT"))
                 .andExpect(jsonPath("$.data.content[0].source").value("AI_MODEL"))
+                .andExpect(jsonPath("$.data.content[0].modelProvider").value("MOCK"))
+                .andExpect(jsonPath("$.data.content[0].modelName").value("mock-ai"))
+                .andExpect(jsonPath("$.data.content[0].promptVersion").value("replenishment-suggestion-v1"))
+                .andExpect(jsonPath("$.data.content[0].outputSchemaVersion").value("ai-output-v1"))
+                .andExpect(jsonPath("$.data.content[0].validationStatus").value("VALID"))
+                .andExpect(jsonPath("$.data.content[0].inputSnapshotJson").doesNotExist())
+                .andExpect(jsonPath("$.data.content[0].validatedOutputJson").doesNotExist())
+                .andExpect(jsonPath("$.data.content[0].rawModelOutputJson").doesNotExist())
                 .andExpect(jsonPath("$.data.content[0].itemCount").value(1))
                 .andExpect(jsonPath("$.data.content[0].totalSuggestedQuantity").value(4))
                 .andExpect(jsonPath("$.data.content[0].items[0].productId").value("SKU-AIS-LIST-1"))
@@ -170,6 +179,38 @@ class AdminAiSuggestionControllerTest {
     }
 
     @Test
+    void listFiltersEveryStableStatusForHistoryUse() throws Exception {
+        for (AiOperationSuggestionStatus suggestionStatus : AiOperationSuggestionStatus.values()) {
+            saveSuggestion(
+                    "AIS-HISTORY-" + suggestionStatus.name(),
+                    suggestionStatus,
+                    item("AIS-HISTORY-" + suggestionStatus.name(), "SKU-AIS-HISTORY-" + suggestionStatus.name(), 2,
+                            AiSuggestionRiskLevel.MEDIUM));
+        }
+
+        for (AiOperationSuggestionStatus suggestionStatus : AiOperationSuggestionStatus.values()) {
+            mockMvc.perform(get("/api/admin/ai-suggestions")
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken())
+                            .param("status", suggestionStatus.name())
+                            .param("page", "0")
+                            .param("size", "10"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.success").value(true))
+                    .andExpect(jsonPath("$.data.totalElements").value(1))
+                    .andExpect(jsonPath("$.data.content[0].suggestionNo")
+                            .value("AIS-HISTORY-" + suggestionStatus.name()))
+                    .andExpect(jsonPath("$.data.content[0].status").value(suggestionStatus.name()))
+                    .andExpect(jsonPath("$.data.content[0].modelProvider").value("MOCK"))
+                    .andExpect(jsonPath("$.data.content[0].validationStatus").value("VALID"))
+                    .andExpect(jsonPath("$.data.content[0].inputSnapshotJson").doesNotExist())
+                    .andExpect(jsonPath("$.data.content[0].validatedOutputJson").doesNotExist())
+                    .andExpect(jsonPath("$.data.content[0].rawModelOutputJson").doesNotExist());
+        }
+
+        verify(adminAuditWriter, never()).write(any());
+    }
+
+    @Test
     void detailReturnsSuggestionItemsAndAuditabilityFields() throws Exception {
         saveSuggestion(
                 "AIS-DETAIL",
@@ -186,6 +227,15 @@ class AdminAiSuggestionControllerTest {
                 .andExpect(jsonPath("$.data.reason").value("Replenish AIS-DETAIL"))
                 .andExpect(jsonPath("$.data.inputSnapshotRef").value("snapshot:AIS-DETAIL"))
                 .andExpect(jsonPath("$.data.inputSummary").value("Structured low-stock summary for AIS-DETAIL"))
+                .andExpect(jsonPath("$.data.modelProvider").value("MOCK"))
+                .andExpect(jsonPath("$.data.modelName").value("mock-ai"))
+                .andExpect(jsonPath("$.data.promptVersion").value("replenishment-suggestion-v1"))
+                .andExpect(jsonPath("$.data.outputSchemaVersion").value("ai-output-v1"))
+                .andExpect(jsonPath("$.data.validationStatus").value("VALID"))
+                .andExpect(jsonPath("$.data.validationError").doesNotExist())
+                .andExpect(jsonPath("$.data.inputSnapshotJson").value("{\"snapshot\":\"AIS-DETAIL\"}"))
+                .andExpect(jsonPath("$.data.validatedOutputJson").value("{\"validated\":\"AIS-DETAIL\"}"))
+                .andExpect(jsonPath("$.data.rawModelOutputJson").value("{\"raw\":\"AIS-DETAIL\"}"))
                 .andExpect(jsonPath("$.data.linkedInboundNo").doesNotExist())
                 .andExpect(jsonPath("$.data.rejectedReason").doesNotExist())
                 .andExpect(jsonPath("$.data.reviewedByAdminUserId").doesNotExist())
@@ -571,6 +621,16 @@ class AdminAiSuggestionControllerTest {
                 "Replenish " + suggestionNo,
                 "snapshot:" + suggestionNo,
                 "Structured low-stock summary for " + suggestionNo);
+        suggestion.recordAiMetadata(
+                "MOCK",
+                "mock-ai",
+                "replenishment-suggestion-v1",
+                "ai-output-v1",
+                AiSuggestionValidationStatus.VALID,
+                null,
+                "{\"snapshot\":\"" + suggestionNo + "\"}",
+                "{\"validated\":\"" + suggestionNo + "\"}",
+                "{\"raw\":\"" + suggestionNo + "\"}");
         if (status == AiOperationSuggestionStatus.REJECTED) {
             suggestion.reject("initial rejection", 1001L, "reviewer");
         } else if (status == AiOperationSuggestionStatus.CONVERTED_TO_DRAFT) {

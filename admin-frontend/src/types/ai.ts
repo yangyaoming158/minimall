@@ -21,6 +21,8 @@ export type AiSuggestionType = 'REPLENISHMENT' | 'DAILY_REPORT'
 
 export type AiSuggestionSource = 'AI_MODEL' | 'SYSTEM_GENERATED' | 'ADMIN_MANUAL'
 
+export type AiSuggestionValidationStatus = 'VALID' | 'INVALID'
+
 export interface AiInventoryItemEvidence {
   productId: string
   availableStock: number
@@ -163,6 +165,15 @@ export interface AiSuggestion {
   reason: string | null
   inputSnapshotRef: string | null
   inputSummary: string | null
+  modelProvider?: string | null
+  modelName?: string | null
+  promptVersion?: string | null
+  outputSchemaVersion?: string | null
+  validationStatus?: AiSuggestionValidationStatus | null
+  validationError?: string | null
+  inputSnapshotJson?: string | null
+  validatedOutputJson?: string | null
+  rawModelOutputJson?: string | null
   linkedInboundNo: string | null
   rejectedReason: string | null
   reviewedByAdminUserId: number | null
