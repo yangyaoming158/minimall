@@ -1,6 +1,7 @@
-import { post } from './http'
+import { get, post } from './http'
 import type {
   AiAnalysisResponse,
+  AiDailyInventoryReport,
   AiHotProductsAnalysisRequest,
   AiInventoryAskRequest,
   AiInventoryAskResponse,
@@ -35,4 +36,8 @@ export function generateReplenishmentSuggestion(
   payload: AiSuggestionGenerateRequest = {},
 ): Promise<AiSuggestion> {
   return post<AiSuggestion>('/api/admin/ai/replenishment-suggestions/generate', payload)
+}
+
+export function getAiDailyReport(): Promise<AiDailyInventoryReport> {
+  return get<AiDailyInventoryReport>('/api/admin/ai/reports/daily')
 }

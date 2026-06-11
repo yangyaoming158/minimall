@@ -311,6 +311,28 @@ onMounted(fetchSuggestions)
           <el-descriptions-item v-if="detail.reviewedAt" label="审核时间">
             {{ detail.reviewedAt }}
           </el-descriptions-item>
+          <el-descriptions-item v-if="detail.modelProvider" label="模型提供方">
+            {{ detail.modelProvider }}
+          </el-descriptions-item>
+          <el-descriptions-item v-if="detail.modelName" label="模型">
+            <span class="mono">{{ detail.modelName }}</span>
+          </el-descriptions-item>
+          <el-descriptions-item v-if="detail.promptVersion" label="Prompt 版本">
+            <span class="mono">{{ detail.promptVersion }}</span>
+          </el-descriptions-item>
+          <el-descriptions-item v-if="detail.outputSchemaVersion" label="输出 Schema 版本">
+            <span class="mono">{{ detail.outputSchemaVersion }}</span>
+          </el-descriptions-item>
+          <el-descriptions-item v-if="detail.validationStatus" label="后端校验">
+            <StatusTag
+              :value="detail.validationStatus"
+              :label="detail.validationStatus === 'VALID' ? '已通过' : '未通过'"
+              :tone="detail.validationStatus === 'VALID' ? 'success' : 'danger'"
+            />
+          </el-descriptions-item>
+          <el-descriptions-item v-if="detail.validationError" label="校验错误" :span="2">
+            {{ detail.validationError }}
+          </el-descriptions-item>
         </el-descriptions>
 
         <h3 class="items-title">建议明细（{{ detail.itemCount }} 项，合计 {{ detail.totalSuggestedQuantity }}）</h3>

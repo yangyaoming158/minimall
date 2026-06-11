@@ -10,6 +10,7 @@ import { createPinia } from 'pinia'
 import ElementPlus from 'element-plus'
 import type {
   AiAnalysisResponse,
+  AiDailyInventoryReport,
   AiInventoryAskResponse,
   AiSuggestion,
 } from '@/types/ai'
@@ -20,11 +21,13 @@ vi.mock('@/api/ai', () => ({
   runLowStockAnalysis: vi.fn(),
   runHotProductsAnalysis: vi.fn(),
   generateReplenishmentSuggestion: vi.fn(),
+  getAiDailyReport: vi.fn(),
 }))
 
 import {
   askInventoryQuestion,
   generateReplenishmentSuggestion,
+  getAiDailyReport,
   runHotProductsAnalysis,
   runLowStockAnalysis,
 } from '@/api/ai'
@@ -34,6 +37,7 @@ const mockedAsk = vi.mocked(askInventoryQuestion)
 const mockedLowStock = vi.mocked(runLowStockAnalysis)
 const mockedHot = vi.mocked(runHotProductsAnalysis)
 const mockedGenerate = vi.mocked(generateReplenishmentSuggestion)
+const mockedReport = vi.mocked(getAiDailyReport)
 
 function askResponse(over: Partial<AiInventoryAskResponse> = {}): AiInventoryAskResponse {
   return {
@@ -297,5 +301,63 @@ describe('AiInventoryView', () => {
 
     expect(wrapper.text()).toContain('数据不足')
     expect(wrapper.text()).toContain('缺少可用于生成建议的库存数据')
+  })
+
+  it('loads the daily report with window, counters, hot products and limitations', async () => {
+    const dailyReport: AiDailyInventoryReport = {
+      reportDate: '2026-06-11',
+      generatedAt: '2026-06-11T13:00:00',
+      windowFrom: '2026-06-11T00:00:00',
+      windowTo: '2026-06-11T13:00:00',
+      lowStockCount: 2,
+      hotProductDays: 7,
+      hotProductLimit: 5,
+      hotProducts: [
+        {
+          productId: 'PH3-AI-HOT-MUG',
+          rank: 1,
+          inventory: {
+            productId: 'PH3-AI-HOT-MUG',
+            availableStock: 42,
+            lockedStock: 3,
+            safetyStock: 10,
+            status: 'ACTIVE',
+            stockState: 'IN_STOCK',
+            lowStock: false,
+            createdAt: '2026-05-01T00:00:00',
+            updatedAt: '2026-06-11T00:00:00',
+          },
+          sales: { productId: 'PH3-AI-HOT-MUG', soldQuantity: 18, orderCount: 3, totalAmount: '718.20' },
+          records: [],
+          limitations: [],
+        },
+      ],
+      suggestions: { generatedSuggestions: 4, rejectedSuggestions: 1, convertedDrafts: 2 },
+      inboundOrders: { appliedInboundOrders: 1 },
+      limitations: ['Daily report counts use the service-local current day.'],
+    }
+    mockedReport.mockResolvedValue(dailyReport)
+    const wrapper = mountView()
+
+    await clickButton(wrapper, '获取今日运营日报')
+
+    expect(mockedReport).toHaveBeenCalledTimes(1)
+    const text = wrapper.text()
+    expect(text).toContain('2026-06-11T00:00:00 ~ 2026-06-11T13:00:00') // window
+    expect(text).toContain('当前低库存商品')
+    expect(text).toContain('今日生成建议')
+    expect(text).toContain('今日已入库单数')
+    expect(text).toContain('PH3-AI-HOT-MUG')
+    expect(text).toContain('Daily report counts use the service-local current day.')
+  })
+
+  it('shows a plain request failure (never a model failure) when the report fails', async () => {
+    mockedReport.mockRejectedValue(new ApiError('50000', 'boom', 500))
+    const wrapper = mountView()
+
+    await clickButton(wrapper, '获取今日运营日报')
+
+    expect(wrapper.text()).toContain('请求失败')
+    expect(wrapper.text()).not.toContain('模型服务失败')
   })
 })

@@ -133,6 +133,29 @@ describe('AiSuggestionsView', () => {
     expect(text).toContain('可用库存低于安全库存')
   })
 
+  it('shows AI model metadata in the detail drawer when present', async () => {
+    mockedGet.mockResolvedValue(
+      suggestion({
+        modelProvider: 'MOCK',
+        modelName: 'mock-model',
+        promptVersion: 'replenishment-suggestion-v1',
+        outputSchemaVersion: 'inventory-analysis-output-v1',
+        validationStatus: 'VALID',
+      }),
+    )
+    const wrapper = mountView()
+    await flushPromises()
+
+    await clickButton(wrapper, '详情')
+
+    const text = wrapper.text()
+    expect(text).toContain('MOCK')
+    expect(text).toContain('mock-model')
+    expect(text).toContain('replenishment-suggestion-v1')
+    expect(text).toContain('inventory-analysis-output-v1')
+    expect(text).toContain('已通过') // validationStatus VALID
+  })
+
   it('rejects a pending suggestion with a required reason and refreshes', async () => {
     mockedReject.mockResolvedValue(suggestion({ status: 'REJECTED', rejectedReason: '近期已补货' }))
     const wrapper = mountView()

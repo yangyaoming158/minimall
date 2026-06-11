@@ -2970,9 +2970,20 @@
             "parentTaskId": 11,
             "parentId": "undefined",
             "updatedAt": "2026-06-11T12:07:36.226Z"
+          },
+          {
+            "id": 3,
+            "title": "Daily report tab and metadata display",
+            "description": "Remedial UI for Task 11: add 日报 tab on /ai-inventory calling GET /api/admin/ai/reports/daily (report window, low-stock count, hot products, suggestion/inbound summaries, limitations); show AI model metadata (provider, model, promptVersion, outputSchemaVersion, validationStatus) in the suggestion detail drawer. Vitest coverage.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 11,
+            "updatedAt": "2026-06-11T15:08:36.127Z",
+            "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-06-11T12:07:36.226Z"
+        "updatedAt": "2026-06-11T15:08:36.127Z"
       },
       {
         "id": "12",
@@ -3045,7 +3056,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-06-11T12:47:58.983Z",
+      "lastModified": "2026-06-11T15:08:36.127Z",
       "taskCount": 13,
       "completedCount": 12,
       "tags": [

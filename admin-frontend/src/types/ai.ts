@@ -186,6 +186,30 @@ export interface AiSuggestion {
   updatedAt: string
 }
 
+export interface AiDailyReportSuggestionSummary {
+  generatedSuggestions: number
+  rejectedSuggestions: number
+  convertedDrafts: number
+}
+
+export interface AiDailyReportInboundSummary {
+  appliedInboundOrders: number
+}
+
+export interface AiDailyInventoryReport {
+  reportDate: string
+  generatedAt: string
+  windowFrom: string
+  windowTo: string
+  lowStockCount: number
+  hotProductDays: number
+  hotProductLimit: number
+  hotProducts: AiInventorySalesItemEvidence[]
+  suggestions: AiDailyReportSuggestionSummary
+  inboundOrders: AiDailyReportInboundSummary
+  limitations: string[]
+}
+
 export interface AiSuggestionListParams {
   status?: AiSuggestionStatus
   page?: number

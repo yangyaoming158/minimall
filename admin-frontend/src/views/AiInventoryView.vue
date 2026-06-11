@@ -7,12 +7,14 @@ import AiAnalysisResult from '@/components/AiAnalysisResult.vue'
 import {
   askInventoryQuestion,
   generateReplenishmentSuggestion,
+  getAiDailyReport,
   runHotProductsAnalysis,
   runLowStockAnalysis,
 } from '@/api/ai'
 import { ApiError } from '@/types/api'
 import type {
   AiAnalysisResponse,
+  AiDailyInventoryReport,
   AiInventoryAskResponse,
   AiInventoryQuestionIntent,
   AiSuggestion,
@@ -151,6 +153,31 @@ async function onGenerate(): Promise<void> {
     generateError.value = toPanelError(err)
   } finally {
     generateLoading.value = false
+  }
+}
+
+// ---- Daily report panel ----
+const reportLoading = ref(false)
+const reportError = ref<AiPanelError | null>(null)
+const report = ref<AiDailyInventoryReport | null>(null)
+
+async function onLoadReport(): Promise<void> {
+  if (reportLoading.value) {
+    return
+  }
+  reportLoading.value = true
+  reportError.value = null
+  try {
+    report.value = await getAiDailyReport()
+  } catch (err) {
+    // The report is a read-only statistics endpoint with no model call, so
+    // every failure is a plain request failure — never a "model failure".
+    reportError.value = {
+      kind: '请求失败',
+      message: err instanceof ApiError ? err.message : '请求失败，请稍后重试',
+    }
+  } finally {
+    reportLoading.value = false
   }
 }
 </script>
@@ -341,6 +368,84 @@ async function onGenerate(): Promise<void> {
           </div>
         </div>
       </el-tab-pane>
+
+      <el-tab-pane label="日报">
+        <div class="panel">
+          <div class="form-row">
+            <el-button type="primary" :loading="reportLoading" @click="onLoadReport">
+              获取今日运营日报
+            </el-button>
+            <span class="hint">汇总当日 AI 建议、入库与库存健康状况，只读统计，不触发任何变更。</span>
+          </div>
+          <el-alert
+            v-if="reportError"
+            type="error"
+            :closable="false"
+            show-icon
+            :title="reportError.kind"
+            :description="reportError.message"
+          />
+          <div v-if="report" class="report">
+            <div class="meta">
+              <span class="meta-item">报告日期：{{ report.reportDate }}</span>
+              <span class="meta-item">生成时间：{{ report.generatedAt }}</span>
+              <span class="meta-item">统计窗口：{{ report.windowFrom }} ~ {{ report.windowTo }}</span>
+            </div>
+            <div class="report-cards">
+              <div class="report-card">
+                <span class="report-value">{{ report.lowStockCount }}</span>
+                <span class="report-label">当前低库存商品</span>
+              </div>
+              <div class="report-card">
+                <span class="report-value">{{ report.suggestions.generatedSuggestions }}</span>
+                <span class="report-label">今日生成建议</span>
+              </div>
+              <div class="report-card">
+                <span class="report-value">{{ report.suggestions.rejectedSuggestions }}</span>
+                <span class="report-label">今日驳回建议</span>
+              </div>
+              <div class="report-card">
+                <span class="report-value">{{ report.suggestions.convertedDrafts }}</span>
+                <span class="report-label">今日转入库草稿</span>
+              </div>
+              <div class="report-card">
+                <span class="report-value">{{ report.inboundOrders.appliedInboundOrders }}</span>
+                <span class="report-label">今日已入库单数</span>
+              </div>
+            </div>
+
+            <h4 class="section-title">热销商品（近 {{ report.hotProductDays }} 天，Top {{ report.hotProductLimit }}）</h4>
+            <el-table :data="report.hotProducts" size="small" empty-text="暂无销量数据">
+              <el-table-column label="#" width="50" align="right">
+                <template #default="{ row }">{{ row.rank }}</template>
+              </el-table-column>
+              <el-table-column prop="productId" label="商品 ID" min-width="140" show-overflow-tooltip />
+              <el-table-column label="销量" width="80" align="right">
+                <template #default="{ row }">{{ row.sales?.soldQuantity ?? '—' }}</template>
+              </el-table-column>
+              <el-table-column label="订单数" width="80" align="right">
+                <template #default="{ row }">{{ row.sales?.orderCount ?? '—' }}</template>
+              </el-table-column>
+              <el-table-column label="可用库存" width="90" align="right">
+                <template #default="{ row }">{{ row.inventory?.availableStock ?? '—' }}</template>
+              </el-table-column>
+              <el-table-column label="低库存" width="80">
+                <template #default="{ row }">
+                  <StatusTag v-if="row.inventory?.lowStock" value="LOW_STOCK" label="低库存" tone="warning" />
+                  <span v-else class="muted">—</span>
+                </template>
+              </el-table-column>
+            </el-table>
+
+            <div v-if="report.limitations.length > 0" class="limitations">
+              <h4 class="section-title">数据局限</h4>
+              <ul>
+                <li v-for="(item, index) in report.limitations" :key="index">{{ item }}</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </el-tab-pane>
     </el-tabs>
   </div>
 </template>
@@ -415,6 +520,39 @@ async function onGenerate(): Promise<void> {
   flex-direction: column;
   gap: var(--space-12);
   max-width: 720px;
+}
+
+.report {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.report-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-12);
+}
+
+.report-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 140px;
+  padding: var(--space-12) var(--space-16);
+  background: var(--surface-muted, #f5f7fa);
+  border-radius: var(--radius);
+}
+
+.report-value {
+  font-size: var(--text-xl);
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.report-label {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
 }
 
 .review-link {
