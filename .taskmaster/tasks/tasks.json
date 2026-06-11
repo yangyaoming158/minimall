@@ -2903,10 +2903,11 @@
             "title": "AI suggestion review view",
             "description": "Add /ai-suggestions route, nav entry, list with status filter, detail with items and metadata, reject dialog, convert-inbound-draft action. Vitest coverage.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 10,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-06-11T11:17:56.113Z"
           },
           {
             "id": 3,
@@ -2929,7 +2930,7 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-06-11T11:12:19.826Z"
+        "updatedAt": "2026-06-11T11:17:56.113Z"
       },
       {
         "id": "11",
@@ -2977,7 +2978,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-06-11T11:12:19.826Z",
+      "lastModified": "2026-06-11T11:17:56.113Z",
       "taskCount": 13,
       "completedCount": 9,
       "tags": [
