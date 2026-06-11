@@ -3002,12 +3002,13 @@
             "title": "Seed deterministic catalog inventory sales and records",
             "description": "Populate repeatable core demo data needed for Phase 3 AI inventory demonstrations.",
             "details": "Seed products, inventory, safety stock, users/orders/order items/payment state or sales evidence, and inventory records idempotently with stable business keys. Do not run by default. Add tests proving repeat runs do not duplicate data.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "12.1"
             ],
             "parentTaskId": 12,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-06-11T12:33:50.518Z"
           },
           {
             "id": 3,
@@ -3022,7 +3023,7 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-06-11T12:22:45.682Z"
+        "updatedAt": "2026-06-11T12:33:50.518Z"
       },
       {
         "id": "13",
@@ -3043,7 +3044,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-06-11T12:22:45.685Z",
+      "lastModified": "2026-06-11T12:33:50.520Z",
       "taskCount": 13,
       "completedCount": 11,
       "tags": [
