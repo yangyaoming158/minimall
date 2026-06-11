@@ -2980,7 +2980,7 @@
         "description": "Provide repeatable dev/test data for local Phase 3 demonstration.",
         "details": "Create a deterministic or idempotent dev/test-only demo data generator for products, inventory, safety stock, orders, inventory records, and optional AI suggestions. It must be disabled by default, enabled only by dev/test profile or explicit environment property, and must never run in production profile. This task can be deferred if P0 is at risk.",
         "testStrategy": "",
-        "status": "in-progress",
+        "status": "done",
         "dependencies": [
           "4"
         ],
@@ -3015,15 +3015,16 @@
             "title": "Seed optional AI suggestion demo review data",
             "description": "Add optional Phase 3 AI suggestion and inbound review demo records plus usage notes.",
             "details": "Optionally create AI suggestions and linked inbound drafts or applied examples with existing statuses and metadata, without violating AI inventory mutation boundaries. Add docs or usage notes and focused tests.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "12.2"
             ],
             "parentTaskId": 12,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-06-11T12:47:58.981Z"
           }
         ],
-        "updatedAt": "2026-06-11T12:33:50.518Z"
+        "updatedAt": "2026-06-11T12:47:58.981Z"
       },
       {
         "id": "13",
@@ -3044,9 +3045,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-06-11T12:33:50.520Z",
+      "lastModified": "2026-06-11T12:47:58.983Z",
       "taskCount": 13,
-      "completedCount": 11,
+      "completedCount": 12,
       "tags": [
         "phase3-ai-inventory-assistant"
       ]

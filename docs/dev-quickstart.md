@@ -173,6 +173,24 @@ npm run dev                # 默认 http://localhost:5174/
 # 打开 http://localhost:5174/
 ```
 
+### Phase 3 AI 演示数据
+
+Phase 3 demo data is disabled by default. To seed repeatable local AI inventory
+demo rows in Compose, set these values in `.env` before starting or recreating
+`inventory-service`:
+
+```bash
+INVENTORY_SERVICE_SPRING_PROFILES_ACTIVE=dev
+MINIMALL_DEMO_DATA_ENABLED=true
+```
+
+The seed runs only when `inventory-service` has the `dev` or `test` Spring
+profile and refuses `prod` / `production`. It creates deterministic product,
+inventory, sales, AI suggestion, and inbound-order review rows with business
+keys such as `PH3-AI-LOW-TEA`, `PH3-AI-SUG-PENDING`,
+`PH3-AI-SUG-DRAFT`, and `PH3-AI-INB-APPLIED`. Re-running the service refreshes
+those demo rows without duplicates.
+
 测完关：
 
 - 终端 2：`Ctrl+C` 停 vite

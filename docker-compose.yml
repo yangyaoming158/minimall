@@ -212,6 +212,8 @@ services:
     environment:
       <<: *java-service-environment
       SERVER_PORT: 8103
+      SPRING_PROFILES_ACTIVE: ${INVENTORY_SERVICE_SPRING_PROFILES_ACTIVE:-}
+      MINIMALL_DEMO_DATA_ENABLED: ${MINIMALL_DEMO_DATA_ENABLED:-false}
       ORDER_SERVICE_BASE_URL: http://order-service:8104
       # AI provider passthrough — inventory-service is the only consumer, so
       # these stay out of the shared anchor (no AI_API_KEY in other services).
