@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { mount, flushPromises, enableAutoUnmount, type VueWrapper } from '@vue/test-utils'
+import {
+  mount,
+  flushPromises,
+  enableAutoUnmount,
+  RouterLinkStub,
+  type VueWrapper,
+} from '@vue/test-utils'
 import { createPinia } from 'pinia'
 import ElementPlus, { ElMessage, ElMessageBox } from 'element-plus'
 import type { AiSuggestion } from '@/types/ai'
@@ -64,11 +70,15 @@ function pageOf(content: AiSuggestion[]) {
   return { content, page: 0, size: 10, totalElements: content.length, totalPages: 1 }
 }
 
-// Stub Teleport so drawer/dialog content renders in place, and stub ElSelect
-// (status filter), which hits a render recursion under the Teleport stub.
+// Stub Teleport so drawer/dialog content renders in place, stub ElSelect
+// (status filter), which hits a render recursion under the Teleport stub, and
+// stub RouterLink since the view is mounted without a real router.
 function mountView() {
   return mount(AiSuggestionsView, {
-    global: { plugins: [createPinia(), ElementPlus], stubs: { teleport: true, ElSelect: true } },
+    global: {
+      plugins: [createPinia(), ElementPlus],
+      stubs: { teleport: true, ElSelect: true, RouterLink: RouterLinkStub },
+    },
   })
 }
 

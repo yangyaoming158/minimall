@@ -236,7 +236,13 @@ onMounted(fetchSuggestions)
       </el-table-column>
       <el-table-column label="关联入库单" min-width="170" show-overflow-tooltip>
         <template #default="{ row }">
-          <span v-if="row.linkedInboundNo" class="mono">{{ row.linkedInboundNo }}</span>
+          <router-link
+            v-if="row.linkedInboundNo"
+            class="mono inbound-link"
+            :to="{ path: '/inbound-orders', query: { inboundNo: row.linkedInboundNo } }"
+          >
+            {{ row.linkedInboundNo }}
+          </router-link>
           <span v-else class="muted">—</span>
         </template>
       </el-table-column>
@@ -289,7 +295,12 @@ onMounted(fetchSuggestions)
             {{ detail.reason }}
           </el-descriptions-item>
           <el-descriptions-item v-if="detail.linkedInboundNo" label="关联入库单" :span="2">
-            <span class="mono">{{ detail.linkedInboundNo }}</span>
+            <router-link
+              class="mono inbound-link"
+              :to="{ path: '/inbound-orders', query: { inboundNo: detail.linkedInboundNo } }"
+            >
+              {{ detail.linkedInboundNo }}
+            </router-link>
           </el-descriptions-item>
           <el-descriptions-item v-if="detail.rejectedReason" label="驳回原因" :span="2">
             {{ detail.rejectedReason }}
@@ -408,5 +419,14 @@ onMounted(fetchSuggestions)
 
 .mono {
   font-family: var(--font-mono, monospace);
+}
+
+.inbound-link {
+  color: var(--accent, #409eff);
+  text-decoration: none;
+}
+
+.inbound-link:hover {
+  text-decoration: underline;
 }
 </style>

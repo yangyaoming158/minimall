@@ -14,6 +14,7 @@ const navItems: NavItem[] = [
   { index: '/products', label: '商品管理' },
   { index: '/inventories', label: '库存管理' },
   { index: '/ai-suggestions', label: 'AI 建议审批' },
+  { index: '/inbound-orders', label: '入库单' },
   { index: '/orders', label: '订单管理' },
   { index: '/payments', label: '支付管理' },
   { index: '/notifications', label: '通知管理' },

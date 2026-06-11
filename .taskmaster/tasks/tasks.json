@@ -2914,10 +2914,11 @@
             "title": "Inbound order view",
             "description": "Add /inbound-orders route, nav entry, list with status filter, detail, cancel, confirm with generated X-Request-Id idempotency key. State clearly stock changes only on confirmation. Vitest coverage.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 10,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-06-11T11:24:14.085Z"
           },
           {
             "id": 4,
@@ -2930,7 +2931,7 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-06-11T11:17:56.113Z"
+        "updatedAt": "2026-06-11T11:24:14.085Z"
       },
       {
         "id": "11",
@@ -2978,7 +2979,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-06-11T11:17:56.113Z",
+      "lastModified": "2026-06-11T11:24:14.086Z",
       "taskCount": 13,
       "completedCount": 9,
       "tags": [

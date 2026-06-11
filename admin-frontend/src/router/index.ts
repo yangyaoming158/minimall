@@ -27,6 +27,12 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresAuth: true, title: '库存管理' },
       },
       {
+        path: 'inbound-orders',
+        name: 'inbound-orders',
+        component: () => import('@/views/InboundOrdersView.vue'),
+        meta: { requiresAuth: true, title: '入库单' },
+      },
+      {
         path: 'ai-suggestions',
         name: 'ai-suggestions',
         component: () => import('@/views/AiSuggestionsView.vue'),
