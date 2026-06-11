@@ -2980,12 +2980,49 @@
         "description": "Provide repeatable dev/test data for local Phase 3 demonstration.",
         "details": "Create a deterministic or idempotent dev/test-only demo data generator for products, inventory, safety stock, orders, inventory records, and optional AI suggestions. It must be disabled by default, enabled only by dev/test profile or explicit environment property, and must never run in production profile. This task can be deferred if P0 is at risk.",
         "testStrategy": "",
-        "status": "pending",
+        "status": "in-progress",
         "dependencies": [
           "4"
         ],
         "priority": "low",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Add guarded demo data generator activation",
+            "description": "Create disabled-by-default dev/test-only seed infrastructure and configuration guard.",
+            "details": "Add Spring Boot demo data activation infrastructure that is disabled by default, requires explicit enablement, only allows dev or test profiles, and refuses to run with the production profile. Cover disabled, allowed, and forbidden activation paths with tests.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 12,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-11T12:22:45.682Z"
+          },
+          {
+            "id": 2,
+            "title": "Seed deterministic catalog inventory sales and records",
+            "description": "Populate repeatable core demo data needed for Phase 3 AI inventory demonstrations.",
+            "details": "Seed products, inventory, safety stock, users/orders/order items/payment state or sales evidence, and inventory records idempotently with stable business keys. Do not run by default. Add tests proving repeat runs do not duplicate data.",
+            "status": "pending",
+            "dependencies": [
+              "12.1"
+            ],
+            "parentTaskId": 12,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Seed optional AI suggestion demo review data",
+            "description": "Add optional Phase 3 AI suggestion and inbound review demo records plus usage notes.",
+            "details": "Optionally create AI suggestions and linked inbound drafts or applied examples with existing statuses and metadata, without violating AI inventory mutation boundaries. Add docs or usage notes and focused tests.",
+            "status": "pending",
+            "dependencies": [
+              "12.2"
+            ],
+            "parentTaskId": 12,
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2026-06-11T12:22:45.682Z"
       },
       {
         "id": "13",
@@ -3006,7 +3043,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-06-11T12:07:36.226Z",
+      "lastModified": "2026-06-11T12:22:45.685Z",
       "taskCount": 13,
       "completedCount": 11,
       "tags": [
