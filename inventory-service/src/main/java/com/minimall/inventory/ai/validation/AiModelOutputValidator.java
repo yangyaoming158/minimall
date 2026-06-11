@@ -111,8 +111,9 @@ public class AiModelOutputValidator {
             String productId = requireTextField(item, "productId", path);
             validateKnownProduct(productId, context, path);
             validateRiskLevel(item.get("riskLevel"), analysisType, path);
-            validateProductFacts(item, context.factsFor(productId), productId, path);
-            validateSuggestedQuantity(item.get("suggestedQuantity"), analysisType, path);
+            AiOutputProductFacts facts = context.factsFor(productId);
+            validateProductFacts(item, facts, productId, path);
+            validateSuggestedQuantity(item.get("suggestedQuantity"), facts, analysisType, path);
         }
     }
 
@@ -196,6 +197,7 @@ public class AiModelOutputValidator {
 
     private void validateSuggestedQuantity(
             JsonNode suggestedQuantity,
+            AiOutputProductFacts facts,
             AiAnalysisType analysisType,
             String path) {
         if (suggestedQuantity == null || suggestedQuantity.isNull()) {
@@ -208,6 +210,32 @@ public class AiModelOutputValidator {
         if (quantity <= 0) {
             fail(path + ".suggestedQuantity must be a positive integer");
         }
+        Long cap = suggestedQuantityCap(facts);
+        if (cap != null && quantity > cap) {
+            fail(path + ".suggestedQuantity " + quantity
+                    + " exceeds the snapshot-derived limit " + cap);
+        }
+    }
+
+    /**
+     * Snapshot-derived upper bound for a replenishment quantity:
+     * max(2 x safetyStock - availableStock, soldQuantityLast7Days, 1). The
+     * model judgment may stay below the bound but can never exceed what the
+     * snapshot facts justify. Null when the snapshot has no usable facts.
+     */
+    private Long suggestedQuantityCap(AiOutputProductFacts facts) {
+        if (facts == null) {
+            return null;
+        }
+        Long cap = null;
+        if (facts.availableStock() != null && facts.safetyStock() != null) {
+            cap = Math.max(facts.safetyStock() * 2L - facts.availableStock(), 1L);
+        }
+        if (facts.soldQuantityLast7Days() != null) {
+            long sales = Math.max(facts.soldQuantityLast7Days(), 1L);
+            cap = cap == null ? sales : Math.max(cap, sales);
+        }
+        return cap;
     }
 
     private void validateTimeRange(JsonNode timeRange, AiOutputValidationContext context) {

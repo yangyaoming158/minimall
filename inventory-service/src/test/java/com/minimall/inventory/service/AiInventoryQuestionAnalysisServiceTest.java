@@ -62,7 +62,7 @@ class AiInventoryQuestionAnalysisServiceTest {
                 "Inventory Q&A is read-only and does not reserve, deduct, or adjust stock.",
                 "Answer is based on current inventory evidence only.");
         then(evidenceFacade).should().currentInventory("SKU-QA-AI", 0);
-        assertThat(provider.lastRequest.promptVersion()).isEqualTo("inventory-qa-v1");
+        assertThat(provider.lastRequest.promptVersion()).isEqualTo("inventory-qa-v2");
         assertThat(provider.lastRequest.outputSchemaVersion()).isEqualTo("inventory-analysis-output-v1");
         assertThat(provider.lastRequest.messages()).hasSize(2);
         assertThat(provider.lastRequest.messages().get(0).role()).isEqualTo(AiProviderMessageRole.SYSTEM);

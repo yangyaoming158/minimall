@@ -16,6 +16,9 @@ public class AiProviderProperties {
     private long requestTimeoutMs = 5_000L;
     private boolean modelStrictJson = true;
     private boolean mockEnabled = true;
+    // 0 minimizes sampling variance so repeated runs on the same snapshot
+    // converge; real providers do not guarantee bit-identical output even at 0.
+    private double temperature = 0.0d;
 
     public AiProviderType getProvider() {
         return provider;
@@ -73,6 +76,14 @@ public class AiProviderProperties {
 
     public void setMockEnabled(boolean mockEnabled) {
         this.mockEnabled = mockEnabled;
+    }
+
+    public double getTemperature() {
+        return temperature;
+    }
+
+    public void setTemperature(double temperature) {
+        this.temperature = Math.min(Math.max(temperature, 0.0d), 2.0d);
     }
 
     public Duration requestTimeout() {

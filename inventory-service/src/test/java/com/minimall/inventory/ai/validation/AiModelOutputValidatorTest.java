@@ -1,6 +1,7 @@
 package com.minimall.inventory.ai.validation;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -64,6 +65,24 @@ class AiModelOutputValidatorTest {
                         .replace("\"suggestedQuantity\": 8", "\"suggestedQuantity\": 0"),
                 context(),
                 "$.items[0].suggestedQuantity must be a positive integer");
+    }
+
+    @Test
+    void rejectsSuggestedQuantityAboveSnapshotDerivedLimit() {
+        // facts: available 2, safety 10, sold 12 -> cap = max(2*10-2, 12) = 18
+        assertValidationFailure(validReplenishmentOutput()
+                        .replace("\"suggestedQuantity\": 8", "\"suggestedQuantity\": 19"),
+                context(),
+                "$.items[0].suggestedQuantity 19 exceeds the snapshot-derived limit 18");
+    }
+
+    @Test
+    void acceptsSuggestedQuantityAtTheSnapshotDerivedLimit() {
+        assertThatCode(() -> validator.validate(
+                        validReplenishmentOutput()
+                                .replace("\"suggestedQuantity\": 8", "\"suggestedQuantity\": 18"),
+                        context()))
+                .doesNotThrowAnyException();
     }
 
     @Test

@@ -167,7 +167,7 @@ class AdminAiReplenishmentSuggestionControllerTest {
                 .satisfies(saved -> {
                     assertThat(saved.getStatus()).isEqualTo(AiOperationSuggestionStatus.PENDING_REVIEW);
                     assertThat(saved.getModelProvider()).isEqualTo("MOCK");
-                    assertThat(saved.getPromptVersion()).isEqualTo("replenishment-suggestion-v1");
+                    assertThat(saved.getPromptVersion()).isEqualTo("replenishment-suggestion-v2");
                     assertThat(saved.getLinkedInboundNo()).isNull();
                 });
 

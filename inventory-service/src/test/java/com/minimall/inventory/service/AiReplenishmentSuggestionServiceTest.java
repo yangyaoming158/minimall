@@ -127,7 +127,7 @@ class AiReplenishmentSuggestionServiceTest {
         assertThat(saved.getSource()).isEqualTo(AiOperationSuggestionSource.AI_MODEL);
         assertThat(saved.getModelProvider()).isEqualTo("MOCK");
         assertThat(saved.getModelName()).isEqualTo("mock-ai-provider");
-        assertThat(saved.getPromptVersion()).isEqualTo("replenishment-suggestion-v1");
+        assertThat(saved.getPromptVersion()).isEqualTo("replenishment-suggestion-v2");
         assertThat(saved.getOutputSchemaVersion()).isEqualTo("inventory-analysis-output-v1");
         assertThat(saved.getValidationStatus()).isEqualTo(AiSuggestionValidationStatus.VALID);
         assertThat(saved.getValidationError()).isNull();

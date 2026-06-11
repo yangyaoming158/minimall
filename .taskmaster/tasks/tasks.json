@@ -3053,12 +3053,56 @@
         "priority": "high",
         "subtasks": [],
         "updatedAt": "2026-06-11T15:18:32.965Z"
+      },
+      {
+        "id": "14",
+        "title": "Fix real-provider AI assistant smoke findings",
+        "description": "Fix the five issues from the 2026-06-11 real-provider smoke test per docs/ai-assistant-smoke-findings-2026-06-12.md: prompt v2 templates (omit absent snapshot fields, limitations as string array, Simplified Chinese output, quantity anchoring formula with mandatory fact echo), AI_TEMPERATURE config defaulting to 0, Q&A productId extraction from question text with Chinese error copy, localization of backend-generated English strings, frontend placeholder/error polish. Validator assertions may only be tightened, never weakened.",
+        "details": "",
+        "testStrategy": "",
+        "status": "in-progress",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Prompt v2, temperature, quantity cap",
+            "description": "Upgrade four prompt templates to v2 (Simplified Chinese output, omit absent snapshot fields, limitations as string array, quantity anchoring formula with mandatory fact echo). Add AI_TEMPERATURE config (default 0) to provider request body, compose and .env.example. Tighten AiModelOutputValidator with a snapshot-derived suggestedQuantity upper bound (tighten only).",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 14,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-11T16:13:56.697Z"
+          },
+          {
+            "id": 2,
+            "title": "QA productId extraction and Chinese backend copy",
+            "description": "Extract SKU-like productId from question text when the field is empty (verified against inventory); Chinese error guidance. Localize backend-generated strings: evidence limitations, replenishment inputSummary, daily report limitations.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 14,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Frontend QA placeholder and error copy polish",
+            "description": "Fix misleading QA placeholder, friendly mapping for missing-productId error.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 14,
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2026-06-11T16:13:56.697Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-06-11T15:18:32.966Z",
-      "taskCount": 13,
+      "lastModified": "2026-06-11T16:13:56.700Z",
+      "taskCount": 14,
       "completedCount": 13,
       "tags": [
         "phase3-ai-inventory-assistant"

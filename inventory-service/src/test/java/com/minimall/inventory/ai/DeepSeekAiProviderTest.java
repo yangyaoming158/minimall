@@ -43,6 +43,7 @@ class DeepSeekAiProviderTest {
                             {"role":"user","content":"Analyze SKU-AI-1."}
                           ],
                           "stream":false,
+                          "temperature":0.0,
                           "response_format":{"type":"json_object"}
                         }
                         """))

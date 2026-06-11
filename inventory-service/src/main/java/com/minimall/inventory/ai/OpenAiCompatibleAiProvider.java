@@ -82,6 +82,7 @@ abstract class OpenAiCompatibleAiProvider implements AiProvider {
         body.put("model", properties.getModel());
         body.put("messages", messages(request.messages()));
         body.put("stream", false);
+        body.put("temperature", properties.getTemperature());
         if (properties.isModelStrictJson()) {
             body.put("response_format", Map.of("type", "json_object"));
         }

@@ -224,6 +224,7 @@ services:
       AI_BASE_URL: ${AI_BASE_URL:-}
       AI_API_KEY: ${AI_API_KEY:-}
       AI_REQUEST_TIMEOUT_MS: ${AI_REQUEST_TIMEOUT_MS:-5000}
+      AI_TEMPERATURE: ${AI_TEMPERATURE:-0}
       AI_MODEL_STRICT_JSON: ${AI_MODEL_STRICT_JSON:-true}
       AI_MOCK_ENABLED: ${AI_MOCK_ENABLED:-true}
     # Not published — gateway-only access (see user-service note).

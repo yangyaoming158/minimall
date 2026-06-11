@@ -39,7 +39,7 @@ class AiInventoryAnalysisServiceTest {
 
         assertThat(result.templateId()).isEqualTo(AiPromptTemplateId.REPLENISHMENT_SUGGESTION);
         assertThat(result.analysisType()).isEqualTo(AiAnalysisType.REPLENISHMENT);
-        assertThat(result.promptVersion()).isEqualTo("replenishment-suggestion-v1");
+        assertThat(result.promptVersion()).isEqualTo("replenishment-suggestion-v2");
         assertThat(result.outputSchemaVersion()).isEqualTo("inventory-analysis-output-v1");
         assertThat(result.provider()).isEqualTo(AiProviderType.MOCK);
         assertThat(result.model()).isEqualTo("mock-analysis-model");
@@ -50,7 +50,7 @@ class AiInventoryAnalysisServiceTest {
         assertThat(result.validatedOutputJson()).contains("\"analysisType\":\"REPLENISHMENT\"");
         assertThat(result.output().path("items").get(0).path("productId").asText()).isEqualTo("SKU-LOW-1");
 
-        assertThat(provider.lastRequest.promptVersion()).isEqualTo("replenishment-suggestion-v1");
+        assertThat(provider.lastRequest.promptVersion()).isEqualTo("replenishment-suggestion-v2");
         assertThat(provider.lastRequest.outputSchemaVersion()).isEqualTo("inventory-analysis-output-v1");
         assertThat(provider.lastRequest.messages()).hasSize(2);
         assertThat(provider.lastRequest.messages().get(0).role()).isEqualTo(AiProviderMessageRole.SYSTEM);

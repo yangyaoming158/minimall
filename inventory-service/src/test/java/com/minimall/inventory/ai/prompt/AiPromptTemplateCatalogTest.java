@@ -20,7 +20,7 @@ class AiPromptTemplateCatalogTest {
 
         assertThat(catalog.all())
                 .allSatisfy(template -> {
-                    assertThat(template.promptVersion()).endsWith("-v1");
+                    assertThat(template.promptVersion()).endsWith("-v2");
                     assertThat(template.outputSchemaVersion()).isEqualTo("inventory-analysis-output-v1");
                     assertThat(template.systemPrompt()).contains("provided JSON snapshot");
                     assertThat(template.systemPrompt()).contains("Do not claim inventory changed");
@@ -33,7 +33,7 @@ class AiPromptTemplateCatalogTest {
     void exposesReplenishmentPromptMetadataForProviderRequests() {
         AiPromptTemplate template = catalog.get(AiPromptTemplateId.REPLENISHMENT_SUGGESTION);
 
-        assertThat(template.promptVersion()).isEqualTo("replenishment-suggestion-v1");
+        assertThat(template.promptVersion()).isEqualTo("replenishment-suggestion-v2");
         assertThat(template.outputSchemaVersion()).isEqualTo("inventory-analysis-output-v1");
         assertThat(template.taskPrompt()).contains("suggestedQuantity");
         assertThat(template.taskPrompt()).contains("PENDING_REVIEW");

@@ -39,6 +39,7 @@ class MiniMaxAiProviderTest {
                             {"role":"user","content":"Analyze SKU-AI-2."}
                           ],
                           "stream":false,
+                          "temperature":0.0,
                           "response_format":{"type":"json_object"}
                         }
                         """))
