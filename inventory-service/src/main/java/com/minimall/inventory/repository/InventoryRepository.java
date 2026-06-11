@@ -37,6 +37,14 @@ public interface InventoryRepository
             """)
     Page<Inventory> findLowStock(@Param("status") InventoryStatus status, Pageable pageable);
 
+    @Query("""
+            select count(inventory) from Inventory inventory
+             where inventory.status = :status
+               and inventory.safetyStock > 0
+               and inventory.availableStock <= inventory.safetyStock
+            """)
+    long countLowStock(@Param("status") InventoryStatus status);
+
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
             update Inventory inventory

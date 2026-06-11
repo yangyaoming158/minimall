@@ -2940,13 +2940,38 @@
         "description": "Add P1 reporting and richer review surfaces once P0 is stable.",
         "details": "Implement daily report and suggestion-history enhancements if P0 schedule allows. Daily report should summarize low-stock count, hot products, generated suggestions, rejected suggestions, converted drafts, and applied inbound orders. Suggestion history should support status filtering and detail view. This task can be deferred if P0 is at risk.",
         "testStrategy": "",
-        "status": "pending",
+        "status": "in-progress",
         "dependencies": [
           "8",
           "10"
         ],
         "priority": "medium",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Add daily AI inventory report API",
+            "description": "Expose GET /api/admin/ai/reports/daily from inventory-service.",
+            "details": "Build a read-only daily report service and controller that summarizes low-stock count, hot products, generated AI suggestions, rejected suggestions, converted drafts, and applied inbound orders. Return ApiResponse-wrapped DTOs, keep AI boundaries read-only, and cover service/controller behavior with tests.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 11,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-11T11:58:30.143Z"
+          },
+          {
+            "id": 2,
+            "title": "Enhance AI suggestion history surfaces",
+            "description": "Harden existing GET /api/admin/ai-suggestions list/detail review APIs for richer history use.",
+            "details": "Verify and, where needed, extend suggestion history support for stable status filtering, detail evidence/metadata/links, and frontend-ready response contracts without adding duplicate /api/admin/ai/suggestions endpoints. Add focused regression tests for all suggestion statuses and detail response fields.",
+            "status": "pending",
+            "dependencies": [
+              "11.1"
+            ],
+            "parentTaskId": 11,
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2026-06-11T11:58:30.143Z"
       },
       {
         "id": "12",
@@ -2980,7 +3005,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-06-11T11:30:40.681Z",
+      "lastModified": "2026-06-11T11:58:30.145Z",
       "taskCount": 13,
       "completedCount": 10,
       "tags": [
