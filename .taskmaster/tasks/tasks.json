@@ -2878,7 +2878,7 @@
         "description": "Add the admin UI for Phase 3 AI inventory workflows.",
         "details": "Add /ai-inventory route and AI 库存助手 navigation entry in admin-frontend. Build Q&A, low-stock analysis, hot-product analysis, suggestion generation, rejection, and draft conversion surfaces. Show status, evidence, risk level, time range, and distinct error states. Never present AI as directly executing stock changes, and call only gateway admin APIs.",
         "testStrategy": "",
-        "status": "in-progress",
+        "status": "done",
         "dependencies": [
           "6",
           "7",
@@ -2925,13 +2925,14 @@
             "title": "AI inventory assistant page",
             "description": "Add /ai-inventory route and AI 库存助手 nav entry with Q&A, low-stock analysis, hot-product analysis, and suggestion generation panels. Show time range, structured evidence, risk levels, distinct error states; never present AI as executing stock changes. Vitest coverage + npm run build + gateway audit.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 10,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-06-11T11:30:40.681Z"
           }
         ],
-        "updatedAt": "2026-06-11T11:24:14.085Z"
+        "updatedAt": "2026-06-11T11:30:40.681Z"
       },
       {
         "id": "11",
@@ -2979,9 +2980,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-06-11T11:24:14.086Z",
+      "lastModified": "2026-06-11T11:30:40.681Z",
       "taskCount": 13,
-      "completedCount": 9,
+      "completedCount": 10,
       "tags": [
         "phase3-ai-inventory-assistant"
       ]

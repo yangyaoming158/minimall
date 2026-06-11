@@ -13,6 +13,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { index: '/products', label: '商品管理' },
   { index: '/inventories', label: '库存管理' },
+  { index: '/ai-inventory', label: 'AI 库存助手' },
   { index: '/ai-suggestions', label: 'AI 建议审批' },
   { index: '/inbound-orders', label: '入库单' },
   { index: '/orders', label: '订单管理' },
