@@ -2878,7 +2878,7 @@
         "description": "Add the admin UI for Phase 3 AI inventory workflows.",
         "details": "Add /ai-inventory route and AI 库存助手 navigation entry in admin-frontend. Build Q&A, low-stock analysis, hot-product analysis, suggestion generation, rejection, and draft conversion surfaces. Show status, evidence, risk level, time range, and distinct error states. Never present AI as directly executing stock changes, and call only gateway admin APIs.",
         "testStrategy": "",
-        "status": "pending",
+        "status": "in-progress",
         "dependencies": [
           "6",
           "7",
@@ -2886,7 +2886,50 @@
           "9"
         ],
         "priority": "medium",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "AI domain types and gateway API clients",
+            "description": "Add admin-frontend types and API client modules for /api/admin/ai/** (ask, low-stock-analysis, hot-products-analysis, replenishment-suggestions/generate), /api/admin/ai-suggestions/**, /api/admin/inbound-orders/**. Gateway-only, no trusted headers.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 10,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-11T11:12:19.826Z"
+          },
+          {
+            "id": 2,
+            "title": "AI suggestion review view",
+            "description": "Add /ai-suggestions route, nav entry, list with status filter, detail with items and metadata, reject dialog, convert-inbound-draft action. Vitest coverage.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 10,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Inbound order view",
+            "description": "Add /inbound-orders route, nav entry, list with status filter, detail, cancel, confirm with generated X-Request-Id idempotency key. State clearly stock changes only on confirmation. Vitest coverage.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 10,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "AI inventory assistant page",
+            "description": "Add /ai-inventory route and AI 库存助手 nav entry with Q&A, low-stock analysis, hot-product analysis, and suggestion generation panels. Show time range, structured evidence, risk levels, distinct error states; never present AI as executing stock changes. Vitest coverage + npm run build + gateway audit.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 10,
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2026-06-11T11:12:19.826Z"
       },
       {
         "id": "11",
@@ -2934,7 +2977,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-06-10T16:29:47.614Z",
+      "lastModified": "2026-06-11T11:12:19.826Z",
       "taskCount": 13,
       "completedCount": 9,
       "tags": [
