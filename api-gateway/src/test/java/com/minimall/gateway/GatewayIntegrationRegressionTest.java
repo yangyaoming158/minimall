@@ -123,6 +123,7 @@ class GatewayIntegrationRegressionTest {
         expectAdminPostRoute("/api/admin/ai/inventory/low-stock-analysis", "inventory", token);
         expectAdminPostRoute("/api/admin/ai/inventory/hot-products-analysis", "inventory", token);
         expectAdminPostRoute("/api/admin/ai/replenishment-suggestions/generate", "inventory", token);
+        expectAdminRoute("/api/admin/ai/reports/daily", "inventory", token);
         expectAdminRoute("/api/admin/orders", "order", token);
         expectAdminRoute("/api/admin/orders/ORDER-1", "order", token);
         expectAdminRoute("/api/admin/payments", "payment", token);
@@ -130,7 +131,7 @@ class GatewayIntegrationRegressionTest {
         expectAdminRoute("/api/admin/notifications", "notification", token);
         expectAdminRoute("/api/admin/notifications/1", "notification", token);
 
-        assertThat(rateLimiter.keys()).hasSize(17).allMatch("user:42"::equals);
+        assertThat(rateLimiter.keys()).hasSize(18).allMatch("user:42"::equals);
     }
 
     @Test

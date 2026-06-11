@@ -2,21 +2,17 @@
 
 ## Current phase
 
-We are working on Phase 3: AI Inventory Assistant (6/13 tasks done).
+Phase 3: AI Inventory Assistant is COMPLETE (13/13 tasks done; acceptance:
+docs/phase3-acceptance.md, 2026-06-11). There is no active phase — new work
+needs a new PRD or explicit user direction.
 
 - PRD: .taskmaster/docs/phase3-ai-inventory-assistant-prd.txt
 - Locked API contract (authoritative for AI boundaries):
   docs/phase3-ai-inventory-contract.md
 - TaskMaster tag: phase3-ai-inventory-assistant
 - Architecture & AI midterm review (2026-06-10):
-  docs/architecture-ai-review-2026-06-10.md — read it before planning new
-  work; its P0 list is the agreed priority order.
-
-Current position: Tasks 1–6 and 7.1 are done. Remaining order:
-7.2 (hot-product analysis endpoint) → 7.3 (analysis security/gateway
-regressions) → 8 (replenishment suggestion generation, persists
-ai_operation_suggestion) → 9 (APPLIED status sync) → 10 (admin AI page)
-→ 11–13 (P1 report, demo data, final regression).
+  docs/architecture-ai-review-2026-06-10.md — its P0/P1 roadmap is done
+  except the README known-limitations section (M1–M4), still open.
 
 All previous phases are complete and must keep working: master backend MVP,
 phase0-api-polish, phase1-customer-frontend, phase2-admin-platform,

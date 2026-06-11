@@ -3043,7 +3043,7 @@
         "description": "Verify the full AI assistant workflow and existing customer/admin regressions.",
         "details": "Document and verify the full flow: analysis -> suggestion -> draft -> admin confirmation -> inventory increase -> inventory record -> operation log -> suggestion APPLIED. Prove AI cannot directly change inventory, /internal/** remains blocked, trusted headers remain protected, customer purchase flow remains valid, and Phase 2 admin login/base pages remain valid. Run focused backend tests, mvn clean package -DskipTests, and admin-frontend npm run test/build when UI changes are included.",
         "testStrategy": "",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           "9",
           "10",
@@ -3051,14 +3051,15 @@
           "12"
         ],
         "priority": "high",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-06-11T15:18:32.965Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-06-11T15:08:36.127Z",
+      "lastModified": "2026-06-11T15:18:32.966Z",
       "taskCount": 13,
-      "completedCount": 12,
+      "completedCount": 13,
       "tags": [
         "phase3-ai-inventory-assistant"
       ]
