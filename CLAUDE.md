@@ -99,13 +99,14 @@ Forbidden (from the locked contract — these are hard boundaries):
   analysis → validated suggestion (PENDING_REVIEW) → admin review →
   convert-inbound-draft → inbound DRAFT → admin confirm (requestId-idempotent)
   → inventory transaction + records + audit → suggestion APPLIED.
-- Known caveat: `MockAiProvider` currently returns an empty `items` array, so
-  the MOCK path cannot demo suggestion generation end-to-end. Enhancing the
-  mock to derive deterministic items from the input snapshot is an agreed P0
-  (do it alongside or before Task 8).
-- docker-compose does not yet pass `AI_*` variables to inventory-service;
-  real-provider demos require adding them to the shared environment anchor
-  (agreed P1).
+- `MockAiProvider` derives deterministic items from the input snapshot
+  (Task 8.1), so the MOCK path demos suggestion generation end-to-end without
+  network access.
+- docker-compose passes the `AI_*` variables to inventory-service only (not
+  the shared anchor — it is the sole consumer and the API key must not leak
+  into other services). Defaults keep MOCK; set the variables in `.env` to
+  demo a real provider, remembering that real providers send inventory/sales
+  snapshots to the external vendor (M4).
 
 ## Known issues registry (do not "fix" silently)
 

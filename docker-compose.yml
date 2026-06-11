@@ -213,6 +213,17 @@ services:
       <<: *java-service-environment
       SERVER_PORT: 8103
       ORDER_SERVICE_BASE_URL: http://order-service:8104
+      # AI provider passthrough — inventory-service is the only consumer, so
+      # these stay out of the shared anchor (no AI_API_KEY in other services).
+      # Defaults keep the no-network MOCK provider; real providers (DEEPSEEK /
+      # MINIMAX) send inventory and sales snapshots to the external vendor.
+      AI_PROVIDER: ${AI_PROVIDER:-MOCK}
+      AI_MODEL: ${AI_MODEL:-}
+      AI_BASE_URL: ${AI_BASE_URL:-}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_REQUEST_TIMEOUT_MS: ${AI_REQUEST_TIMEOUT_MS:-5000}
+      AI_MODEL_STRICT_JSON: ${AI_MODEL_STRICT_JSON:-true}
+      AI_MOCK_ENABLED: ${AI_MOCK_ENABLED:-true}
     # Not published — gateway-only access (see user-service note).
     expose:
       - "8103"
