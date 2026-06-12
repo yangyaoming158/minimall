@@ -3060,7 +3060,7 @@
         "description": "Fix the five issues from the 2026-06-11 real-provider smoke test per docs/ai-assistant-smoke-findings-2026-06-12.md: prompt v2 templates (omit absent snapshot fields, limitations as string array, Simplified Chinese output, quantity anchoring formula with mandatory fact echo), AI_TEMPERATURE config defaulting to 0, Q&A productId extraction from question text with Chinese error copy, localization of backend-generated English strings, frontend placeholder/error polish. Validator assertions may only be tightened, never weakened.",
         "details": "",
         "testStrategy": "",
-        "status": "in-progress",
+        "status": "done",
         "dependencies": [],
         "priority": "medium",
         "subtasks": [
@@ -3091,20 +3091,21 @@
             "title": "Frontend QA placeholder and error copy polish",
             "description": "Fix misleading QA placeholder, friendly mapping for missing-productId error.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 14,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-06-12T12:59:00.149Z"
           }
         ],
-        "updatedAt": "2026-06-12T12:56:05.918Z"
+        "updatedAt": "2026-06-12T12:59:00.149Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-06-12T12:56:05.920Z",
+      "lastModified": "2026-06-12T12:59:00.150Z",
       "taskCount": 14,
-      "completedCount": 13,
+      "completedCount": 14,
       "tags": [
         "phase3-ai-inventory-assistant"
       ]

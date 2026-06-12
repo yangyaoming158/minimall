@@ -2903,3 +2903,15 @@ Append one entry per implementation task so future sessions can recover project 
 - Test result: Focused run 50 tests green (including the two new extraction tests: question-text productId resolves against a real inventory row; non-product tokens like "show"/"current" are never trusted). Full module run: common-core 39, common-auth 38, inventory-service 237 (235 + 2), 0 failures/errors. `mvn clean package -DskipTests` passed for all 10 reactor modules. `git diff --check` clean.
 - Issues: Mock-provider answer/summary text remains English by design (dev-only MOCK path; the findings doc scopes P4 to strings surfacing from real flows — can be localized later if MOCK demos need it). Validator fixtures keep English strings as raw model-output test data, which is input, not copy.
 - Next: Task 14.3 - Frontend QA placeholder and error copy polish.
+
+## Phase 3 Task 14.3 - Frontend QA placeholder and error copy polish
+- Date: 2026-06-12
+- Status: Done (closes Task 14)
+- TaskMaster tag: `phase3-ai-inventory-assistant`
+- 是否拆分: 否，原因: 14.3 is the final subtask under Task 14, scoped to the frontend share of smoke findings P3/P4 (docs/ai-assistant-smoke-findings-2026-06-12.md).
+- Implemented: Updated the /ai-inventory Q&A inputs to match the 14.2 backend behavior — the question placeholder now reads "提问，可直接包含商品编号，如：PH3-AI-LOW-TEA 当前库存多少？" (the old example implied in-question product ids worked before they actually did), and the productId field is labeled "商品 ID（可选，优先生效）" to document precedence. Added a spec covering the unresolved-productId path: the backend's Chinese guidance ("无法识别商品 ID：…") surfaces in the panel as 请求失败 with the guidance text.
+- Changed files: `.taskmaster/tasks/tasks.json`; `docs/dev-log.md`; `admin-frontend/src/views/AiInventoryView.vue`; `admin-frontend/src/views/__tests__/AiInventoryView.spec.ts`
+- Commands run: `set-status --id=14.3 --status=in-progress`; placeholder edits + spec selector updates; `npx vue-tsc --noEmit`; `npx vitest run`; `npm run build`; gateway-contract-audit greps (rerun from repo root after a wrong-cwd false pass); `set-status --id=14.3 --status=done`; `set-status --id=14 --status=done`.
+- Test result: Full vitest 12 files / 81 tests passed (+1 new error-surface test). `vue-tsc --noEmit` clean. `npm run build` succeeded (pre-existing >500kB chunk warning unchanged). gateway-contract-audit passed for both frontends (0 hits on all three checks). TaskMaster shows 14.1–14.3 and parent Task 14 done.
+- Issues: None new. Real-provider manual retest of the five findings (P1–P5) is the remaining human step: rebuild inventory-service (`docker compose --profile services up -d --build inventory-service`) and rerun the five smoke scenarios twice each, verifying Chinese-only output and converged suggestion quantities.
+- Next: Task 14 complete. Remaining known doc item: README known-limitations section (M1–M4).

@@ -195,14 +195,14 @@ async function onLoadReport(): Promise<void> {
           <div class="form-row">
             <el-input
               v-model="question"
-              placeholder="例如：SKU-1 当前库存多少？哪些商品低库存？"
+              placeholder="提问，可直接包含商品编号，如：PH3-AI-LOW-TEA 当前库存多少？"
               maxlength="1000"
               style="max-width: 480px"
               @keyup.enter="onAsk"
             />
             <el-input
               v-model="askProductId"
-              placeholder="商品 ID（可选）"
+              placeholder="商品 ID（可选，优先生效）"
               maxlength="64"
               style="width: 200px"
             />

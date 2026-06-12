@@ -177,7 +177,7 @@ describe('AiInventoryView', () => {
     mockedAsk.mockResolvedValue(askResponse())
     const wrapper = mountView()
 
-    await wrapper.find('input[placeholder="例如：SKU-1 当前库存多少？哪些商品低库存？"]').setValue('SKU-1 库存多少')
+    await wrapper.find('input[placeholder="提问，可直接包含商品编号，如：PH3-AI-LOW-TEA 当前库存多少？"]').setValue('SKU-1 库存多少')
     await clickButton(wrapper, '提问')
 
     expect(mockedAsk).toHaveBeenCalledWith({ question: 'SKU-1 库存多少' })
@@ -194,8 +194,8 @@ describe('AiInventoryView', () => {
     mockedAsk.mockResolvedValue(askResponse())
     const wrapper = mountView()
 
-    await wrapper.find('input[placeholder="例如：SKU-1 当前库存多少？哪些商品低库存？"]').setValue('库存多少')
-    await wrapper.find('input[placeholder="商品 ID（可选）"]').setValue('SKU-1')
+    await wrapper.find('input[placeholder="提问，可直接包含商品编号，如：PH3-AI-LOW-TEA 当前库存多少？"]').setValue('库存多少')
+    await wrapper.find('input[placeholder="商品 ID（可选，优先生效）"]').setValue('SKU-1')
     await clickButton(wrapper, '提问')
 
     expect(mockedAsk).toHaveBeenCalledWith({ question: '库存多少', productId: 'SKU-1' })
@@ -207,11 +207,24 @@ describe('AiInventoryView', () => {
     )
     const wrapper = mountView()
 
-    await wrapper.find('input[placeholder="例如：SKU-1 当前库存多少？哪些商品低库存？"]').setValue('明天会下雨吗')
+    await wrapper.find('input[placeholder="提问，可直接包含商品编号，如：PH3-AI-LOW-TEA 当前库存多少？"]').setValue('明天会下雨吗')
     await clickButton(wrapper, '提问')
 
     expect(wrapper.text()).toContain('暂不支持的问题')
     expect(wrapper.text()).toContain('该问题超出库存问答范围。')
+  })
+
+  it('surfaces the backend guidance when no productId can be resolved', async () => {
+    mockedAsk.mockRejectedValue(
+      new ApiError('40000', '无法识别商品 ID：请填写商品 ID 字段，或在问题中包含完整的商品编号', 400),
+    )
+    const wrapper = mountView()
+
+    await wrapper.find('input[placeholder="提问，可直接包含商品编号，如：PH3-AI-LOW-TEA 当前库存多少？"]').setValue('这个商品库存多少')
+    await clickButton(wrapper, '提问')
+
+    expect(wrapper.text()).toContain('请求失败')
+    expect(wrapper.text()).toContain('无法识别商品 ID')
   })
 
   it('blocks asking with an empty question', async () => {
