@@ -7,3 +7,7 @@ target/
 
 # Windows download metadata copied into WSL.
 *:Zone.Identifier
+
+# Local MCP config and Playwright MCP artifacts.
+.mcp.json
+.playwright-mcp/
