@@ -1,11 +1,13 @@
 package com.minimall.gateway.security;
 
 import com.minimall.common.auth.constants.AuthHeaders;
+import com.minimall.common.auth.context.AuthRole;
 import com.minimall.common.auth.context.UserContext;
 import com.minimall.common.auth.jwt.JwtUtils;
 import com.minimall.common.core.exception.BusinessException;
 import com.minimall.common.core.exception.ErrorCode;
 import com.minimall.gateway.web.GatewayErrorResponseWriter;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
@@ -23,16 +25,24 @@ public class GatewayAuthenticationFilter implements GlobalFilter, Ordered {
     private static final String BEARER_PREFIX = "Bearer ";
     private static final String USER_LOGIN_PATH = "/api/users/login";
     private static final String USER_REGISTER_PATH = "/api/users/register";
+    private static final String ADMIN_PATH = "/api/admin";
+    private static final String ADMIN_PATH_PREFIX = "/api/admin/";
+    private static final String ADMIN_LOGIN_PATH = "/api/admin/login";
     private static final String PRODUCTS_PATH = "/api/products";
     private static final String PRODUCTS_PATH_PREFIX = "/api/products/";
     private static final String INVENTORIES_PATH_PREFIX = "/api/inventories/";
 
     private final JwtUtils jwtUtils;
     private final GatewayErrorResponseWriter errorResponseWriter;
+    private final String internalSecret;
 
-    public GatewayAuthenticationFilter(JwtUtils jwtUtils, GatewayErrorResponseWriter errorResponseWriter) {
+    public GatewayAuthenticationFilter(
+            JwtUtils jwtUtils,
+            GatewayErrorResponseWriter errorResponseWriter,
+            @Value("${minimall.auth.internal.secret:}") String internalSecret) {
         this.jwtUtils = jwtUtils;
         this.errorResponseWriter = errorResponseWriter;
+        this.internalSecret = internalSecret == null || internalSecret.isBlank() ? null : internalSecret;
     }
 
     @Override
@@ -54,10 +64,15 @@ public class GatewayAuthenticationFilter implements GlobalFilter, Ordered {
 
         try {
             UserContext userContext = jwtUtils.parseToken(authorization);
+            if (isAdminPath(sanitizedRequest.getURI().getPath()) && !AuthRole.ADMIN.equals(userContext.getRole())) {
+                return errorResponseWriter.forbidden(sanitizedExchange, ErrorCode.FORBIDDEN.getMessage());
+            }
+
             ServerHttpRequest authenticatedRequest = sanitizedRequest.mutate()
                     .headers(headers -> {
                         headers.set(AuthHeaders.USER_ID, String.valueOf(userContext.getUserId()));
                         headers.set(AuthHeaders.USERNAME, userContext.getUsername());
+                        headers.set(AuthHeaders.USER_ROLE, userContext.getRole().name());
                     })
                     .build();
             return chain.filter(sanitizedExchange.mutate().request(authenticatedRequest).build());
@@ -75,8 +90,16 @@ public class GatewayAuthenticationFilter implements GlobalFilter, Ordered {
     private ServerHttpRequest sanitizePropagationHeaders(ServerHttpRequest request) {
         return request.mutate()
                 .headers(headers -> {
+                    // Strip any browser-forged trusted headers, then stamp the
+                    // request as gateway-originated so downstream services trust
+                    // the identity we inject and accept it on internal calls.
                     headers.remove(AuthHeaders.USER_ID);
                     headers.remove(AuthHeaders.USERNAME);
+                    headers.remove(AuthHeaders.USER_ROLE);
+                    headers.remove(AuthHeaders.GATEWAY_TOKEN);
+                    if (internalSecret != null) {
+                        headers.set(AuthHeaders.GATEWAY_TOKEN, internalSecret);
+                    }
                 })
                 .build();
     }
@@ -95,7 +118,15 @@ public class GatewayAuthenticationFilter implements GlobalFilter, Ordered {
             return true;
         }
 
+        if (ADMIN_LOGIN_PATH.equals(path) && HttpMethod.POST.equals(request.getMethod())) {
+            return true;
+        }
+
         return isPublicCatalogRead(request, path);
+    }
+
+    private boolean isAdminPath(String path) {
+        return ADMIN_PATH.equals(path) || path.startsWith(ADMIN_PATH_PREFIX);
     }
 
     // Guests may browse the product catalog and check stock without a token

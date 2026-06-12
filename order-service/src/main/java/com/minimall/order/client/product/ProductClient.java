@@ -2,6 +2,7 @@ package com.minimall.order.client.product;
 
 import com.minimall.common.core.exception.BusinessException;
 import com.minimall.common.core.exception.ErrorCode;
+import com.minimall.order.client.InternalTokenInterceptor;
 import java.util.Objects;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,8 +28,12 @@ public class ProductClient {
     @Autowired
     public ProductClient(
             RestTemplateBuilder restTemplateBuilder,
-            @Value("${minimall.clients.product-service.base-url:http://127.0.0.1:8102}") String productServiceBaseUrl) {
-        this(restTemplateBuilder.rootUri(productServiceBaseUrl).build());
+            @Value("${minimall.clients.product-service.base-url:http://127.0.0.1:8102}") String productServiceBaseUrl,
+            @Value("${minimall.auth.internal.secret:}") String internalSecret) {
+        this(restTemplateBuilder
+                .rootUri(productServiceBaseUrl)
+                .additionalInterceptors(new InternalTokenInterceptor(internalSecret))
+                .build());
     }
 
     ProductClient(RestTemplate restTemplate) {

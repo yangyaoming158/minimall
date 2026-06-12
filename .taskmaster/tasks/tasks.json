@@ -1426,7 +1426,7 @@
   "phase1-customer-frontend": {
     "tasks": [
       {
-        "id": "1",
+        "id": 1,
         "title": "Initialize customer frontend project",
         "description": "Create the Phase 1 customer storefront frontend scaffold using Vue 3, TypeScript, Vite, Element Plus, Pinia, Vue Router, and Axios.",
         "details": "Add a dedicated frontend project with package scripts, TypeScript and Vite configuration, Element Plus setup, base application entry files, .env.example with VITE_API_BASE_URL, and README startup notes. Keep the frontend isolated from backend service modules. Do not add admin console, RBAC, cart, address, coupon, real payment, refund, or backend refactor scope.",
@@ -1438,7 +1438,7 @@
         "updatedAt": "2026-05-21T14:37:57.738Z"
       },
       {
-        "id": "2",
+        "id": 2,
         "title": "Implement API client and shared frontend types",
         "description": "Create a typed Axios API client and endpoint modules for users, products, inventories, orders, and payments.",
         "details": "Add src/api/http.ts plus user, product, inventory, order, and payment modules. Define ApiResponse<T>, PageResponse<T>, domain DTOs, enum string types, and normalized business error handling. The client must read VITE_API_BASE_URL, attach Authorization Bearer tokens, unwrap successful ApiResponse data, throw business errors for success=false, handle 401, 403, 429, 500, and network failures consistently, never send X-User-Id or X-Username, and never call /internal/**.",
@@ -1452,7 +1452,7 @@
         "updatedAt": "2026-05-22T09:52:39.355Z"
       },
       {
-        "id": "3",
+        "id": 3,
         "title": "Build routing authentication store and global layout",
         "description": "Implement Vue Router, Pinia auth state, protected route guards, token restoration, and the shared customer navigation layout.",
         "details": "Configure routes for /, /login, /register, /products, /products/:productId, /checkout, /orders, /orders/:orderNo, /payments/:orderNo, /403, and 404. Implement authStore with token, currentUser, isLoggedIn, login, register, fetchCurrentUser, and logout. Add route guards for protected checkout, orders, order detail, and payment routes, including redirect query behavior. Add the shared top navigation with login/register links for guests and my orders, username, and logout for signed-in users.",
@@ -1467,7 +1467,7 @@
         "updatedAt": "2026-05-22T10:28:39.826Z"
       },
       {
-        "id": "4",
+        "id": 4,
         "title": "Implement login and registration pages",
         "description": "Create the customer login and registration flows against the canonical user APIs.",
         "details": "Implement /login using POST /api/users/login and /register using POST /api/users/register. Add required form validation, loading and disabled submit states, backend message display, redirect-after-login behavior, token persistence, current user initialization through login response or GET /api/users/me, and navigation links between login and registration. 401 and business errors must not crash the page.",
@@ -1482,7 +1482,7 @@
         "updatedAt": "2026-05-22T13:07:26.444Z"
       },
       {
-        "id": "5",
+        "id": 5,
         "title": "Implement product listing page",
         "description": "Build the public product list page with card grid, pagination, search-ready query handling, and robust loading states.",
         "details": "Implement /products using GET /api/products through the API client. Show product name, description summary, price, status tag, and detail action in a responsive card grid. Support pagination and optional keyword or status query parameters when the backend supports them. Include loading, empty, error, and retry states. OFF_SHELF products may be shown but purchase actions must be visually weakened.",
@@ -1497,7 +1497,7 @@
         "updatedAt": "2026-05-22T13:35:54.437Z"
       },
       {
-        "id": "6",
+        "id": 6,
         "title": "Implement product detail and inventory display",
         "description": "Create the product detail page with inventory information and guarded immediate-order entry.",
         "details": "Implement /products/:productId using GET /api/products/{productId} and GET /api/inventories/{productId}. Display product name, description, price, product status, availableStock, lockedStock, stockState, quantity selector, and immediate order button. Disable ordering when the product is off shelf, inventory is unavailable, quantity is invalid, or stock is insufficient. Unauthenticated users clicking order must go to /login with redirect back to the current product page.",
@@ -1512,7 +1512,7 @@
         "subtasks": []
       },
       {
-        "id": "7",
+        "id": 7,
         "title": "Implement checkout and idempotent order creation",
         "description": "Build the protected checkout page that confirms product, inventory, quantity, total amount, and creates an order with an idempotency key.",
         "details": "Implement /checkout?productId=xxx&quantity=1 using product and inventory reads plus POST /api/orders. Generate one idempotencyKey when entering the checkout page, reuse it for retry after network failure or timeout, and generate a new key only when re-entering checkout. Disable duplicate submits while loading. Block order creation when product is off shelf or inventory is insufficient. On success, navigate to /orders/{orderNo}.",
@@ -1528,7 +1528,7 @@
         "subtasks": []
       },
       {
-        "id": "8",
+        "id": 8,
         "title": "Implement my orders order detail and cancellation",
         "description": "Create protected order list and order detail pages with status-aware actions and cancellation support.",
         "details": "Implement /orders with GET /api/orders/my and /orders/:orderNo with GET /api/orders/{orderNo}. Display orderNo, product summary, totalAmount, status, created time, optional expire time, and payment information where relevant. Support pagination, loading, empty, and error states. Show status tags for PENDING_PAYMENT, PAID, CANCELLED, CLOSED, and known backend values. Only PENDING_PAYMENT orders should show cancel and pay actions. Cancel must use confirmation, call the canonical cancel API, handle business conflicts, and refresh current data.",
@@ -1543,7 +1543,7 @@
         "subtasks": []
       },
       {
-        "id": "9",
+        "id": 9,
         "title": "Implement simulated payment flow",
         "description": "Build the protected simulated payment page and refresh order status after payment submission.",
         "details": "Implement /payments/:orderNo using GET /api/orders/{orderNo}, POST /api/payments/{orderNo}/pay, GET /api/payments/{orderNo}, and a post-payment order refresh. Show orderNo, amount, order status, payment status, simulated payment button, and success result. Only PENDING_PAYMENT orders should allow payment. After successful payment, display success and refresh order detail; if order status update is asynchronous, poll 3 to 5 times at 500ms to 1000ms intervals before showing a submitted-but-not-yet-refreshed message. Clearly state this is simulated payment for the demo chain.",
@@ -1558,7 +1558,7 @@
         "subtasks": []
       },
       {
-        "id": "10",
+        "id": 10,
         "title": "Finalize global UX verification and frontend documentation",
         "description": "Polish cross-page error states, responsive behavior, acceptance documentation, and the full customer purchase smoke flow.",
         "details": "Ensure every API page has loading, empty, error, success, disabled, submitting, and unauthorized behavior. Add or update frontend/README.md, docs/frontend-integration.md if needed, docs/phase1-frontend-acceptance.md, and root README frontend entry notes as appropriate. Verify all browser traffic uses VITE_API_BASE_URL through api-gateway and never direct service ports, /internal/**, X-User-Id, or X-Username. Run the full flow: products, detail, register, login, checkout, order detail, simulated payment, PAID verification, my orders, logout, and protected-route redirect.",
@@ -1584,7 +1584,1531 @@
       "tags": [
         "phase1-customer-frontend"
       ],
-      "updated": "2026-05-23T12:27:27.858Z"
+      "updated": "2026-05-23T12:27:27.858Z",
+      "created": "2026-05-26T10:46:03.356Z",
+      "description": "Tasks for phase1-customer-frontend context"
+    }
+  },
+  "phase2-admin-platform": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Review admin API contract and current capabilities",
+        "description": "Audit existing backend, gateway, frontend, and documentation against the Phase 2 PRD, then lock the admin-safe API contract before implementation.",
+        "details": "Read phase2 PRD, frontend integration guide, gateway contract, phase0 acceptance, phase1 acceptance, and README. Produce docs/phase2-admin-api-contract.md covering admin route ownership, auth behavior, DTO envelope rules, audit ownership, non-goals, and regression boundaries. Do not implement business logic in this task.",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-05-26T11:19:45.518Z"
+      },
+      {
+        "id": 2,
+        "title": "Implement users.role admin identity and admin seed",
+        "description": "Add the simplified USER ADMIN role model, expose role in auth responses, and create an environment-driven initial admin seed.",
+        "details": "Add UserRole enum and users.role migration/default. Existing users default to USER. Login JWT claims and /api/users/me include role. Add /api/admin/login and /api/admin/me in user-service with ADMIN enforcement and ApiResponse errors. Seed initial admin from environment variables only when configured, never hardcode passwords or secrets. Tests cover default USER role, admin login success, USER admin login forbidden, /api/admin/me authorization, and seed behavior.",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "1"
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Add UserRole model and users.role persistence default",
+            "description": "Add USER and ADMIN role support to user-service persistence and schema documentation.",
+            "details": "Create UserRole enum, map users.role on User with USER default for new and existing records, add a Flyway-style migration or documented SQL migration for the role column/default, and cover repository/domain default behavior.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 2,
+            "updatedAt": "2026-05-26T11:44:21.714Z",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Expose role in user auth responses and JWT claims",
+            "description": "Include user role in customer login token claims and current-user response contracts.",
+            "details": "Update LoginResponse, CurrentUserResponse, JwtUtils claim handling usage, and user auth service/controller tests so /api/users/login and /api/users/me expose stable role data while preserving ApiResponse contracts.",
+            "status": "done",
+            "dependencies": [
+              "2.1"
+            ],
+            "parentTaskId": 2,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-27T15:22:32.970Z"
+          },
+          {
+            "id": 3,
+            "title": "Add admin login and current admin endpoints",
+            "description": "Create /api/admin/login and /api/admin/me with ADMIN-only enforcement.",
+            "details": "Add admin request/response flow in user-service that reuses existing auth primitives, rejects USER credentials for admin login with BusinessException/ApiResponse errors, validates ADMIN context for /api/admin/me, and covers forbidden and success cases.",
+            "status": "done",
+            "dependencies": [
+              "2.2"
+            ],
+            "parentTaskId": 2,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-29T13:03:20.860Z"
+          },
+          {
+            "id": 4,
+            "title": "Seed initial admin from environment configuration",
+            "description": "Create optional startup seed for the initial ADMIN user without hardcoded secrets.",
+            "details": "Add environment-bound admin seed properties and startup logic that only creates or updates the configured admin when explicit environment variables are present, stores BCrypt hashes, avoids password logging, and verifies disabled and enabled seed paths.",
+            "status": "done",
+            "dependencies": [
+              "2.3"
+            ],
+            "parentTaskId": 2,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-29T13:13:02.156Z"
+          }
+        ],
+        "updatedAt": "2026-05-29T13:13:02.156Z"
+      },
+      {
+        "id": 3,
+        "title": "Protect admin routes in gateway and trusted role headers",
+        "description": "Extend common-auth and api-gateway so /api/admin/** requires ADMIN and downstream services receive trusted role context.",
+        "details": "Add X-User-Role to AuthHeaders and UserContext parsing. Strip browser supplied X-User-Id, X-Username, and X-User-Role before auth. Parse JWT role, inject trusted role header, protect every /api/admin/** route, and return ApiResponse 401 for missing auth and 403 for USER. Route admin prefixes to the fixed downstream owners from the PRD. Tests cover unauthenticated, USER, ADMIN, forged headers, OPTIONS, and existing public catalog reads.",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "2"
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Add trusted role header propagation",
+            "description": "Add X-User-Role support in common-auth propagation constants and request context resolution.",
+            "details": "Extend AuthHeaders with X-User-Role. Update UserContextFilter to parse trusted role headers when present, defaulting legacy two-header propagation to USER. Add common-auth tests for role header parsing, invalid role rejection, and cleanup.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 3,
+            "updatedAt": "2026-05-29T13:32:50.786Z",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Protect admin routes in gateway",
+            "description": "Require ADMIN tokens for /api/admin/** and inject trusted role headers downstream.",
+            "details": "Update GatewayAuthenticationFilter to strip X-User-Role, bypass POST /api/admin/login, require valid ADMIN context for other /api/admin/** paths, inject X-User-Role, and preserve existing public catalog behavior. Add route predicates for admin prefixes to their downstream owners.",
+            "status": "done",
+            "dependencies": [
+              "3.1"
+            ],
+            "parentTaskId": 3,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-29T13:55:34.752Z"
+          },
+          {
+            "id": 3,
+            "title": "Verify gateway admin auth regression",
+            "description": "Add and run gateway tests for admin 401/403/ADMIN success, forged role header stripping, OPTIONS bypass, and public catalog regression.",
+            "details": "Extend GatewayAuthenticationFilter tests and integration coverage after route protection is implemented. Run api-gateway tests and full package verification.",
+            "status": "done",
+            "dependencies": [
+              "3.2"
+            ],
+            "parentTaskId": 3,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-29T14:04:52.979Z"
+          }
+        ],
+        "updatedAt": "2026-05-29T14:04:52.979Z"
+      },
+      {
+        "id": 4,
+        "title": "Implement admin operation audit log infrastructure",
+        "description": "Create the shared admin audit model, table, enums, writer API, and user-service query endpoint for audit logs.",
+        "details": "Add admin_operation_logs migration owned by user-service query API. Add common-core audit action and resource enums plus shared DTOs or helper interfaces. Implement a small reusable audit writer pattern usable from product, inventory, and notification services without MQ. /api/admin/audit-logs supports adminUserId, action, resourceType, resourceId, createdFrom, createdTo, page, size. Tests cover persistence, filtering, pagination, ApiResponse envelope, and ADMIN enforcement.",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "2"
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Define AI-ready audit source taxonomy",
+            "description": "Extend the audit model and shared enums so admin writes can record action, resourceType, resourceId, requestId, sourceType, referenceNo, operator identity, beforeSnapshot, afterSnapshot, ip, userAgent, and summary. Reserve enum values or documented extension points for INVENTORY_ADJUSTMENT, INBOUND_ORDER, and AI_SUGGESTION without implementing AI execution in Phase 2. Acceptance: audit query DTOs expose these fields where present and product/inventory write audit records remain traceable for future AI suggestion links.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 4,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-30T02:14:48.829Z"
+          },
+          {
+            "id": 2,
+            "title": "Add admin audit persistence model",
+            "description": "Create the admin_operation_logs migration plus user-service persistence entity and repository for the shared audit contract.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 4,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-30T02:32:15.699Z"
+          },
+          {
+            "id": 3,
+            "title": "Implement reusable admin audit writer",
+            "description": "Add the reusable audit writer API and service-side writer implementation so admin write operations can persist audit records without MQ.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 4,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-30T02:53:46.994Z"
+          },
+          {
+            "id": 4,
+            "title": "Implement admin audit log query API",
+            "description": "Add GET /api/admin/audit-logs in user-service with ADMIN enforcement, filters, pagination, ApiResponse envelope, and tests.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 4,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-30T03:25:57.639Z"
+          }
+        ],
+        "updatedAt": "2026-05-30T03:25:57.639Z"
+      },
+      {
+        "id": 5,
+        "title": "Implement Product admin API and imageUrl support",
+        "description": "Add product imageUrl persistence and admin-safe product management APIs while protecting legacy product write routes.",
+        "details": "Add products.image_url migration, domain field, request validation, responses, and frontend-compatible fallback behavior. Implement AdminProductController for list, detail, create, update, and PUT status. Require ADMIN on existing /api/products write endpoints until removed in a later phase. Record audit logs for create, update, on shelf, and off shelf. Tests cover imageUrl save/return, status enum validation, USER forbidden, ADMIN success, legacy write protection, audit records, and Phase 1 product read compatibility.",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "3",
+          "4"
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Add product imageUrl persistence and read compatibility",
+            "description": "Add products.image_url migration, Product entity field, request and response DTO support, and tests proving imageUrl save and public read compatibility.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 5,
+            "updatedAt": "2026-05-30T07:45:42.059Z",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Implement admin product APIs and legacy write protection",
+            "description": "Add AdminProductController list detail create update and status mutation endpoints, require ADMIN for admin and existing product write routes, and test USER forbidden and ADMIN success paths.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 5,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-30T08:13:53.112Z"
+          },
+          {
+            "id": 3,
+            "title": "Record product admin audit logs and final regression",
+            "description": "Wire AdminAuditWriter for product create update on-shelf and off-shelf operations with before and after snapshots, then run product-service and full package regression.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 5,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-30T08:30:55.714Z"
+          }
+        ],
+        "updatedAt": "2026-05-30T08:30:55.714Z"
+      },
+      {
+        "id": 6,
+        "title": "Implement Inventory admin API with idempotent adjustments",
+        "description": "Add admin-safe inventory initialization, adjustment, and record query APIs with mandatory requestId idempotency and audit logging.",
+        "details": "Implement AdminInventoryController for list, detail, initialize, adjust, and records. Do not expose or reuse internal deduct/release semantics as UI APIs. Require requestId for adjustments and guarantee duplicate requestId behavior. Prevent negative available stock, record inventory_records with admin context and reason, and write audit logs. Tests cover initialization conflict, positive and negative adjustments, negative stock rejection, duplicate requestId, records query, USER forbidden, ADMIN success, and audit persistence.",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "3",
+          "4",
+          "5"
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Persist AI-ready inventory traceability fields",
+            "description": "When implementing admin inventory initialization and adjustment, extend inventory_records or an equivalent record model with requestId, reason, adminUserId, adminUsername, sourceType, and referenceNo. SourceType should cover existing order deduct/release, admin initialize, and admin adjustment, while leaving stable values for future inbound order and AI suggestion links. Acceptance: records API returns traceability fields, duplicate requestId is deterministic, and existing order deduct/release behavior remains compatible.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 6,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-30T09:07:30.765Z"
+          },
+          {
+            "id": 2,
+            "title": "Add safety stock and low-stock query contract",
+            "description": "Add a safetyStock or lowStockThreshold field to the inventory admin model and expose low-stock filtering or a dedicated low-stock query through the admin inventory API. The threshold must be structured data, not frontend-only logic. Acceptance: admins can set or view the threshold, low-stock products can be queried without direct database access, and the contract is suitable for later AI replenishment analysis.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 6,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-30T09:20:52.568Z"
+          },
+          {
+            "id": 3,
+            "title": "Implement admin inventory initialize adjust and records APIs",
+            "description": "Add AdminInventoryController endpoints for list detail initialize adjust and records with ADMIN guard requestId idempotency negative stock protection and stable ApiResponse contracts.",
+            "details": "",
+            "status": "done",
+            "dependencies": [
+              "6.1",
+              "6.2"
+            ],
+            "parentTaskId": 6,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-30T13:14:21.367Z"
+          },
+          {
+            "id": 4,
+            "title": "Record inventory admin audit logs and regression",
+            "description": "Wire inventory admin write operations to AdminAuditWriter with before after snapshots operator metadata requestId sourceType referenceNo and regression coverage for audit persistence and gateway-owned ADMIN access expectations.",
+            "details": "\n\n[2026-05-30] Concurrency follow-up from 6.3: add @Version optimistic locking to the Inventory entity (plus a version BIGINT column migration) so admin inventory adjustments are concurrency-safe. 6.3 admin adjust uses read-modify-write (load -> validate non-negative -> mutate -> save) with no @Version, so concurrent admin adjusts, or an admin adjust racing an atomic order deduct/release, can lose updates (stock count ends too high). Negative stock is NOT reachable today (service guard + domain guard + MySQL chk_inventory_non_negative all clamp >= 0), so this is a lost-update/correctness concern, not a negative-stock bug. Scope: add @Version, map OptimisticLockException -> ApiResponse 40900 conflict, and add a concurrent-adjustment regression test, alongside the inventory admin audit-log work.",
+            "status": "done",
+            "dependencies": [
+              "6.3"
+            ],
+            "parentTaskId": 6,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-30T13:45:07.116Z"
+          }
+        ],
+        "updatedAt": "2026-05-30T13:45:07.116Z"
+      },
+      {
+        "id": 7,
+        "title": "Implement Order admin query API and event timeline",
+        "description": "Add admin order list, filter, detail, and event timeline APIs without allowing manual order status mutation.",
+        "details": "Implement AdminOrderController for /api/admin/orders, /api/admin/orders/{orderNo}, and /api/admin/orders/{orderNo}/events. Support filters for orderNo, username or userId, status, productId, createdFrom, createdTo, page, and size. Use existing order_events when available and otherwise return a minimal timeline from order state data. Do not add admin status write APIs. Tests cover filters, detail, event timeline, enum validation, pagination, USER forbidden, ADMIN success, and no regression to /api/orders/my.",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "3",
+          "4",
+          "6"
+        ],
+        "priority": "medium",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Expose product sales aggregation for operations",
+            "description": "Add a small admin read model for product sales aggregation based on orders, scoped by createdFrom, createdTo, status, and productId where applicable. This is not a BI dashboard; it is a structured service API that admin UI and future AI analysis can reuse instead of direct SQL. Acceptance: API returns productId, quantitySold, orderCount, and amount totals with PageResponse or bounded list semantics, and customer order APIs remain unchanged.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 7,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-30T16:10:40.121Z"
+          },
+          {
+            "id": 2,
+            "title": "Implement admin order list and detail APIs",
+            "description": "Add ADMIN-only order list and detail endpoints with filters for orderNo username userId status productId createdFrom createdTo page and size, stable ApiResponse/PageResponse contracts, enum validation, pagination, and no customer API regression.",
+            "details": "",
+            "status": "done",
+            "dependencies": [
+              "7.1"
+            ],
+            "parentTaskId": 7,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-30T16:24:28.020Z"
+          },
+          {
+            "id": 3,
+            "title": "Implement admin order event timeline regression",
+            "description": "Expose /api/admin/orders/{orderNo}/events using order_events when available and a minimal fallback from order state data, then add regression coverage for ADMIN success USER forbidden enum validation and no manual status mutation APIs.",
+            "details": "",
+            "status": "done",
+            "dependencies": [
+              "7.2"
+            ],
+            "parentTaskId": 7,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-30T16:35:42.697Z"
+          }
+        ],
+        "updatedAt": "2026-05-30T16:35:42.697Z"
+      },
+      {
+        "id": 8,
+        "title": "Implement Payment admin query API",
+        "description": "Add admin payment list, filter, detail, and order lookup APIs for operational visibility without refund or reconciliation features.",
+        "details": "Implement AdminPaymentController for /api/admin/payments, /api/admin/payments/{paymentNo}, and /api/admin/payments/order/{orderNo}. Support filters for paymentNo, orderNo, status, paidFrom, paidTo, page, and size. Do not add refund, callback, or reconciliation behavior. Tests cover filtering, payment detail, lookup by orderNo, status enum handling, pagination, USER forbidden, ADMIN success, and existing customer mock payment regression.",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "3",
+          "4",
+          "7"
+        ],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-05-30T16:53:38.898Z"
+      },
+      {
+        "id": 9,
+        "title": "Implement Notification admin log query API",
+        "description": "Add admin notification log list and detail APIs only, explicitly excluding resend from Phase 2 MVP.",
+        "details": "Implement AdminNotificationController for /api/admin/notifications and /api/admin/notifications/{id}. Support eventId, orderNo, status, channel, createdFrom, createdTo, page, and size filters. Do not add /resend or notification mutation behavior. Tests cover filtering, detail, pagination, status and channel handling, USER forbidden, ADMIN success, and notification consumer regression.",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "3",
+          "4",
+          "8"
+        ],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-05-30T17:10:08.448Z"
+      },
+      {
+        "id": 10,
+        "title": "Initialize independent admin-frontend routing layout guards and API clients",
+        "description": "Create a separate Vue admin frontend project with its own route shell, guards, role-aware auth state, and admin API clients.",
+        "details": "Create an independent admin-frontend directory with its own package.json, Vite config, TypeScript config, README, app entry, router, Pinia setup, Axios client, and Element Plus setup. Do not add admin routes, menus, login, or pages to the Phase 1 customer frontend. Add admin-frontend routes /login, / redirecting to /products, and protected /products, /inventories, /orders, /payments, /notifications, /audit-logs. Add AdminLayout with side menu and top bar. Add role-aware auth store, /api/admin/me guard, 403 handling, and API clients for all admin endpoints through the gateway only. Tests or build checks cover route guards, direct service port absence, no /internal calls, no forged X-User-* headers, and admin-frontend npm run build.",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "3",
+          "9"
+        ],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-05-30T18:11:15.631Z"
+      },
+      {
+        "id": 11,
+        "title": "Implement admin login page and admin shell behavior",
+        "description": "Build the admin login flow and usable admin frame on top of the protected admin routes.",
+        "details": "Implement admin-frontend /login using /api/admin/login. USER accounts must show permission failure. Successful ADMIN login stores token and enters /products. Admin shell shows current admin identity from /api/admin/me and supports local logout by clearing token. Preserve the separate Phase 1 customer frontend login and routes without adding admin entry points there. Tests or verification cover admin success, USER rejection, unauthenticated redirect, forbidden route behavior, and admin-frontend npm run build.",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "2",
+          "10"
+        ],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-05-30T18:26:12.067Z"
+      },
+      {
+        "id": 12,
+        "title": "Implement admin product management page and customer image display",
+        "description": "Build the admin product table and form workflows, and surface imageUrl in the customer storefront.",
+        "details": "Implement admin-frontend /products with pagination, keyword search, status filter, create, edit, imageUrl editing, status mutation, detail view, and confirmations for on shelf and off shelf. Use only /api/admin/products/** from the admin UI. Update the separate Phase 1 customer frontend product list and detail to render imageUrl with existing placeholder fallback, without adding admin navigation or admin behavior to the customer app. Tests or verification cover create, edit, status changes, image preview, USER route rejection, no /internal calls, admin-frontend npm run build, and frontend npm run build for the image display regression.",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "5",
+          "10",
+          "11"
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement admin product management page",
+            "description": "admin-frontend /products: list (keyword/status/pagination), create/edit (incl imageUrl), status mutation with confirm, detail. Only /api/admin/products/**.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 12,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-30T18:35:27.192Z"
+          },
+          {
+            "id": 2,
+            "title": "Surface product imageUrl in customer storefront",
+            "description": "frontend product list + detail render imageUrl with existing placeholder fallback; no admin behavior added to the customer app.",
+            "details": "",
+            "status": "done",
+            "dependencies": [
+              "12.1"
+            ],
+            "parentTaskId": 12,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-30T18:40:47.632Z"
+          }
+        ],
+        "updatedAt": "2026-05-30T18:40:47.632Z"
+      },
+      {
+        "id": 13,
+        "title": "Implement admin inventory management page",
+        "description": "Build the admin inventory list, initialization, adjustment, and record timeline workflows.",
+        "details": "Implement admin-frontend /inventories with pagination, product search, stock state filtering, inventory initialization, adjustment dialog, mandatory reason, generated requestId per submit attempt, and inventory record view. Use only /api/admin/inventories/** through gateway. Show clear conflict and insufficient stock errors from ApiResponse. Tests or verification cover initialize, adjust positive and negative, duplicate submit guard, records view, reason required, no /internal calls, and admin-frontend npm run build.",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "6",
+          "10",
+          "11",
+          "12"
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Surface low-stock and traceability data in inventory UI",
+            "description": "Extend the admin inventory page plan so it displays safetyStock or lowStockThreshold, low-stock state, requestId, reason, sourceType, referenceNo, and operator fields from inventory records. Keep AI assistant UI out of Phase 2, but leave the page structure compatible with a later AI suggestions entry or drawer. Acceptance: the admin UI can review why stock changed without direct database access and can identify low-stock products from backend data.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 13,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-31T07:57:44.231Z"
+          },
+          {
+            "id": 2,
+            "title": "库存列表、筛选与详情",
+            "description": "Build the admin inventory list with pagination plus keyword, stockState and lowStock filters, and a detail view.",
+            "details": "New src/types/inventory.ts and src/api/inventories.ts calling only gateway /api/admin/inventories. Rewrite InventoriesView.vue list: columns availableStock/lockedStock/safetyStock, stockState and status StatusTags, low-stock tag; filters keyword + stockState select + lowStock toggle; detail via getInventory. Verify: list render, keyword/stockState/lowStock params, npm run build, gateway-contract audit.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 13,
+            "updatedAt": "2026-05-31T07:01:41.686Z",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "库存初始化与调整（幂等写）",
+            "description": "Add initialize and adjust dialogs with mandatory reason and a per-submit requestId idempotency key.",
+            "details": "InventoryInitDialog (productId, initialStock, safetyStock) -> POST /api/admin/inventories, show 40900 conflict if already initialized. InventoryAdjustDialog (delta +/-, reason required, fresh requestId regenerated on each submit attempt) -> POST /{productId}/adjust, surface 40900 insufficient-stock/conflict; never allow negative stock. Refresh list on success. Verify: initialize, adjust positive & negative, duplicate-submit guard (requestId regenerated), reason required.",
+            "status": "done",
+            "dependencies": [
+              "13.2"
+            ],
+            "parentTaskId": 13,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-31T07:27:49.702Z"
+          },
+          {
+            "id": 4,
+            "title": "库存流水时间线",
+            "description": "Add an inventory records timeline drawer surfacing traceability fields.",
+            "details": "Records drawer via GET /{productId}/records showing changeType, quantity, reason, requestId, sourceType, referenceNo, operator (adminUsername) and createdAt. Keep the page structure compatible with a later AI-suggestion entry without adding AI UI (satisfies 13.1). Verify: records render with traceability fields, npm run build.",
+            "status": "done",
+            "dependencies": [
+              "13.2"
+            ],
+            "parentTaskId": 13,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-31T07:57:42.333Z"
+          }
+        ],
+        "updatedAt": "2026-05-31T07:57:44.231Z"
+      },
+      {
+        "id": 14,
+        "title": "Implement admin operations query pages",
+        "description": "Build admin pages for orders, payments, notifications, and audit logs using the completed admin query APIs.",
+        "details": "Implement admin-frontend /orders with filters, details, and event timeline. Implement /payments with paymentNo/orderNo filters and detail. Implement /notifications with eventId/orderNo filters and detail, no resend UI. Implement /audit-logs with adminUserId, action, resourceType, resourceId, and time filters plus detail view. Use tables, filter bars, pagination, and concise status tags in the independent admin app. Tests or verification cover page loading, filtering, detail drawers, no direct service ports, no /internal calls, and admin-frontend npm run build.",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "4",
+          "7",
+          "8",
+          "9",
+          "10",
+          "11",
+          "13"
+        ],
+        "priority": "medium",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Build order and payment operations pages",
+            "description": "Implement admin-frontend orders and payments pages as a focused operations slice: order filters, detail, event timeline, payment filters, payment detail, and order payment lookup. Acceptance: both pages use only gateway admin APIs, preserve pagination and enum labels, and do not add mutation workflows such as order status changes, refunds, callbacks, or reconciliation.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 14,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-31T08:57:06.458Z"
+          },
+          {
+            "id": 2,
+            "title": "Build notification and audit operations pages",
+            "description": "Implement admin-frontend notifications and audit-log pages as a focused observability slice: notification filters/detail with no resend UI, audit filters/detail, sourceType/referenceNo/requestId visibility where available, and concise status labels. Acceptance: pages use only gateway admin APIs, do not call /internal paths, and expose enough audit context to trace inventory changes created by admin operations.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 14,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-31T09:18:14.489Z"
+          }
+        ],
+        "updatedAt": "2026-05-31T09:18:14.489Z"
+      },
+      {
+        "id": 15,
+        "title": "Complete Phase 2 integration regression and acceptance docs",
+        "description": "Run full backend and frontend verification, protect Phase 1 purchase flow, and document Phase 2 acceptance results.",
+        "details": "Run focused module tests from each completed backend task, then mvn test where feasible, mvn clean package -DskipTests, docker compose config, admin-frontend npm run build, and frontend npm run build. Manually verify admin auth 401/403, forged role header stripping, product imageUrl, inventory adjustment idempotency, order/payment/notification/audit pages in the independent admin app, and Phase 1 customer flow register/login/products/detail/order/pay/PAID in the separate customer app. Create docs/phase2-admin-acceptance.md with commands, results, changed scope, known limitations, and final checklist.",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "12",
+          "13",
+          "14"
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Record AI inventory assistant boundaries and Phase 2.5 backlog",
+            "description": "In Phase 2 acceptance docs, explicitly record that AI must not directly modify inventory, execute SQL, bypass backend services, or call /internal paths. AI may only consume structured admin APIs and create suggestions or drafts in later phases; confirmed inventory changes must be executed by inventory-service with inventory records and audit logs. Include a Phase 2.5 backlog for inbound order drafts, inbound order items, AI operation suggestions, suggestion review states, and inventory trend or hot-slow product statistics.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 15,
+            "parentId": "undefined",
+            "updatedAt": "2026-05-31T09:25:53.613Z"
+          }
+        ],
+        "updatedAt": "2026-05-31T09:25:53.613Z"
+      }
+    ],
+    "metadata": {
+      "version": "1.0.0",
+      "lastModified": "2026-05-31T09:25:53.614Z",
+      "taskCount": 15,
+      "completedCount": 15,
+      "tags": [
+        "phase2-admin-platform"
+      ],
+      "created": "2026-06-01T12:59:07.512Z",
+      "description": "Tasks for phase2-admin-platform context",
+      "updated": "2026-06-01T12:59:07.512Z"
+    }
+  },
+  "phase2-5-ai-inventory-readiness": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Define the AI Inventory Integration Contract",
+        "description": "Lock the Phase 2.5 boundary, data flow, API naming, and acceptance rules before implementation.",
+        "details": "Create docs/phase2-5-ai-inventory-contract.md based on the Phase 2 admin API contract, Phase 2 acceptance notes, and the Phase 2.5 PRD. Document the allowed flow: structured data query -> suggestion or draft -> admin confirmation -> inventory-service change -> inventory record -> audit log. Explicitly state that AI must not directly update inventory, execute SQL, bypass backend services, or call /internal/**. List the structured APIs Phase 3 AI may consume and describe how Phase 2.5 outputs hand off to Phase 3. Resolve and record three ownership/routing decisions the implementation tasks depend on: (a) the new admin path families /api/admin/operation-stats/**, /api/admin/inbound-orders/**, and /api/admin/ai-suggestions/** each need a gateway route plus downstream ADMIN enforcement; (b) operation-stats spans two owners (sales-by-product in order-service, inventory-trends in inventory-service), so either split the prefix per owner (e.g. /api/admin/operation-stats/sales-* vs /inventory-*) or assign a single owner that aggregates — a single prefix cannot fan out to two services in the gateway; (c) inbound orders, the confirm-apply flow, inventory_records, and ai_operation_suggestion all live in inventory-service so confirmation runs as one local transaction (avoids cross-service distributed transactions). Note that the gateway already strips browser-forged trusted headers and injects X-Internal-Token, so each new admin route inherits the same trust boundary.",
+        "testStrategy": "Review the document against docs/phase2-admin-api-contract.md and the Phase 2.5 PRD; verify all non-goals and hard boundaries are explicitly listed.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-06-01T13:03:40.717Z"
+      },
+      {
+        "id": 2,
+        "title": "Enhance Inventory Record Traceability",
+        "description": "Make inventory records useful for orders, admin adjustments, inbound orders, and future AI suggestion links.",
+        "details": "Extend inventory record persistence and DTOs to expose traceability fields such as requestId, reason, adminUserId, adminUsername, sourceType, and referenceNo. Ensure sourceType supports ORDER_DEDUCT, ORDER_RELEASE, ADMIN_INITIALIZE, ADMIN_ADJUSTMENT, and INBOUND_ORDER, with AI_SUGGESTION reserved as a future source/reference value. Preserve existing order deduct/release compatibility and admin adjustment idempotency. Scope note: Phase 2 already ships inventory_records carrying requestId, reason, adminUsername, sourceType, and referenceNo (surfaced in the admin records drawer), and the Phase 2 backlog already reserves the AI_SUGGESTION and INBOUND_ORDER enum members. Treat this task as verify-and-complete (confirm fields/serialization, wire the INBOUND_ORDER source for Task 6, keep AI_SUGGESTION reserved) rather than greenfield — do not duplicate columns or DTO fields that already exist.",
+        "testStrategy": "Run inventory-service tests covering admin initialize/adjust, order deduct/release compatibility, duplicate requestId behavior, record query response fields, negative stock rejection, and ApiResponse error shape.",
+        "status": "done",
+        "dependencies": [
+          "1"
+        ],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-06-01T13:14:43.486Z"
+      },
+      {
+        "id": 3,
+        "title": "Add Safety Stock And Low-Stock Query",
+        "description": "Provide a structured low-stock baseline for future replenishment suggestions.",
+        "details": "Add safetyStock or lowStockThreshold to the inventory admin model and expose admin APIs to set/read the threshold. Add a backend-computed low-stock query such as GET /api/admin/inventories/low-stock. Responses must include productId, availableStock, lockedStock, safetyStock, and stockState. Future AI code must be able to obtain low-stock candidates without database access.",
+        "testStrategy": "Run inventory-service admin API tests for threshold create/update/read, low-stock computation, 401 unauthenticated, 403 USER, ApiResponse envelope, and stock state serialization.",
+        "status": "done",
+        "dependencies": [
+          "1"
+        ],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-06-02T11:18:33.552Z"
+      },
+      {
+        "id": 4,
+        "title": "Add Reusable Operations Statistics APIs",
+        "description": "Expose minimal read-only statistics for admin UI and future AI analysis.",
+        "details": "Implement admin read-only statistics APIs under /api/admin/**, for example sales aggregation by product and inventory trend queries. Sales aggregation should support time ranges and return productId, orderCount, soldQuantity, and totalAmount. Inventory trend should support time ranges/buckets and return inboundQuantity, outboundQuantity, adjustmentQuantity, and endingStock. Do not mutate inventory or require callers to read service databases directly.",
+        "testStrategy": "Run focused order-service and inventory-service tests for time range filters, aggregation totals, trend buckets, read-only route behavior, ADMIN enforcement, and ApiResponse/PageResponse envelopes.",
+        "status": "done",
+        "dependencies": [
+          "1"
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Add sales-by-product operation stats API",
+            "description": "Expose a read-only admin sales aggregation endpoint in order-service for future AI replenishment analysis.",
+            "details": "Implement GET /api/admin/operation-stats/sales-by-product owned by order-service, routed through api-gateway with a precise path predicate. Support optional createdFrom and createdTo time range filters. Return productId, orderCount, soldQuantity, and totalAmount in an ApiResponse list DTO. Enforce ADMIN using the existing admin access pattern; unauthenticated returns 401 and USER returns 403. The endpoint is read-only and must not mutate order or inventory state.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 4,
+            "updatedAt": "2026-06-02T11:29:57.910Z",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Add inventory-trends operation stats API",
+            "description": "Expose a read-only admin inventory trend endpoint in inventory-service for future AI replenishment analysis.",
+            "details": "Implement GET /api/admin/operation-stats/inventory-trends owned by inventory-service, routed through api-gateway with a precise path predicate. Support optional createdFrom and createdTo time range filters and a day bucket. Aggregate inventory_records into productId, bucketDate, inboundQuantity, outboundQuantity, adjustmentQuantity, and endingStock. Enforce ADMIN with ApiResponse output. The endpoint is read-only and must not mutate inventory.",
+            "status": "done",
+            "dependencies": [
+              "4.1"
+            ],
+            "parentTaskId": 4,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-02T16:07:02.634Z"
+          }
+        ],
+        "updatedAt": "2026-06-02T16:07:02.634Z"
+      },
+      {
+        "id": 5,
+        "title": "Implement Inbound Order Drafts",
+        "description": "Create an inbound order draft model that can later be generated from AI recommendations.",
+        "details": "Add inbound_order and inbound_order_item persistence, with status enum DRAFT, CONFIRMED, APPLIED, CANCELLED and draft source values ADMIN_MANUAL plus reserved AI_SUGGESTION. Implement admin draft create, list, detail, and cancel APIs. Creating or cancelling a draft must not change inventory. All responses must use ApiResponse and list responses must use PageResponse.",
+        "testStrategy": "Run inbound order API tests for multi-item draft creation, list/detail pagination, enum serialization, cancel behavior, no inventory mutation, ADMIN enforcement, USER/unauthenticated rejection, and audit records.",
+        "status": "done",
+        "dependencies": [
+          "1",
+          "2"
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Add inbound order schema and domain model",
+            "description": "Create inbound_order and inbound_order_item migrations/entities/repositories plus status and source enums.",
+            "details": "Owner: inventory-service (co-located with confirm/apply so Task 6 is one local transaction). Flyway migration + entities/repositories for inbound_order (inboundNo, status, source, createdBy admin id/username, timestamps) and inbound_order_item (inboundNo FK, productId, quantity). Status enum DRAFT/CONFIRMED/APPLIED/CANCELLED; source enum ADMIN_MANUAL with AI_SUGGESTION reserved; both stored and serialized as stable enum names. Verify: migration applies cleanly; entity/enum round-trip unit test.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 5,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-03T11:27:23.435Z"
+          },
+          {
+            "id": 2,
+            "title": "Implement draft create, query, detail, and cancel APIs",
+            "description": "Expose admin draft APIs with ApiResponse/PageResponse, validation, ADMIN enforcement, and no inventory side effects.",
+            "details": "Add gateway route /api/admin/inbound-orders/** -> inventory-service (mirror an existing admin route; X-Internal-Token now injected automatically). POST /api/admin/inbound-orders/drafts (multi-item), GET list (PageResponse) and GET /{inboundNo} detail. Creating or cancelling a draft must not touch inventory. Verify: create multi-item draft, list/detail pagination, cancel, 401 unauthenticated, 403 USER, and assert zero inventory mutation.",
+            "status": "done",
+            "dependencies": [
+              1
+            ],
+            "parentTaskId": 5,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-03T11:43:20.507Z"
+          },
+          {
+            "id": 3,
+            "title": "Add inbound draft audit and regression tests",
+            "description": "Write audit logs and tests covering draft lifecycle, permissions, enum stability, and no stock changes.",
+            "details": "Write an admin audit log on draft create and cancel (action + inboundNo + item summary + operator + time). Tests: full draft lifecycle, enum-name stability, ADMIN enforcement, no stock change, and audit entries present.",
+            "status": "done",
+            "dependencies": [
+              2
+            ],
+            "parentTaskId": 5,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-03T12:02:54.989Z"
+          }
+        ],
+        "updatedAt": "2026-06-03T12:02:54.989Z"
+      },
+      {
+        "id": 6,
+        "title": "Confirm Inbound Orders And Apply Inventory Changes",
+        "description": "After an administrator confirms an inbound order, inventory-service applies the stock increase in a transaction and writes records and audit logs.",
+        "details": "Implement POST /api/admin/inbound-orders/{inboundNo}/confirm with admin identity and requestId idempotency. Only DRAFT inbound orders can be confirmed. Successful confirmation increases inventory and moves the order to APPLIED. Repeated confirmation or duplicate requestId must not increase stock twice. If any item fails, the whole transaction rolls back. Each inventory record must link back to inboundNo, and audit logs must record admin, inbound number, item summary, and time.",
+        "testStrategy": "Run transaction and API tests for DRAFT-only confirmation, duplicate requestId, repeated confirmation, rollback on item failure, inventory increase, inventory_records referenceNo, audit log content, and ApiResponse errors.",
+        "status": "done",
+        "dependencies": [
+          "2",
+          "5"
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement confirmation state machine and idempotency",
+            "description": "Validate DRAFT-only confirmation, requestId uniqueness, and deterministic duplicate responses.",
+            "details": "POST /api/admin/inbound-orders/{inboundNo}/confirm with a requestId idempotency key. Reject non-DRAFT orders via BusinessException/ApiResponse (conflict). A duplicate requestId returns the deterministic prior result without re-applying. Verify: DRAFT-only guard, duplicate requestId, and that a repeated confirm is a no-op.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 6,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-03T12:27:27.260Z"
+          },
+          {
+            "id": 2,
+            "title": "Apply inbound inventory transactionally",
+            "description": "Increase stock for all inbound items in one transaction and roll back if any item fails.",
+            "details": "Within one inventory-service local transaction: increase available stock for every item and move the order DRAFT->APPLIED. If any item fails, roll back the whole transaction (no partial stock, status unchanged). Reuse the existing idempotent inventory adjust path. Verify: multi-item increase, a forced single-item failure rolls everything back, and negative stock stays impossible.",
+            "status": "done",
+            "dependencies": [
+              1
+            ],
+            "parentTaskId": 6,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-03T13:03:54.883Z"
+          },
+          {
+            "id": 3,
+            "title": "Write inbound inventory records and audit logs",
+            "description": "Record sourceType INBOUND_ORDER, referenceNo inboundNo, requestId, operator, item summary, and admin audit entries.",
+            "details": "Each stock change writes an inventory_record with sourceType=INBOUND_ORDER, referenceNo=inboundNo, requestId, and operator; plus one admin audit log (admin, inboundNo, item summary, time). Verify: record referenceNo links inboundNo, audit content is complete, and ApiResponse error shapes on failure.",
+            "status": "done",
+            "dependencies": [
+              2
+            ],
+            "parentTaskId": 6,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-04T11:32:19.415Z"
+          }
+        ],
+        "updatedAt": "2026-06-04T11:32:19.415Z"
+      },
+      {
+        "id": 7,
+        "title": "Reserve AI Operation Suggestion Records",
+        "description": "Provide a minimal suggestion review model without implementing model calls.",
+        "details": "Add ai_operation_suggestion persistence and status enum PENDING_REVIEW, CONVERTED_TO_DRAFT, REJECTED, APPLIED. Implement admin query, reject, and convert-to-inbound-draft APIs. Suggestion records must not directly modify inventory. Converted suggestions must link to the generated inbound order number and keep an input snapshot reference or structured input summary for auditability. Phase 2.5 stores/routes suggestion records only; it does not generate suggestions with AI.",
+        "testStrategy": "Run suggestion API tests for query, reject with reason, convert-to-draft, status transitions, inboundNo linkage, no inventory mutation, ADMIN enforcement, and auditability fields.",
+        "status": "done",
+        "dependencies": [
+          "4",
+          "5"
+        ],
+        "priority": "medium",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Add AI suggestion schema and domain model",
+            "description": "Create ai_operation_suggestion persistence, status enum, source/input snapshot fields, and repositories.",
+            "details": "Owner: inventory-service (co-located with inbound drafts/records). Flyway migration + model for ai_operation_suggestion (suggestionNo, type, status, source, suggested items/quantities, reason, inputSnapshotRef or structured input summary, linkedInboundNo, timestamps). Status enum PENDING_REVIEW/CONVERTED_TO_DRAFT/REJECTED/APPLIED with stable names. No model calls — store/route only. Verify: migration applies; enum/field round-trip.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 7,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-04T12:11:08.762Z"
+          },
+          {
+            "id": 2,
+            "title": "Implement suggestion query and reject APIs",
+            "description": "Expose admin list/detail/reject behavior with reason capture, ApiResponse/PageResponse, and ADMIN enforcement.",
+            "details": "Add gateway route /api/admin/ai-suggestions/** -> inventory-service with ADMIN enforcement. GET list (PageResponse) and detail; POST /{suggestionNo}/reject capturing a reason and moving status to REJECTED. Suggestions never mutate inventory. Verify: list/detail, reject-with-reason transition, 403 USER, 401 unauthenticated.",
+            "status": "done",
+            "dependencies": [
+              1
+            ],
+            "parentTaskId": 7,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-04T12:43:59.278Z"
+          },
+          {
+            "id": 3,
+            "title": "Implement convert suggestion to inbound draft",
+            "description": "Convert a pending suggestion to an inbound draft, link inboundNo, update suggestion status, and avoid inventory mutation.",
+            "details": "POST /{suggestionNo}/convert-inbound-draft builds an inbound draft (Task 5) from the suggestion's items, sets suggestion.linkedInboundNo and status CONVERTED_TO_DRAFT. No inventory change at convert time. Verify: convert creates a DRAFT, the inboundNo linkage is recorded, status transitions correctly, and no stock is mutated.",
+            "status": "done",
+            "dependencies": [
+              1
+            ],
+            "parentTaskId": 7,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-04T13:05:10.973Z"
+          }
+        ],
+        "updatedAt": "2026-06-04T13:05:10.973Z"
+      },
+      {
+        "id": 8,
+        "title": "Phase 2.5 Acceptance And Regression Documentation",
+        "description": "Prove Phase 2.5 is ready for Phase 3 without breaking Phase 1 storefront or Phase 2 admin platform behavior.",
+        "details": "Create docs/phase2-5-ai-inventory-readiness-acceptance.md. Document verification that inventory records expose traceability fields, low-stock query works, operation statistics are read-only, draft creation does not change inventory, confirmation increases inventory with records and audit logs, reconfirmation is idempotent, AI suggestions cannot directly change inventory, /internal/** remains unavailable to browser/AI clients, Phase 1 purchase flow still passes, and Phase 2 admin basics still pass.",
+        "testStrategy": "Run the Phase 2.5 focused backend tests plus Phase 1 register/login/product/order/payment/PAID regression and Phase 2 admin login/product/inventory/audit basics; record commands and results in the acceptance document.",
+        "status": "done",
+        "dependencies": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7"
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Document Phase 2.5 focused inventory acceptance",
+            "description": "Create the acceptance document skeleton and record focused Phase 2.5 inventory readiness verification.",
+            "details": "Cover inventory record traceability fields, low-stock query behavior, read-only operation statistics, draft creation without inventory mutation, confirmation inventory increase with records and audit logs, reconfirmation idempotency, AI suggestions unable to directly change inventory, and internal path unavailability for browser or AI clients. Test strategy: run focused Phase 2.5 backend tests and record commands and results in docs/phase2-5-ai-inventory-readiness-acceptance.md.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 8,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-05T13:25:37.880Z"
+          },
+          {
+            "id": 2,
+            "title": "Document Phase 1 storefront regression",
+            "description": "Record Phase 1 storefront regression evidence for the customer purchase flow.",
+            "details": "Verify register, login, product browsing/detail, order creation, payment, and PAID order behavior still pass after Phase 2.5 inventory readiness changes. Test strategy: run the Phase 1 regression backend tests or focused equivalent commands and record commands and results in docs/phase2-5-ai-inventory-readiness-acceptance.md.",
+            "status": "done",
+            "dependencies": [
+              "8.1"
+            ],
+            "parentTaskId": 8,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-05T14:12:28.514Z"
+          },
+          {
+            "id": 3,
+            "title": "Document Phase 2 admin regression and readiness closeout",
+            "description": "Record Phase 2 admin regression evidence and complete the Phase 2.5 readiness acceptance document.",
+            "details": "Verify admin login, product basics, inventory basics, audit basics, and final readiness summary. Include final commands, Maven package result, residual risks, and Phase 3 readiness conclusion in docs/phase2-5-ai-inventory-readiness-acceptance.md. Test strategy: run Phase 2 admin basics tests plus mvn clean package -DskipTests and record commands and results.",
+            "status": "done",
+            "dependencies": [
+              "8.2"
+            ],
+            "parentTaskId": 8,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-05T14:23:56.856Z"
+          }
+        ],
+        "updatedAt": "2026-06-05T14:23:56.856Z"
+      }
+    ],
+    "metadata": {
+      "version": "1.0.0",
+      "lastModified": "2026-06-05T14:23:56.856Z",
+      "taskCount": 8,
+      "completedCount": 8,
+      "tags": [
+        "phase2-5-ai-inventory-readiness"
+      ],
+      "created": "2026-06-05T14:24:58.375Z",
+      "description": "Tasks for phase2-5-ai-inventory-readiness context",
+      "updated": "2026-06-05T14:24:58.375Z"
+    }
+  },
+  "phase3-ai-inventory-assistant": {
+    "tasks": [
+      {
+        "id": "1",
+        "title": "Lock Phase 3 AI Contract",
+        "description": "Create the Phase 3 AI assistant contract aligned with completed Phase 2.5 boundaries before implementation.",
+        "details": "Document that AI cannot modify inventory, run SQL, call /internal/**, bypass services, or confirm inbound orders. Lock existing suggestion statuses PENDING_REVIEW, CONVERTED_TO_DRAFT, REJECTED, and APPLIED. List reused Phase 2.5 APIs, new Phase 3 AI APIs, provider strategy, prompt constraints, data sources, and output validation rules.",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-06-06T07:38:16.742Z"
+      },
+      {
+        "id": "2",
+        "title": "Add AI Metadata Schema",
+        "description": "Extend existing ai_operation_suggestion records with provider, prompt, schema, validation, and JSON snapshot metadata.",
+        "details": "Add an idempotent migration for nullable model_provider, model_name, prompt_version, output_schema_version, validation_status, validation_error, input_snapshot_json, validated_output_json, and raw_model_output_json or equivalent persistence. Preserve existing Phase 2.5 records, keep the suggestion status enum unchanged, and add repository tests for metadata persistence and JSON round-trip behavior.",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "1"
+        ],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-06-06T08:00:41.131Z"
+      },
+      {
+        "id": "3",
+        "title": "Implement AI Provider Abstraction",
+        "description": "Add provider adapters for DeepSeek, MiniMax, and MOCK without exposing provider calls to browser code.",
+        "details": "Introduce AiProvider and environment-driven Spring configuration for AI_PROVIDER, AI_MODEL, AI_BASE_URL, AI_API_KEY, timeout, strict JSON mode, and mock mode. Implement DeepSeek, optional MiniMax, and MOCK adapters using Spring RestClient unless a later task proves WebFlux is required. Map provider failures to controlled ApiResponse errors and cover request/response mapping with unit tests.",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "1"
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Add AI provider configuration and contracts",
+            "description": "Define the environment-driven AI provider configuration, provider selector enum, provider request and response contracts, and controlled provider exception shape for inventory-service.",
+            "details": "Add Spring Boot configuration properties for AI_PROVIDER, AI_MODEL, AI_BASE_URL, AI_API_KEY, AI_REQUEST_TIMEOUT_MS, AI_MODEL_STRICT_JSON, and AI_MOCK_ENABLED. Introduce AiProvider plus immutable request/response DTOs that downstream AI inventory tasks can call without provider-specific details. Add focused unit tests for configuration binding/defaults and contract serialization where applicable.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 3,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-06T08:21:46.812Z"
+          },
+          {
+            "id": 2,
+            "title": "Implement AI provider adapters",
+            "description": "Implement DeepSeek, MiniMax, and MOCK provider adapters behind AiProvider using Spring RestClient for HTTP providers and deterministic local behavior for MOCK.",
+            "details": "Use provider-specific request/response mapping without exposing provider calls to browser code. Keep base URL, model, API key, timeout, and strict JSON mode fully configuration-driven. Map HTTP, timeout, malformed response, and provider error payload failures into controlled backend exceptions that later API layers can convert to ApiResponse errors. Cover adapter request/response mapping with unit tests.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 3,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-06T08:35:09.856Z"
+          },
+          {
+            "id": 3,
+            "title": "Verify AI provider wiring and error contract",
+            "description": "Wire the selected AiProvider into Spring configuration and verify provider selection, bean creation, and controlled failure behavior.",
+            "details": "Add auto-configuration or inventory-service configuration that chooses MOCK, DeepSeek, or MiniMax based on AI_PROVIDER/AI_MOCK_ENABLED while keeping secrets out of source code. Add tests for provider selection, missing external-provider API key behavior, timeout configuration, and stable error codes/messages suitable for ApiResponse mapping. Run inventory-service tests and full reactor package verification.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 3,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-07T11:52:52.407Z"
+          }
+        ],
+        "updatedAt": "2026-06-07T11:52:52.407Z"
+      },
+      {
+        "id": "4",
+        "title": "Implement AI Structured Data Facade",
+        "description": "Build backend services that assemble inventory, low-stock, sales, hot-product, and record evidence for AI features.",
+        "details": "Add read-only facade methods in the Phase 3 owner service, initially inventory-service. Read through application services, inventory-service owned repositories, or admin-safe API clients. Enforce ADMIN access on /api/admin/ai/** through gateway and downstream checks. Return structured evidence and data time ranges for later prompt context.",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "1"
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Add inventory evidence facade foundation",
+            "description": "Create read-only inventory-service facade contracts for current inventory, low-stock candidates, and recent inventory records used by later AI prompts.",
+            "details": "Add DTOs and a service/facade that read only through existing inventory-service repositories or query services. Include productId, stock quantities, safetyStock, stockState, lowStock, record evidence, and generated/data time range metadata. Do not add LLM calls, writes, frontend work, or public AI endpoints in this subtask.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 4,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-07T12:11:10.727Z"
+          },
+          {
+            "id": 2,
+            "title": "Add sales evidence client contract",
+            "description": "Add an inventory-service client or adapter contract for admin-safe sales-by-product evidence needed by AI analysis without reading order-service databases directly.",
+            "details": "Reuse the existing order-service admin sales aggregation contract through a configurable service client or equivalent internal adapter. Preserve read-only behavior, time range filters, productId filters, and stable DTO fields for soldQuantity, orderCount, and totalAmount. Keep hostnames and ports configuration-driven.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 4,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-07T12:27:25.437Z"
+          },
+          {
+            "id": 3,
+            "title": "Assemble low-stock and hot-product evidence",
+            "description": "Combine inventory evidence and sales evidence into bounded low-stock and hot-product evidence sets for later AI analysis.",
+            "details": "Build read-only facade methods that compute evidence windows, combine low-stock inventory candidates with default recent sales data, and derive hot products for supported day ranges. Include limitations/time ranges and avoid inventory mutation, suggestion persistence, or model calls.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 4,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-07T12:43:15.147Z"
+          },
+          {
+            "id": 4,
+            "title": "Expose AI structured evidence admin endpoints",
+            "description": "Expose read-only /api/admin/ai structured evidence endpoints through gateway and downstream ADMIN checks.",
+            "details": "Add controller endpoints under /api/admin/ai/** that return ApiResponse evidence DTOs from the facade, add precise gateway routing to inventory-service, and verify 401 unauthenticated, 403 USER, ADMIN success, stable error envelopes, and read-only behavior. Do not add frontend pages or LLM calls.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 4,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-07T12:57:41.846Z"
+          }
+        ],
+        "updatedAt": "2026-06-07T12:57:41.846Z"
+      },
+      {
+        "id": "5",
+        "title": "Implement Output Schema Validation And Prompt Templates",
+        "description": "Make prompt templates versioned and validate model output before returning trusted analysis or saving suggestions.",
+        "details": "Store prompt templates under backend resources with promptVersion and outputSchemaVersion. Validate JSON parseability, analysisType enum, riskLevel enum, known product ids, non-negative numeric fields, positive suggestedQuantity for replenishment, absence of SQL, absence of unsupported stock-change claims, and absence of invented facts. Add tests for valid and invalid outputs.",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "1",
+          "3"
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Add versioned prompt template resources",
+            "description": "Store inventory assistant prompt templates as backend resources with explicit promptVersion and outputSchemaVersion metadata.",
+            "details": "Add resource files and a small loader/model following existing backend patterns. Keep templates versioned and expose metadata needed by analysis code. Verification should cover resource loading and required metadata presence.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 5,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-08T12:02:26.995Z"
+          },
+          {
+            "id": 2,
+            "title": "Implement model output schema validation",
+            "description": "Validate parsed inventory assistant output before it is trusted or persisted.",
+            "details": "Implement JSON parseability checks, analysisType and riskLevel enum validation, known product id validation, non-negative numeric field validation, positive suggestedQuantity for replenishment, SQL rejection, unsupported stock-change claim rejection, and invented-fact rejection using available request/product context.",
+            "status": "done",
+            "dependencies": [
+              "5.1"
+            ],
+            "parentTaskId": 5,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-08T12:23:33.657Z"
+          },
+          {
+            "id": 3,
+            "title": "Add validation tests and analysis wiring",
+            "description": "Cover valid and invalid model outputs and invoke validation before returning analysis or saving suggestions.",
+            "details": "Add focused unit tests for valid output and invalid JSON, enum, product id, numeric, replenishment quantity, SQL, unsupported stock-change, and invented-fact cases. Wire validation into the inventory assistant analysis flow before API responses and suggestion persistence.",
+            "status": "done",
+            "dependencies": [
+              "5.2"
+            ],
+            "parentTaskId": 5,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-08T12:44:48.269Z"
+          }
+        ],
+        "updatedAt": "2026-06-08T12:44:48.269Z"
+      },
+      {
+        "id": "6",
+        "title": "Implement AI Inventory Q&A API",
+        "description": "Answer supported inventory questions through whitelisted read tools and LLM analysis.",
+        "details": "Add POST /api/admin/ai/inventory/ask. Support current stock lookup, low-stock list, specific product inventory status, and recent inventory record explanation. Unsupported questions return controlled unsupported-intent responses. Include answer, detected intent, query time, and structured evidence. Q&A endpoints must never execute write actions.",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "3",
+          "4",
+          "5"
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Add AI inventory Q&A intent and evidence foundation",
+            "description": "Define Q&A request/response DTOs, supported intent enum, read-only intent detection, and evidence assembly service foundation for current stock, low-stock, product status, and recent records.",
+            "details": "Implement only internal inventory-service contracts and service logic. Reuse AiInventoryEvidenceFacade and existing repositories/services. Unsupported questions should map to a controlled unsupported intent result. Do not expose REST endpoints or call write paths in this subtask.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 6,
+            "updatedAt": "2026-06-08T13:07:30.495Z",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Wire Q&A provider analysis and validation",
+            "description": "Use prompt/provider/validator wiring to produce controlled AI inventory answers for supported read-only intents.",
+            "details": "Build on 6.1 intent and evidence service. Use AiInventoryAnalysisService with the INVENTORY_QA prompt and AiModelOutputValidator. Ensure invalid model output returns controlled BusinessException/ApiResponse behavior through service tests. Do not persist suggestions or mutate inventory.",
+            "status": "done",
+            "dependencies": [
+              "6.1"
+            ],
+            "parentTaskId": 6,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-08T13:36:46.968Z"
+          },
+          {
+            "id": 3,
+            "title": "Expose AI inventory Q&A admin endpoint",
+            "description": "Add POST /api/admin/ai/inventory/ask with ApiResponse contract, ADMIN-only enforcement, and gateway/security regression coverage.",
+            "details": "Expose the Q&A service through inventory-service controller. Ensure unauthenticated requests return 401, USER tokens return 403, ADMIN requests succeed for supported questions, unsupported intent is controlled, and Q&A executes no writes. Add gateway route/regression tests as needed.",
+            "status": "done",
+            "dependencies": [
+              "6.2"
+            ],
+            "parentTaskId": 6,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-09T12:45:27.430Z"
+          }
+        ],
+        "updatedAt": "2026-06-09T12:45:27.430Z"
+      },
+      {
+        "id": "7",
+        "title": "Implement Low-Stock And Hot-Product AI Analysis APIs",
+        "description": "Expose LLM-assisted low-stock and hot-product analysis endpoints with structured evidence.",
+        "details": "Add low-stock analysis and hot-product analysis APIs under /api/admin/ai/inventory. Low-stock analysis uses backend-computed low-stock candidates, default 7-day sales evidence, inventory records when available, and model-generated reasons, limitations, risk levels, and quantities. Hot-product analysis supports days=7 and days=30, sales aggregation, current inventory evidence, risk level, reasons, limitations, and time range. Reject invalid model output with controlled errors.",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "3",
+          "4",
+          "5"
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Wire low-stock AI analysis endpoint",
+            "description": "Add the low-stock AI analysis flow under /api/admin/ai/inventory using backend low-stock evidence, default 7-day sales evidence, inventory records, provider analysis, and output validation.",
+            "details": "Reuse AiInventoryEvidenceFacade.lowStockAnalysisEvidence and AiInventoryAnalysisService with the LOW_STOCK_ANALYSIS prompt and expected analysis type. Return an ApiResponse-wrapped contract with validated summary, items, limitations, query time, and structured evidence. Enforce ADMIN access downstream, keep the flow read-only, and cover supported success, validation failure, security, and no-write behavior.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 7,
+            "updatedAt": "2026-06-09T13:28:48.276Z",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Wire hot-product AI analysis endpoint",
+            "description": "Add the hot-product AI analysis flow under /api/admin/ai/inventory using 7-day or 30-day sales aggregation, current inventory evidence, recent records, provider analysis, and output validation.",
+            "details": "Reuse AiInventoryEvidenceFacade.hotProductsEvidence and AiInventoryAnalysisService with the HOT_PRODUCTS_ANALYSIS prompt and expected analysis type. Support days=7 and days=30, reject unsupported ranges through controlled errors, return an ApiResponse-wrapped contract with validated summary, items, limitations, query time, and structured evidence, and keep the flow read-only.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 7,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-10T12:47:58.540Z"
+          },
+          {
+            "id": 3,
+            "title": "Add analysis API security and gateway regressions",
+            "description": "Complete regression coverage for the low-stock and hot-product AI analysis APIs across downstream ADMIN enforcement, gateway admin routing, controlled errors, and read-only guarantees.",
+            "details": "Extend gateway regression coverage as needed for /api/admin/ai/inventory analysis paths, verify unauthenticated 401, USER 403, ADMIN success for both APIs, invalid model output rejection, unsupported hot-product days, and no inventory, record, suggestion, inbound order, or audit writes from AI analysis endpoints. Mark parent Task 7 done only after both API subtasks and this regression pass.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 7,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-10T15:56:42.939Z"
+          }
+        ],
+        "updatedAt": "2026-06-10T15:56:42.939Z"
+      },
+      {
+        "id": "8",
+        "title": "Implement AI Suggestion Generation",
+        "description": "Generate and save replenishment suggestions from validated model output.",
+        "details": "Add POST /api/admin/ai/replenishment-suggestions/generate. Read low-stock products, 7-day sales, hot-product stats, and optional records; send structured evidence to the provider; parse and validate JSON; persist one ai_operation_suggestion only after validation passes; persist suggested items with quantities and risk levels; set status PENDING_REVIEW; do not change inventory; do not create an inbound draft automatically.",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "2",
+          "3",
+          "4",
+          "5",
+          "7"
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Enhance MockAiProvider with deterministic snapshot-derived items",
+            "description": "Derive mock output items deterministically from request input productFacts so the MOCK provider passes anti-hallucination validation and can demo replenishment generation end-to-end without network.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 8,
+            "updatedAt": "2026-06-10T16:09:20.047Z",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Implement replenishment suggestion generation service",
+            "description": "Assemble low-stock and hot-product evidence, call the provider with the REPLENISHMENT_SUGGESTION template, validate output, and persist one ai_operation_suggestion with items, PENDING_REVIEW status, and full AI metadata. No inventory change, no inbound draft.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 8,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-10T16:16:51.573Z"
+          },
+          {
+            "id": 3,
+            "title": "Expose replenishment suggestion generation admin endpoint",
+            "description": "Add POST /api/admin/ai/replenishment-suggestions/generate with ADMIN enforcement, controller security and persistence regression tests, and gateway admin-route regression coverage.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 8,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-10T16:22:04.456Z"
+          }
+        ],
+        "updatedAt": "2026-06-10T16:22:04.456Z"
+      },
+      {
+        "id": "9",
+        "title": "Integrate Suggestion Draft Conversion And Applied Status",
+        "description": "Reuse existing suggestion conversion and inbound confirmation behavior, then reflect applied inbound orders in suggestion history.",
+        "details": "Reuse POST /api/admin/ai-suggestions/{suggestionNo}/convert-inbound-draft instead of creating duplicate review endpoints. Ensure converted suggestions move to CONVERTED_TO_DRAFT. When a linked inbound order reaches APPLIED, synchronize the suggestion to APPLIED. Repeated inbound confirmation must not duplicate stock changes. No AI endpoint may confirm inbound orders.",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "8"
+        ],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-06-10T16:29:47.613Z"
+      },
+      {
+        "id": "10",
+        "title": "Build AI Inventory Assistant Admin Page",
+        "description": "Add the admin UI for Phase 3 AI inventory workflows.",
+        "details": "Add /ai-inventory route and AI 库存助手 navigation entry in admin-frontend. Build Q&A, low-stock analysis, hot-product analysis, suggestion generation, rejection, and draft conversion surfaces. Show status, evidence, risk level, time range, and distinct error states. Never present AI as directly executing stock changes, and call only gateway admin APIs.",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "6",
+          "7",
+          "8",
+          "9"
+        ],
+        "priority": "medium",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "AI domain types and gateway API clients",
+            "description": "Add admin-frontend types and API client modules for /api/admin/ai/** (ask, low-stock-analysis, hot-products-analysis, replenishment-suggestions/generate), /api/admin/ai-suggestions/**, /api/admin/inbound-orders/**. Gateway-only, no trusted headers.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 10,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-11T11:12:19.826Z"
+          },
+          {
+            "id": 2,
+            "title": "AI suggestion review view",
+            "description": "Add /ai-suggestions route, nav entry, list with status filter, detail with items and metadata, reject dialog, convert-inbound-draft action. Vitest coverage.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 10,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-11T11:17:56.113Z"
+          },
+          {
+            "id": 3,
+            "title": "Inbound order view",
+            "description": "Add /inbound-orders route, nav entry, list with status filter, detail, cancel, confirm with generated X-Request-Id idempotency key. State clearly stock changes only on confirmation. Vitest coverage.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 10,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-11T11:24:14.085Z"
+          },
+          {
+            "id": 4,
+            "title": "AI inventory assistant page",
+            "description": "Add /ai-inventory route and AI 库存助手 nav entry with Q&A, low-stock analysis, hot-product analysis, and suggestion generation panels. Show time range, structured evidence, risk levels, distinct error states; never present AI as executing stock changes. Vitest coverage + npm run build + gateway audit.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 10,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-11T11:30:40.681Z"
+          }
+        ],
+        "updatedAt": "2026-06-11T11:30:40.681Z"
+      },
+      {
+        "id": "11",
+        "title": "Add Daily Report And Suggestion History Enhancements",
+        "description": "Add P1 reporting and richer review surfaces once P0 is stable.",
+        "details": "Implement daily report and suggestion-history enhancements if P0 schedule allows. Daily report should summarize low-stock count, hot products, generated suggestions, rejected suggestions, converted drafts, and applied inbound orders. Suggestion history should support status filtering and detail view. This task can be deferred if P0 is at risk.",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "8",
+          "10"
+        ],
+        "priority": "medium",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Add daily AI inventory report API",
+            "description": "Expose GET /api/admin/ai/reports/daily from inventory-service.",
+            "details": "Build a read-only daily report service and controller that summarizes low-stock count, hot products, generated AI suggestions, rejected suggestions, converted drafts, and applied inbound orders. Return ApiResponse-wrapped DTOs, keep AI boundaries read-only, and cover service/controller behavior with tests.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 11,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-11T11:58:30.143Z"
+          },
+          {
+            "id": 2,
+            "title": "Enhance AI suggestion history surfaces",
+            "description": "Harden existing GET /api/admin/ai-suggestions list/detail review APIs for richer history use.",
+            "details": "Verify and, where needed, extend suggestion history support for stable status filtering, detail evidence/metadata/links, and frontend-ready response contracts without adding duplicate /api/admin/ai/suggestions endpoints. Add focused regression tests for all suggestion statuses and detail response fields.",
+            "status": "done",
+            "dependencies": [
+              "11.1"
+            ],
+            "parentTaskId": 11,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-11T12:07:36.226Z"
+          },
+          {
+            "id": 3,
+            "title": "Daily report tab and metadata display",
+            "description": "Remedial UI for Task 11: add 日报 tab on /ai-inventory calling GET /api/admin/ai/reports/daily (report window, low-stock count, hot products, suggestion/inbound summaries, limitations); show AI model metadata (provider, model, promptVersion, outputSchemaVersion, validationStatus) in the suggestion detail drawer. Vitest coverage.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 11,
+            "updatedAt": "2026-06-11T15:08:36.127Z",
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2026-06-11T15:08:36.127Z"
+      },
+      {
+        "id": "12",
+        "title": "Add Demo Data Generator",
+        "description": "Provide repeatable dev/test data for local Phase 3 demonstration.",
+        "details": "Create a deterministic or idempotent dev/test-only demo data generator for products, inventory, safety stock, orders, inventory records, and optional AI suggestions. It must be disabled by default, enabled only by dev/test profile or explicit environment property, and must never run in production profile. This task can be deferred if P0 is at risk.",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "4"
+        ],
+        "priority": "low",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Add guarded demo data generator activation",
+            "description": "Create disabled-by-default dev/test-only seed infrastructure and configuration guard.",
+            "details": "Add Spring Boot demo data activation infrastructure that is disabled by default, requires explicit enablement, only allows dev or test profiles, and refuses to run with the production profile. Cover disabled, allowed, and forbidden activation paths with tests.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 12,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-11T12:22:45.682Z"
+          },
+          {
+            "id": 2,
+            "title": "Seed deterministic catalog inventory sales and records",
+            "description": "Populate repeatable core demo data needed for Phase 3 AI inventory demonstrations.",
+            "details": "Seed products, inventory, safety stock, users/orders/order items/payment state or sales evidence, and inventory records idempotently with stable business keys. Do not run by default. Add tests proving repeat runs do not duplicate data.",
+            "status": "done",
+            "dependencies": [
+              "12.1"
+            ],
+            "parentTaskId": 12,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-11T12:33:50.518Z"
+          },
+          {
+            "id": 3,
+            "title": "Seed optional AI suggestion demo review data",
+            "description": "Add optional Phase 3 AI suggestion and inbound review demo records plus usage notes.",
+            "details": "Optionally create AI suggestions and linked inbound drafts or applied examples with existing statuses and metadata, without violating AI inventory mutation boundaries. Add docs or usage notes and focused tests.",
+            "status": "done",
+            "dependencies": [
+              "12.2"
+            ],
+            "parentTaskId": 12,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-11T12:47:58.981Z"
+          }
+        ],
+        "updatedAt": "2026-06-11T12:47:58.981Z"
+      },
+      {
+        "id": "13",
+        "title": "Complete Phase 3 Regression And Acceptance",
+        "description": "Verify the full AI assistant workflow and existing customer/admin regressions.",
+        "details": "Document and verify the full flow: analysis -> suggestion -> draft -> admin confirmation -> inventory increase -> inventory record -> operation log -> suggestion APPLIED. Prove AI cannot directly change inventory, /internal/** remains blocked, trusted headers remain protected, customer purchase flow remains valid, and Phase 2 admin login/base pages remain valid. Run focused backend tests, mvn clean package -DskipTests, and admin-frontend npm run test/build when UI changes are included.",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "9",
+          "10",
+          "11",
+          "12"
+        ],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-06-11T15:18:32.965Z"
+      },
+      {
+        "id": "14",
+        "title": "Fix real-provider AI assistant smoke findings",
+        "description": "Fix the five issues from the 2026-06-11 real-provider smoke test per docs/ai-assistant-smoke-findings-2026-06-12.md: prompt v2 templates (omit absent snapshot fields, limitations as string array, Simplified Chinese output, quantity anchoring formula with mandatory fact echo), AI_TEMPERATURE config defaulting to 0, Q&A productId extraction from question text with Chinese error copy, localization of backend-generated English strings, frontend placeholder/error polish. Validator assertions may only be tightened, never weakened.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Prompt v2, temperature, quantity cap",
+            "description": "Upgrade four prompt templates to v2 (Simplified Chinese output, omit absent snapshot fields, limitations as string array, quantity anchoring formula with mandatory fact echo). Add AI_TEMPERATURE config (default 0) to provider request body, compose and .env.example. Tighten AiModelOutputValidator with a snapshot-derived suggestedQuantity upper bound (tighten only).",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 14,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-11T16:13:56.697Z"
+          },
+          {
+            "id": 2,
+            "title": "QA productId extraction and Chinese backend copy",
+            "description": "Extract SKU-like productId from question text when the field is empty (verified against inventory); Chinese error guidance. Localize backend-generated strings: evidence limitations, replenishment inputSummary, daily report limitations.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 14,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-12T12:56:05.918Z"
+          },
+          {
+            "id": 3,
+            "title": "Frontend QA placeholder and error copy polish",
+            "description": "Fix misleading QA placeholder, friendly mapping for missing-productId error.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 14,
+            "parentId": "undefined",
+            "updatedAt": "2026-06-12T12:59:00.149Z"
+          }
+        ],
+        "updatedAt": "2026-06-12T12:59:00.149Z"
+      }
+    ],
+    "metadata": {
+      "version": "1.0.0",
+      "lastModified": "2026-06-12T12:59:00.150Z",
+      "taskCount": 14,
+      "completedCount": 14,
+      "tags": [
+        "phase3-ai-inventory-assistant"
+      ]
     }
   }
 }

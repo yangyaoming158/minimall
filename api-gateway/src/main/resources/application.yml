@@ -12,23 +12,27 @@ spring:
         - id: user-service
           uri: ${USER_SERVICE_BASE_URL:http://localhost:8101}
           predicates:
-            - Path=/api/users/**
+            - Path=/api/users/**,/api/admin/login,/api/admin/me,/api/admin/audit-logs/**
         - id: product-service
           uri: ${PRODUCT_SERVICE_BASE_URL:http://localhost:8102}
           predicates:
-            - Path=/api/products/**
+            - Path=/api/products/**,/api/admin/products/**
         - id: inventory-service
           uri: ${INVENTORY_SERVICE_BASE_URL:http://localhost:8103}
           predicates:
-            - Path=/api/inventories/**
+            - Path=/api/inventories/**,/api/admin/inventories/**,/api/admin/operation-stats/inventory-trends,/api/admin/inbound-orders/**,/api/admin/ai-suggestions/**,/api/admin/ai/**
         - id: order-service
           uri: ${ORDER_SERVICE_BASE_URL:http://localhost:8104}
           predicates:
-            - Path=/api/orders/**
+            - Path=/api/orders/**,/api/admin/orders/**,/api/admin/operation-stats/sales-by-product
         - id: payment-service
           uri: ${PAYMENT_SERVICE_BASE_URL:http://localhost:8105}
           predicates:
-            - Path=/api/payments/**
+            - Path=/api/payments/**,/api/admin/payments/**
+        - id: notification-service
+          uri: ${NOTIFICATION_SERVICE_BASE_URL:http://localhost:8106}
+          predicates:
+            - Path=/api/admin/notifications/**
 
 minimall:
   auth:

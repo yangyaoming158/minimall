@@ -67,9 +67,15 @@ public class GatewayRateLimitFilter implements GlobalFilter, Ordered {
             return "user:" + userId.trim();
         }
 
-        String forwardedFor = firstForwardedFor(request.getHeaders());
-        if (forwardedFor != null) {
-            return "ip:" + forwardedFor;
+        // X-Forwarded-For is client-controllable, so trusting it lets an attacker
+        // rotate the rate-limit key freely (e.g. to brute-force /api/admin/login).
+        // Only honor it when the gateway is explicitly told it sits behind a
+        // trusted reverse proxy; otherwise key on the real socket address.
+        if (properties.isTrustForwardedFor()) {
+            String forwardedFor = firstForwardedFor(request.getHeaders());
+            if (forwardedFor != null) {
+                return "ip:" + forwardedFor;
+            }
         }
 
         InetSocketAddress remoteAddress = request.getRemoteAddress();

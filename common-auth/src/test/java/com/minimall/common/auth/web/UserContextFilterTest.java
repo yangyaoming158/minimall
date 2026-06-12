@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.minimall.common.auth.config.JwtProperties;
 import com.minimall.common.auth.constants.AuthHeaders;
+import com.minimall.common.auth.context.AuthRole;
 import com.minimall.common.auth.context.UserContext;
 import com.minimall.common.auth.context.UserContextHolder;
 import com.minimall.common.auth.jwt.JwtUtils;
@@ -41,7 +42,24 @@ class UserContextFilterTest {
         request.addHeader(AuthHeaders.USER_ID, "1001");
         request.addHeader(AuthHeaders.USERNAME, "alice");
 
-        filter.doFilter(request, response, chainAssertingContext(1001L, "alice", contextWasAvailableInChain));
+        filter.doFilter(request, response, chainAssertingContext(1001L, "alice", AuthRole.USER, contextWasAvailableInChain));
+
+        assertThat(contextWasAvailableInChain).isTrue();
+        assertThat(UserContextHolder.hasContext()).isFalse();
+        assertThat(response.getStatus()).isEqualTo(200);
+    }
+
+    @Test
+    void readsAdminRoleFromPropagationHeadersAndClearsAfterRequest() throws Exception {
+        UserContextFilter filter = new UserContextFilter(null);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        AtomicBoolean contextWasAvailableInChain = new AtomicBoolean(false);
+        request.addHeader(AuthHeaders.USER_ID, "1001");
+        request.addHeader(AuthHeaders.USERNAME, "alice");
+        request.addHeader(AuthHeaders.USER_ROLE, "ADMIN");
+
+        filter.doFilter(request, response, chainAssertingContext(1001L, "alice", AuthRole.ADMIN, contextWasAvailableInChain));
 
         assertThat(contextWasAvailableInChain).isTrue();
         assertThat(UserContextHolder.hasContext()).isFalse();
@@ -57,9 +75,10 @@ class UserContextFilterTest {
         AtomicBoolean contextWasAvailableInChain = new AtomicBoolean(false);
         request.addHeader(AuthHeaders.USER_ID, "1001");
         request.addHeader(AuthHeaders.USERNAME, "alice");
+        request.addHeader(AuthHeaders.USER_ROLE, "ADMIN");
         request.addHeader(HttpHeaders.AUTHORIZATION, "Bearer " + jwtUtils.generateToken(2002L, "bob"));
 
-        filter.doFilter(request, response, chainAssertingContext(1001L, "alice", contextWasAvailableInChain));
+        filter.doFilter(request, response, chainAssertingContext(1001L, "alice", AuthRole.ADMIN, contextWasAvailableInChain));
 
         assertThat(contextWasAvailableInChain).isTrue();
         assertThat(UserContextHolder.hasContext()).isFalse();
@@ -72,9 +91,9 @@ class UserContextFilterTest {
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
         AtomicBoolean contextWasAvailableInChain = new AtomicBoolean(false);
-        request.addHeader(HttpHeaders.AUTHORIZATION, "Bearer " + jwtUtils.generateToken(1001L, "alice"));
+        request.addHeader(HttpHeaders.AUTHORIZATION, "Bearer " + jwtUtils.generateToken(1001L, "alice", AuthRole.ADMIN));
 
-        filter.doFilter(request, response, chainAssertingContext(1001L, "alice", contextWasAvailableInChain));
+        filter.doFilter(request, response, chainAssertingContext(1001L, "alice", AuthRole.ADMIN, contextWasAvailableInChain));
 
         assertThat(contextWasAvailableInChain).isTrue();
         assertThat(UserContextHolder.hasContext()).isFalse();
@@ -116,6 +135,79 @@ class UserContextFilterTest {
     }
 
     @Test
+    void returnsUnauthorizedApiResponseForInvalidRolePropagationHeader() throws Exception {
+        UserContextFilter filter = new UserContextFilter(null);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        request.addHeader(AuthHeaders.USER_ID, "1001");
+        request.addHeader(AuthHeaders.USERNAME, "alice");
+        request.addHeader(AuthHeaders.USER_ROLE, "ROOT");
+
+        filter.doFilter(request, response, new MockFilterChain());
+
+        assertThat(response.getStatus()).isEqualTo(401);
+        assertThat(UserContextHolder.hasContext()).isFalse();
+        JsonNode body = objectMapper.readTree(response.getContentAsString());
+        assertThat(body.get("code").asText()).isEqualTo(ErrorCode.UNAUTHORIZED.getCode());
+        assertThat(body.get("message").asText()).isEqualTo("Invalid user propagation headers");
+    }
+
+    @Test
+    void returnsUnauthorizedApiResponseForPartialRolePropagationHeaders() throws Exception {
+        UserContextFilter filter = new UserContextFilter(null);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        request.addHeader(AuthHeaders.USER_ROLE, "ADMIN");
+
+        filter.doFilter(request, response, new MockFilterChain());
+
+        assertThat(response.getStatus()).isEqualTo(401);
+        assertThat(UserContextHolder.hasContext()).isFalse();
+        JsonNode body = objectMapper.readTree(response.getContentAsString());
+        assertThat(body.get("code").asText()).isEqualTo(ErrorCode.UNAUTHORIZED.getCode());
+        assertThat(body.get("message").asText()).isEqualTo("Invalid user propagation headers");
+    }
+
+    @Test
+    void ignoresForgedAdminHeadersWhenGatewaySecretIsConfiguredButAbsent() throws Exception {
+        // Direct-to-service attacker: forges admin headers but has no secret.
+        UserContextFilter filter = new UserContextFilter(null, "gateway-shared-secret");
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        AtomicBoolean chainWasInvoked = new AtomicBoolean(false);
+        request.addHeader(AuthHeaders.USER_ID, "1001");
+        request.addHeader(AuthHeaders.USERNAME, "alice");
+        request.addHeader(AuthHeaders.USER_ROLE, "ADMIN");
+
+        filter.doFilter(request, response, (servletRequest, servletResponse) -> {
+            chainWasInvoked.set(true);
+            // Forged headers are not trusted -> no escalated context leaks through.
+            assertThat(UserContextHolder.hasContext()).isFalse();
+        });
+
+        assertThat(chainWasInvoked).isTrue();
+        assertThat(response.getStatus()).isEqualTo(200);
+    }
+
+    @Test
+    void trustsPropagationHeadersWhenGatewaySecretMatches() throws Exception {
+        UserContextFilter filter = new UserContextFilter(null, "gateway-shared-secret");
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        AtomicBoolean contextWasAvailableInChain = new AtomicBoolean(false);
+        request.addHeader(AuthHeaders.USER_ID, "1001");
+        request.addHeader(AuthHeaders.USERNAME, "alice");
+        request.addHeader(AuthHeaders.USER_ROLE, "ADMIN");
+        request.addHeader(AuthHeaders.GATEWAY_TOKEN, "gateway-shared-secret");
+
+        filter.doFilter(request, response, chainAssertingContext(1001L, "alice", AuthRole.ADMIN, contextWasAvailableInChain));
+
+        assertThat(contextWasAvailableInChain).isTrue();
+        assertThat(UserContextHolder.hasContext()).isFalse();
+        assertThat(response.getStatus()).isEqualTo(200);
+    }
+
+    @Test
     void proceedsWithoutUserContextWhenNoAuthDataExists() throws Exception {
         UserContextFilter filter = new UserContextFilter(null);
         MockHttpServletRequest request = new MockHttpServletRequest();
@@ -132,7 +224,8 @@ class UserContextFilterTest {
         assertThat(response.getStatus()).isEqualTo(200);
     }
 
-    private static MockFilterChain chainAssertingContext(Long userId, String username, AtomicBoolean assertionReached) {
+    private static MockFilterChain chainAssertingContext(
+            Long userId, String username, AuthRole role, AtomicBoolean assertionReached) {
         return new MockFilterChain() {
             @Override
             public void doFilter(jakarta.servlet.ServletRequest request, jakarta.servlet.ServletResponse response)
@@ -140,6 +233,7 @@ class UserContextFilterTest {
                 UserContext userContext = UserContextHolder.require();
                 assertThat(userContext.getUserId()).isEqualTo(userId);
                 assertThat(userContext.getUsername()).isEqualTo(username);
+                assertThat(userContext.getRole()).isEqualTo(role);
                 assertionReached.set(true);
                 super.doFilter(request, response);
             }

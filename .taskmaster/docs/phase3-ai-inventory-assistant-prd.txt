@@ -1,0 +1,842 @@
+# Phase 3 PRD: LLM-Driven AI Product Inventory Operations Assistant
+
+Suggested TaskMaster tag:
+
+`phase3-ai-inventory-assistant`
+
+Date: 2026-06-06
+
+## 1. Current Baseline
+
+Phase 3 starts after the completed Phase 2.5 readiness gate.
+
+Completed prerequisites:
+
+1. `master` remains the completed backend MVP task tree.
+2. `phase1-customer-frontend` is complete.
+3. `phase2-admin-platform` is complete.
+4. `phase2-5-ai-inventory-readiness` is complete, with 8/8 tasks done.
+5. Final Phase 2.5 package verification passed with `mvn clean package -DskipTests`.
+
+The Phase 2.5 handoff is recorded in:
+
+1. `docs/phase2-5-ai-inventory-contract.md`
+2. `docs/phase2-5-ai-inventory-readiness-acceptance.md`
+
+Phase 3 must not reopen Phase 2.5 stock-mutation foundations. It builds AI
+analysis, model integration, suggestion generation, and admin UI workflows on
+top of the existing backend contracts.
+
+## 2. Product Goal
+
+Build an LLM-driven AI Product Inventory Operations Assistant for MiniMall
+administrators.
+
+Administrators use the admin frontend to ask natural-language inventory
+questions, request low-stock and hot-product analysis, generate replenishment
+suggestions, review AI suggestions, convert approved suggestions into inbound
+order drafts, and then use the existing inbound order confirmation workflow for
+formal stock changes.
+
+The assistant is advisory. It may analyze data and create validated suggestions
+or inbound drafts, but it must never directly change inventory.
+
+P0 capabilities:
+
+1. Inventory Q&A.
+2. Low-stock analysis.
+3. Hot-product analysis.
+4. Replenishment suggestion generation.
+5. AI suggestion review support through the existing suggestion APIs.
+6. Inbound order draft generation from AI suggestions.
+7. Suggestion status synchronization after inbound order application.
+8. Admin AI inventory assistant page.
+
+P1 capabilities:
+
+1. Daily inventory operations report.
+2. Suggestion history enhancements.
+3. Demo data generator.
+4. Inventory trend visualization.
+5. Slow-moving product analysis.
+6. Deeper inventory change explanation.
+
+## 3. Hard Boundaries
+
+Phase 3 must preserve these rules:
+
+1. AI code must not directly update `inventory`.
+2. AI code must not directly insert or mutate `inventory_records`.
+3. AI code must not execute SQL.
+4. AI code must not bypass application services or call service ports directly.
+5. AI-facing and browser-facing calls must enter through `api-gateway`.
+6. AI-facing and browser-facing calls must not call `/internal/**`.
+7. AI-facing and browser-facing calls must not send or spoof `X-User-Id`,
+   `X-Username`, `X-User-Role`, or `X-Internal-Token`.
+8. AI APIs must not confirm inbound orders.
+9. AI APIs must not call `POST /api/admin/inventories/{productId}/adjust`.
+10. AI responses must not claim stock changed before the existing inbound
+    confirmation workflow actually applies the change.
+11. Model output must be validated before persistence.
+12. Every new REST API must return `ApiResponse`.
+13. Paginated list responses must use `PageResponse`.
+14. Business errors must use `BusinessException`.
+15. Status fields must use stable enum names.
+
+Allowed inventory-assistant flow:
+
+```text
+Admin frontend
+  -> api-gateway /api/admin/**
+  -> AI analysis endpoint
+  -> structured backend data facade
+  -> LLM provider
+  -> backend output validation
+  -> ai_operation_suggestion PENDING_REVIEW
+  -> administrator review
+  -> existing convert-inbound-draft API
+  -> inbound_order DRAFT
+  -> existing administrator inbound confirmation
+  -> inventory-service transaction
+  -> inventory_records + admin_operation_logs
+  -> suggestion APPLIED synchronization
+```
+
+## 4. Existing Phase 2.5 Contracts To Reuse
+
+Do not duplicate these APIs or re-create their tables.
+
+Structured read APIs:
+
+1. `GET /api/admin/products`
+2. `GET /api/admin/products/{productId}`
+3. `GET /api/admin/inventories`
+4. `GET /api/admin/inventories/{productId}`
+5. `GET /api/admin/inventories/low-stock`
+6. `GET /api/admin/inventories/{productId}/records`
+7. `GET /api/admin/operation-stats/sales-by-product`
+8. `GET /api/admin/operation-stats/inventory-trends`
+9. `GET /api/admin/audit-logs`
+10. `GET /api/admin/inbound-orders`
+11. `GET /api/admin/inbound-orders/{inboundNo}`
+12. `GET /api/admin/ai-suggestions`
+13. `GET /api/admin/ai-suggestions/{suggestionNo}`
+
+Controlled write APIs:
+
+1. `POST /api/admin/ai-suggestions/{suggestionNo}/reject`
+2. `POST /api/admin/ai-suggestions/{suggestionNo}/convert-inbound-draft`
+3. `POST /api/admin/inbound-orders/drafts`
+4. `POST /api/admin/inbound-orders/{inboundNo}/cancel`
+5. `POST /api/admin/inbound-orders/{inboundNo}/confirm`
+
+Phase 3 may add AI convenience endpoints, but review and conversion actions
+should delegate to these existing inventory-service APIs instead of introducing
+a second review lifecycle.
+
+## 5. Existing Status Model
+
+Phase 3 must use the current enum names.
+
+AI suggestion statuses:
+
+1. `PENDING_REVIEW`: generated and validated AI suggestion awaiting admin
+   decision.
+2. `CONVERTED_TO_DRAFT`: admin converted the suggestion into an inbound order
+   draft.
+3. `REJECTED`: admin rejected the suggestion.
+4. `APPLIED`: the linked inbound order was formally applied.
+
+Inbound order statuses:
+
+1. `DRAFT`: reviewable inbound order draft; does not change inventory.
+2. `CONFIRMED`: transitional persisted confirmation state used by the existing
+   service flow.
+3. `APPLIED`: inventory increase was applied by `inventory-service`.
+4. `CANCELLED`: draft was cancelled before application.
+
+Do not introduce the alternative suggestion statuses `DRAFT`, `CONFIRMED`, or
+`EXECUTED` in Phase 3 tasks. They conflict with the completed Phase 2.5 API and
+database contracts.
+
+## 6. Technical Stack
+
+### 6.1 Backend
+
+Use the existing Java backend stack:
+
+1. Java 17.
+2. Spring Boot 3.2.12.
+3. Spring Cloud 2023.0.5.
+4. Spring MVC for new inventory-service AI APIs.
+5. Spring Cloud Gateway for `/api/admin/ai/**` routing.
+6. Spring Data JPA for persistence.
+7. MySQL for local/prod persistence.
+8. H2 for focused repository/controller tests.
+9. Jackson for JSON serialization, model output parsing, and prompt payloads.
+10. Jakarta Validation / Spring validation for request DTOs.
+11. JUnit 5 and Spring Boot Test for verification.
+12. Existing `ApiResponse`, `PageResponse`, `BusinessException`, and enum
+    patterns.
+
+### 6.2 AI Integration
+
+Use a provider-adapter design:
+
+1. `AiProvider` interface.
+2. `DeepSeekAiProvider` as the default external provider.
+3. `MiniMaxAiProvider` as an optional adapter.
+4. `MockAiProvider` for unit tests, local development without network, and demo
+   fallback.
+5. Spring Boot `@ConfigurationProperties` for all AI config.
+6. Spring `RestClient` for provider HTTP calls unless a later task proves a
+   WebFlux client is required.
+7. Prompt templates stored under backend resources with explicit
+   `promptVersion`.
+8. Output schema version stored as `outputSchemaVersion`.
+9. Strict backend validation after model output parsing.
+
+External provider configuration must come from environment variables or external
+secret configuration:
+
+1. `AI_PROVIDER`
+2. `AI_MODEL`
+3. `AI_BASE_URL`
+4. `AI_API_KEY`
+5. `AI_REQUEST_TIMEOUT_MS`
+6. `AI_MODEL_STRICT_JSON`
+7. `AI_MOCK_ENABLED`
+
+Do not hardcode API keys, hostnames, model IDs, or provider secrets in source
+code. Model names are operational configuration and must be verified against the
+provider's current official model list when implementation starts.
+
+### 6.3 Frontend
+
+Use the existing admin frontend stack:
+
+1. Vue 3.
+2. TypeScript.
+3. Vite.
+4. Element Plus.
+5. Pinia.
+6. Vue Router.
+7. Axios.
+8. Vitest.
+9. Vue Test Utils.
+10. happy-dom.
+
+Browser code must call only gateway admin APIs and must never call model
+providers directly.
+
+## 7. AI Data Ownership And Service Placement
+
+P0 implementation should live in `inventory-service`.
+
+Rationale:
+
+1. `inventory-service` owns `inventory`, `inventory_records`, `inbound_order`,
+   `inbound_order_item`, `ai_operation_suggestion`, and suggestion conversion.
+2. Putting Phase 3 P0 in `inventory-service` avoids a new distributed
+   transaction boundary.
+3. Existing admin gateway routes already send `/api/admin/ai-suggestions/**`,
+   `/api/admin/inbound-orders/**`, and inventory data to `inventory-service`.
+
+Phase 3 must add a gateway route for `/api/admin/ai/**` to the selected owner.
+For P0, route it to `inventory-service`.
+
+A separate `ai-assistant-service` is out of scope for P0. It may be considered
+later if the assistant expands beyond inventory.
+
+## 8. Data Model Changes
+
+Do not recreate existing Phase 2.5 tables. Add only the minimal nullable
+columns needed for Phase 3 AI metadata.
+
+### 8.1 Extend `ai_operation_suggestion`
+
+Add or otherwise persist:
+
+1. `model_provider VARCHAR(64) NULL`
+2. `model_name VARCHAR(128) NULL`
+3. `prompt_version VARCHAR(64) NULL`
+4. `output_schema_version VARCHAR(64) NULL`
+5. `validation_status VARCHAR(32) NULL`
+6. `validation_error VARCHAR(512) NULL`
+7. `input_snapshot_json JSON NULL`
+8. `validated_output_json JSON NULL`
+9. `raw_model_output_json JSON NULL`
+
+Rules:
+
+1. New model metadata fields are nullable for existing Phase 2.5 records.
+2. New JSON columns must not replace the existing `input_snapshot_ref` and
+   `input_summary` fields unless a task explicitly migrates and tests the
+   compatibility behavior.
+3. `validation_status` must use enum-backed values.
+4. Invalid model output must not create a persisted suggestion unless stored as
+   an explicit rejected validation artifact for debugging. P0 should prefer not
+   saving invalid suggestions.
+
+### 8.2 Inventory Record Traceability
+
+Phase 3 must use the current traceability fields already exposed by the admin
+record timeline:
+
+1. `productId`
+2. `changeType`
+3. `quantity`
+4. `requestId`
+5. `sourceType`
+6. `referenceNo`
+7. `reason`
+8. `adminUserId`
+9. `adminUsername`
+10. `status`
+11. `createdAt`
+
+Do not make P0 depend on `beforeQuantity`, `afterQuantity`, `sourceId`, or
+`operatorId` unless a separate migration task adds those fields and updates the
+DTOs/tests. If those fields are needed for richer explanations, make that a P1
+schema extension.
+
+### 8.3 Demo Data
+
+P1 may add a deterministic demo data generator.
+
+Rules:
+
+1. Disabled by default.
+2. Enabled only by dev/test profile or explicit environment property.
+3. Idempotent or deterministic across repeated execution.
+4. Must not run in production profile.
+
+## 9. Phase 3 Backend APIs
+
+All new endpoints are under `/api/admin/ai/**` and return `ApiResponse`.
+
+P0 APIs:
+
+1. `POST /api/admin/ai/inventory/ask`
+2. `GET /api/admin/ai/inventory/low-stock-analysis?days=7`
+3. `GET /api/admin/ai/inventory/hot-products?days=7`
+4. `GET /api/admin/ai/inventory/hot-products?days=30`
+5. `POST /api/admin/ai/replenishment-suggestions/generate`
+
+P1 APIs:
+
+1. `GET /api/admin/ai/reports/daily`
+2. `GET /api/admin/ai/inventory/slow-moving?days=30`
+
+Do not add duplicate review endpoints under `/api/admin/ai/suggestions/**` in
+P0. The admin frontend should use the existing APIs:
+
+1. `GET /api/admin/ai-suggestions`
+2. `GET /api/admin/ai-suggestions/{suggestionNo}`
+3. `POST /api/admin/ai-suggestions/{suggestionNo}/reject`
+4. `POST /api/admin/ai-suggestions/{suggestionNo}/convert-inbound-draft`
+
+### 9.1 Inventory Ask
+
+Request:
+
+1. `question`: required natural-language question.
+2. `productId`: optional product id hint.
+
+Behavior:
+
+1. Run intent detection against a backend whitelist.
+2. Reject unsupported intents with a controlled unsupported-intent response.
+3. Execute only read tools.
+4. Provide the LLM only relevant structured data.
+5. Return answer text, detected intent, query time, time range when applicable,
+   and structured evidence.
+
+Supported P0 intents:
+
+1. Current inventory lookup.
+2. Low-stock list.
+3. Specific product inventory status.
+4. Recent inventory record explanation when records exist.
+
+### 9.2 Low-Stock Analysis
+
+Behavior:
+
+1. Read low-stock candidates from backend-computed inventory APIs.
+2. Use last 7 days as the default sales window.
+3. Include current stock, locked stock, available stock, safety stock, sales
+   evidence, and recent records when available.
+4. Let the LLM produce reason, risk level, limitations, and suggested quantity.
+5. Validate every product id, risk level, and suggested quantity before
+   returning or persisting results.
+
+Products without enough data must be marked with explicit limitations, not
+invented trends.
+
+### 9.3 Hot-Product Analysis
+
+Behavior:
+
+1. Supports `days=7` and `days=30`.
+2. Reads sales aggregation from the existing operation-stat API.
+3. Joins current inventory evidence through backend services.
+4. Returns product id, product name, sold quantity, order count, sales amount,
+   current stock, safety stock, risk level, reason, limitations, and time range.
+
+### 9.4 Replenishment Suggestion Generation
+
+Behavior:
+
+1. Read low-stock products.
+2. Read 7-day sales stats.
+3. Read hot-product stats and optional inventory records.
+4. Send structured evidence to the configured LLM provider.
+5. Parse JSON output.
+6. Validate output.
+7. Persist one `ai_operation_suggestion` only after validation passes.
+8. Persist items with suggested quantities and risk levels.
+9. Set suggestion status to `PENDING_REVIEW`.
+10. Do not change inventory.
+11. Do not create an inbound order draft automatically.
+
+## 10. Logical Tools
+
+Separate read tools from write actions.
+
+Read tools allowed during Q&A and analysis:
+
+1. `getInventory(productId)`
+2. `listLowStockProducts()`
+3. `getSalesStats(days)`
+4. `getHotProducts(days)`
+5. `getInventoryRecords(productId)`
+6. `getOperationSummary(days)`
+
+Write actions allowed only from explicit admin-triggered API workflows:
+
+1. `createSuggestionRecord(payload)`
+2. `convertSuggestionToInboundDraft(suggestionNo)`
+
+Rules:
+
+1. The LLM may request or recommend a tool, but backend code decides whether to
+   execute it.
+2. Q&A endpoints must never execute write actions.
+3. Suggestion generation may persist only a validated suggestion.
+4. Conversion to inbound draft must use the existing
+   `/api/admin/ai-suggestions/{suggestionNo}/convert-inbound-draft` behavior.
+5. No logical tool may confirm an inbound order.
+
+## 11. Prompt And Output Guardrails
+
+System prompt rules:
+
+1. Use only provided JSON data.
+2. Do not invent product, order, sales, inventory, or date facts.
+3. If data is missing, state the limitation.
+4. Do not claim inventory changed.
+5. Do not output SQL.
+6. Do not mention internal service endpoints.
+7. Return structured JSON when requested.
+
+Backend validation rules:
+
+1. JSON must parse successfully.
+2. `analysisType` must map to an enum.
+3. `riskLevel` must be one of `LOW`, `MEDIUM`, or `HIGH`.
+4. Every `productId` must come from the input snapshot.
+5. Numeric fields must be non-negative.
+6. Replenishment `suggestedQuantity` must be a positive integer.
+7. Output must not claim inventory has already changed.
+8. Output must not contain SQL.
+9. Output must not cite products, quantities, sales values, stock values, or
+   dates absent from the structured input.
+10. Invalid output returns a controlled `ApiResponse` error and is not saved as
+    a valid suggestion.
+
+Expected model output shape:
+
+```json
+{
+  "summary": "string",
+  "analysisType": "LOW_STOCK",
+  "timeRange": {
+    "from": "string",
+    "to": "string"
+  },
+  "items": [
+    {
+      "productId": "string",
+      "productName": "string",
+      "availableStock": 0,
+      "lockedStock": 0,
+      "safetyStock": 0,
+      "soldQuantityLast7Days": 0,
+      "suggestedQuantity": 1,
+      "riskLevel": "LOW",
+      "reason": "string"
+    }
+  ],
+  "limitations": ["string"]
+}
+```
+
+## 12. Admin Frontend
+
+Add to `admin-frontend`:
+
+1. Route: `/ai-inventory`
+2. Navigation entry: `AI 库存助手`
+3. Inventory Q&A panel.
+4. Low-stock analysis panel.
+5. Hot-product analysis panel.
+6. Replenishment suggestion generation table.
+7. Existing suggestion history/detail integration.
+8. Inbound draft preview or link to existing inbound order workflow.
+9. P1 daily report tab.
+
+UI rules:
+
+1. Never show AI as having executed inventory changes.
+2. State clearly that stock changes occur only after inbound order confirmation.
+3. Display data time range for every analysis result.
+4. Show structured evidence beside natural-language analysis.
+5. Distinguish missing data, unsupported questions, model failure, and backend
+   validation failure.
+6. Browser calls only gateway admin APIs.
+7. Browser never sends trusted identity headers.
+
+## 13. Task Breakdown
+
+### Task 1: Lock Phase 3 AI Contract
+
+Goal:
+
+Create a Phase 3 contract document aligned with completed Phase 2.5.
+
+Acceptance criteria:
+
+1. Contract states AI cannot modify inventory, run SQL, call `/internal/**`, or
+   bypass services.
+2. Contract uses existing suggestion statuses:
+   `PENDING_REVIEW`, `CONVERTED_TO_DRAFT`, `REJECTED`, `APPLIED`.
+3. Contract lists Phase 3 APIs and existing APIs that must be reused.
+4. Contract defines provider strategy, prompt constraints, data sources, and
+   output validation.
+
+### Task 2: Add AI Metadata Schema
+
+Goal:
+
+Extend existing `ai_operation_suggestion` records with provider, prompt, schema,
+validation, and JSON snapshot metadata.
+
+Acceptance criteria:
+
+1. Migration is idempotent.
+2. Existing suggestion records remain valid.
+3. Status enum is unchanged.
+4. Repository tests verify metadata persistence and JSON round-trip behavior.
+
+### Task 3: Implement AI Provider Abstraction
+
+Goal:
+
+Add provider adapters for DeepSeek, MiniMax, and MOCK without exposing provider
+calls to browser code.
+
+Acceptance criteria:
+
+1. Provider config is environment-driven.
+2. No API keys or model ids are hardcoded.
+3. `MOCK` works without network.
+4. Provider failures map to controlled `ApiResponse` errors.
+5. Provider request/response mapping is covered by unit tests.
+
+### Task 4: Implement AI Structured Data Facade
+
+Goal:
+
+Build backend services that assemble inventory, low-stock, sales, hot-product,
+and record evidence for AI features.
+
+Acceptance criteria:
+
+1. Reads only through application services, repositories owned by
+   inventory-service, or admin-safe API clients.
+2. USER access to `/api/admin/ai/**` returns 403.
+3. Unauthenticated access returns 401.
+4. Responses include structured evidence and data time ranges.
+
+### Task 5: Implement Output Schema Validation And Prompt Templates
+
+Goal:
+
+Make model output validation explicit before any result is returned as trusted
+analysis or persisted as a suggestion.
+
+Acceptance criteria:
+
+1. Prompt templates are versioned.
+2. Output schema version is tracked.
+3. Invalid products, quantities, risk levels, SQL output, unsupported claims,
+   and invented facts are rejected.
+4. Validation tests cover successful and failed outputs.
+
+### Task 6: Implement AI Inventory Q&A API
+
+Goal:
+
+Answer supported inventory questions through whitelisted read tools and LLM
+analysis.
+
+Acceptance criteria:
+
+1. Supports current stock, low-stock list, product inventory status, and recent
+   inventory record explanation.
+2. Unsupported questions return an unsupported-intent response.
+3. Response includes answer, intent, evidence, and query time.
+4. Q&A never executes write actions.
+
+### Task 7: Implement Low-Stock And Hot-Product AI Analysis APIs
+
+Goal:
+
+Expose LLM-assisted low-stock and hot-product analysis endpoints.
+
+Acceptance criteria:
+
+1. Low-stock analysis includes reasons, limitations, risk levels, and suggested
+   quantities.
+2. Hot-product analysis supports 7-day and 30-day windows.
+3. Responses include data time range and structured evidence.
+4. Invalid model output is rejected with a controlled error.
+
+### Task 8: Implement AI Suggestion Generation
+
+Goal:
+
+Generate and save replenishment suggestions from validated model output.
+
+Acceptance criteria:
+
+1. `POST /api/admin/ai/replenishment-suggestions/generate` saves a suggestion.
+2. Suggestion status starts as `PENDING_REVIEW`.
+3. Suggestion stores input snapshot, validated output, provider, model, prompt
+   version, schema version, and validation status.
+4. Inventory is not changed.
+5. Inbound draft is not created automatically.
+
+### Task 9: Integrate Suggestion Draft Conversion And Applied Status
+
+Goal:
+
+Reuse existing suggestion conversion and inbound confirmation behavior, then
+reflect applied inbound orders in suggestion history.
+
+Acceptance criteria:
+
+1. Existing `convert-inbound-draft` behavior is reused.
+2. Converted suggestions move to `CONVERTED_TO_DRAFT`.
+3. When the linked inbound order is `APPLIED`, the suggestion becomes `APPLIED`.
+4. Repeated inbound confirmation does not duplicate inventory changes.
+5. No AI endpoint confirms inbound orders.
+
+### Task 10: Build AI Inventory Assistant Admin Page
+
+Goal:
+
+Add the admin UI for Phase 3 AI inventory workflows.
+
+Acceptance criteria:
+
+1. Route `/ai-inventory` exists in `admin-frontend`.
+2. Page supports Q&A, low-stock analysis, hot-product analysis, suggestion
+   generation, rejection, and draft conversion.
+3. Page shows status, evidence, risk level, time range, and error states.
+4. Page never presents AI as directly executing stock changes.
+
+### Task 11: Add Daily Report And Suggestion History Enhancements
+
+Goal:
+
+Add P1 reporting and richer review surfaces.
+
+Acceptance criteria:
+
+1. Daily report summarizes low-stock count, hot products, generated suggestions,
+   rejected suggestions, converted drafts, and applied inbound orders.
+2. Suggestion history supports status filter and detail view.
+3. This task can be deferred if P0 is at risk.
+
+### Task 12: Add Demo Data Generator
+
+Goal:
+
+Provide repeatable data for local demonstration.
+
+Acceptance criteria:
+
+1. Generates products, inventory, safety stock, orders, inventory records, and
+   optional AI suggestions.
+2. Runs only in dev/test mode.
+3. Re-running does not corrupt existing demo data.
+4. This task can be deferred if P0 is at risk.
+
+### Task 13: Complete Phase 3 Regression And Acceptance
+
+Goal:
+
+Verify the full AI assistant workflow and existing customer/admin flows.
+
+Acceptance criteria:
+
+1. Full flow passes: analysis -> suggestion -> draft -> admin confirmation ->
+   inventory increase -> inventory record -> operation log -> suggestion
+   `APPLIED`.
+2. AI cannot directly change inventory.
+3. `/internal/**` remains blocked.
+4. Trusted headers remain protected.
+5. Phase 1 customer purchase flow remains valid.
+6. Phase 2 admin login and base pages remain valid.
+7. Acceptance results are documented.
+
+## 14. Test Plan
+
+Backend:
+
+1. Unit tests for provider adapters, prompt payloads, output validation, and
+   fallback handling.
+2. Controller tests for `/api/admin/ai/**` authorization.
+3. Service tests for data facade and suggestion lifecycle.
+4. Regression tests proving suggestion generation does not mutate inventory.
+5. Regression tests proving conversion only creates an inbound draft.
+6. Regression tests proving inbound confirmation remains idempotent.
+7. Guardrail tests for unknown product ids, invalid quantities, invalid risk
+   levels, SQL output, invented facts, and false inventory execution claims.
+
+Frontend:
+
+1. API client tests for AI endpoints.
+2. View/component tests for analysis panels and suggestion actions.
+3. Route guard tests for admin-only access.
+4. Build verification.
+
+Integration:
+
+1. Low-stock analysis from deterministic data.
+2. Hot-product analysis for 7-day and 30-day windows.
+3. Suggestion generation and persistence.
+4. Suggestion to inbound draft.
+5. Inbound confirmation writes stock, records, and logs.
+6. Suggestion status reaches `APPLIED`.
+7. Customer purchase flow regression.
+8. Admin base workflow regression.
+
+Required closeout commands:
+
+1. Focused backend Maven tests for touched modules.
+2. `mvn clean package -DskipTests`.
+3. `npm run test` and `npm run build` in `admin-frontend` when UI changes are
+   included.
+
+## 15. Main Risks And Mitigation
+
+| Risk | Impact | Mitigation |
+| --- | --- | --- |
+| PRD/status drift from Phase 2.5 | Tasks implement conflicting lifecycle names | Keep this PRD aligned with current enums and existing APIs before parsing |
+| AI hallucination | Wrong operational advice | Provide only structured data, require JSON output, validate every product, quantity, risk, date, and claim |
+| Provider instability | Demo failure | Include `MOCK` provider and controlled provider failure responses |
+| Duplicate inbound execution | Inventory over-counting | Reuse existing inbound confirmation idempotency and never let AI confirm inbound orders |
+| Frontend/backend contract drift | Integration delay | Add typed admin API clients and keep review actions on existing APIs |
+| Overbuilding agents | Schedule failure | Use whitelisted backend tools and deterministic orchestration, not autonomous multi-agent behavior |
+| Security boundary regression | Unauthorized stock or data access | Keep gateway ADMIN checks, downstream ADMIN checks, trusted-header stripping, and `/internal/**` blocking tests |
+
+## 16. Two-Week Development Schedule
+
+Day 1:
+
+1. Lock Phase 3 contract.
+2. Confirm Phase 2.5 entry gate.
+3. Add AI route and API skeleton.
+
+Day 2:
+
+1. Add AI metadata migration.
+2. Implement provider abstraction and mock provider.
+
+Day 3:
+
+1. Implement structured data facade.
+2. Add authorization and evidence tests.
+
+Day 4:
+
+1. Implement prompt templates and output validation.
+2. Add guardrail tests.
+
+Day 5:
+
+1. Implement inventory Q&A.
+2. Implement unsupported-intent handling.
+
+Day 6:
+
+1. Implement low-stock analysis.
+2. Implement hot-product analysis.
+
+Day 7:
+
+1. Implement replenishment suggestion generation.
+2. Persist model metadata and validated outputs.
+
+Day 8:
+
+1. Integrate suggestion conversion reuse.
+2. Synchronize `APPLIED` status from linked inbound order.
+
+Day 9:
+
+1. Build admin AI inventory assistant page.
+2. Wire Q&A, low-stock, and hot-product sections.
+
+Day 10:
+
+1. Wire suggestion generation, history, rejection, and draft conversion UI.
+2. Add inbound draft preview/link.
+
+Day 11:
+
+1. Add daily report if P0 is stable.
+2. Add simple inventory trend chart if time allows.
+
+Day 12:
+
+1. Add demo data generator if P0 is stable.
+2. Verify repeatable demo scenario.
+
+Day 13:
+
+1. Full backend and frontend regression.
+2. Fix integration issues.
+
+Day 14:
+
+1. Final acceptance.
+2. Record demo script and known limitations.
+
+## 17. TaskMaster Parsing Rules
+
+When starting Phase 3:
+
+1. Create a new independent TaskMaster tag:
+   `phase3-ai-inventory-assistant`.
+2. Parse this PRD into that tag only.
+3. Do not parse into `master`, `phase2-admin-platform`, or
+   `phase2-5-ai-inventory-readiness`.
+4. Do not modify completed Phase 1, Phase 2, or Phase 2.5 task trees.
+5. Expand broad tasks before implementation.
+6. Implement one current task/subtask at a time.
+7. Preserve the Phase 2.5 rule: AI can create suggestions and drafts, but only
+   administrator-confirmed inbound orders can change inventory.

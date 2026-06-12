@@ -1,9 +1,11 @@
 package com.minimall.user.service;
 
+import com.minimall.common.auth.context.AuthRole;
 import com.minimall.common.auth.jwt.JwtUtils;
 import com.minimall.common.core.exception.BusinessException;
 import com.minimall.common.core.exception.ErrorCode;
 import com.minimall.user.domain.User;
+import com.minimall.user.domain.UserRole;
 import com.minimall.user.dto.LoginRequest;
 import com.minimall.user.dto.LoginResponse;
 import com.minimall.user.dto.RegisterRequest;
@@ -51,6 +53,19 @@ public class UserAuthService {
 
     @Transactional(readOnly = true)
     public LoginResponse login(LoginRequest request) {
+        return buildLoginResponse(authenticate(request));
+    }
+
+    @Transactional(readOnly = true)
+    public LoginResponse adminLogin(LoginRequest request) {
+        User user = authenticate(request);
+        if (!UserRole.ADMIN.equals(user.getRole())) {
+            throw new BusinessException(ErrorCode.FORBIDDEN);
+        }
+        return buildLoginResponse(user);
+    }
+
+    private User authenticate(LoginRequest request) {
         User user = userRepository.findByUsername(request.username())
                 .orElseThrow(this::badCredentials);
 
@@ -58,8 +73,12 @@ public class UserAuthService {
             throw badCredentials();
         }
 
-        String token = jwtUtils.generateToken(user.getId(), user.getUsername());
-        return new LoginResponse(token, "Bearer", user.getId(), user.getUsername());
+        return user;
+    }
+
+    private LoginResponse buildLoginResponse(User user) {
+        String token = jwtUtils.generateToken(user.getId(), user.getUsername(), AuthRole.valueOf(user.getRole().name()));
+        return new LoginResponse(token, "Bearer", user.getId(), user.getUsername(), user.getRole());
     }
 
     private BusinessException badCredentials() {

@@ -5,22 +5,44 @@ import com.minimall.common.core.exception.BusinessException;
 import com.minimall.common.core.exception.ErrorCode;
 import com.minimall.common.core.response.PageResponse;
 import com.minimall.order.domain.Order;
+import com.minimall.order.domain.OrderEvent;
+import com.minimall.order.domain.OrderStatus;
+import com.minimall.order.dto.AdminOrderResponse;
 import com.minimall.order.dto.OrderDetailResponse;
+import com.minimall.order.dto.OrderEventResponse;
 import com.minimall.order.dto.OrderItemSummary;
 import com.minimall.order.dto.OrderSummaryResponse;
+import com.minimall.order.dto.ProductSalesAggregationResponse;
+import com.minimall.order.dto.SalesByProductStatsResponse;
+import com.minimall.order.repository.OrderEventRepository;
+import com.minimall.order.repository.ProductSalesAggregation;
 import com.minimall.order.repository.OrderRepository;
+import jakarta.persistence.criteria.Predicate;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class OrderQueryService {
 
-    private final OrderRepository orderRepository;
+    private static final int MAX_PRODUCT_SALES_PAGE_SIZE = 100;
+    private static final int MAX_ADMIN_ORDER_PAGE_SIZE = 100;
 
-    public OrderQueryService(OrderRepository orderRepository) {
+    private final OrderRepository orderRepository;
+    private final OrderEventRepository orderEventRepository;
+
+    public OrderQueryService(OrderRepository orderRepository, OrderEventRepository orderEventRepository) {
         this.orderRepository = orderRepository;
+        this.orderEventRepository = orderEventRepository;
     }
 
     @Transactional(readOnly = true)
@@ -34,6 +56,94 @@ public class OrderQueryService {
     public PageResponse<OrderSummaryResponse> myOrders(UserContext userContext, Pageable pageable) {
         return PageResponse.from(orderRepository.findByUserId(userContext.getUserId(), pageable)
                 .map(this::toSummaryResponse));
+    }
+
+    @Transactional(readOnly = true)
+    public AdminOrderResponse adminDetail(String orderNo) {
+        Order order = orderRepository.findByOrderNo(orderNo)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Order not found"));
+        return AdminOrderResponse.from(order);
+    }
+
+    @Transactional(readOnly = true)
+    public List<OrderEventResponse> adminOrderEvents(String orderNo) {
+        Order order = orderRepository.findByOrderNo(orderNo)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Order not found"));
+
+        List<OrderEventResponse> timeline = new ArrayList<>();
+        // The order placement itself is never persisted to order_events, so it always anchors the timeline.
+        timeline.add(OrderEventResponse.derived(null, OrderStatus.PENDING_PAYMENT, order.getCreatedAt()));
+
+        boolean paidRecorded = false;
+        for (OrderEvent event : orderEventRepository.findByOrderNoOrderByCreatedAtAscIdAsc(orderNo)) {
+            timeline.add(new OrderEventResponse(
+                    event.getEventType().name(),
+                    event.getFromStatus(),
+                    event.getToStatus(),
+                    event.getCreatedAt(),
+                    event.getEventId(),
+                    event.getPayload()));
+            if (event.getToStatus() == OrderStatus.PAID) {
+                paidRecorded = true;
+            }
+        }
+
+        // Minimal fallback: fill lifecycle transitions that no recorded event covers.
+        if (order.getPaidAt() != null && !paidRecorded) {
+            timeline.add(OrderEventResponse.derived(OrderStatus.PENDING_PAYMENT, OrderStatus.PAID, order.getPaidAt()));
+        }
+        if (order.getClosedAt() != null
+                && (order.getStatus() == OrderStatus.CANCELLED || order.getStatus() == OrderStatus.CLOSED)) {
+            OrderStatus fromStatus = order.getPaidAt() != null ? OrderStatus.PAID : OrderStatus.PENDING_PAYMENT;
+            timeline.add(OrderEventResponse.derived(fromStatus, order.getStatus(), order.getClosedAt()));
+        }
+
+        timeline.sort(Comparator.comparing(OrderEventResponse::occurredAt));
+        return timeline;
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<AdminOrderResponse> adminList(
+            String orderNo,
+            String username,
+            Long userId,
+            OrderStatus status,
+            String productId,
+            LocalDateTime createdFrom,
+            LocalDateTime createdTo,
+            Pageable pageable) {
+        validateCreatedRange(createdFrom, createdTo);
+        Specification<Order> specification =
+                adminOrderSpecification(orderNo, username, userId, status, productId, createdFrom, createdTo);
+        return PageResponse.from(orderRepository.findAll(specification, boundedAdminOrderPageable(pageable))
+                .map(AdminOrderResponse::from));
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<ProductSalesAggregationResponse> productSales(
+            String productId,
+            OrderStatus status,
+            LocalDateTime createdFrom,
+            LocalDateTime createdTo,
+            Pageable pageable) {
+        validateCreatedRange(createdFrom, createdTo);
+        Pageable boundedPageable = boundedPageable(pageable);
+        return PageResponse.from(orderRepository.aggregateProductSales(
+                        normalize(productId), status, createdFrom, createdTo, boundedPageable)
+                .map(this::toProductSalesAggregationResponse));
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<SalesByProductStatsResponse> salesByProductStats(
+            String productId,
+            LocalDateTime createdFrom,
+            LocalDateTime createdTo,
+            Pageable pageable) {
+        validateCreatedRange(createdFrom, createdTo);
+        Pageable boundedPageable = boundedPageable(pageable);
+        return PageResponse.from(orderRepository.aggregateProductSales(
+                        normalize(productId), OrderStatus.PAID, createdFrom, createdTo, boundedPageable)
+                .map(this::toSalesByProductStatsResponse));
     }
 
     private OrderDetailResponse toDetailResponse(Order order) {
@@ -70,5 +180,79 @@ public class OrderQueryService {
                 order.getProductName(),
                 order.getQuantity(),
                 order.getUnitPrice()));
+    }
+
+    private ProductSalesAggregationResponse toProductSalesAggregationResponse(ProductSalesAggregation aggregation) {
+        return new ProductSalesAggregationResponse(
+                aggregation.getProductId(),
+                aggregation.getQuantitySold() == null ? 0L : aggregation.getQuantitySold(),
+                aggregation.getOrderCount() == null ? 0L : aggregation.getOrderCount(),
+                aggregation.getTotalAmount() == null ? BigDecimal.ZERO : aggregation.getTotalAmount());
+    }
+
+    private SalesByProductStatsResponse toSalesByProductStatsResponse(ProductSalesAggregation aggregation) {
+        return new SalesByProductStatsResponse(
+                aggregation.getProductId(),
+                aggregation.getOrderCount() == null ? 0L : aggregation.getOrderCount(),
+                aggregation.getQuantitySold() == null ? 0L : aggregation.getQuantitySold(),
+                aggregation.getTotalAmount() == null ? BigDecimal.ZERO : aggregation.getTotalAmount());
+    }
+
+    private void validateCreatedRange(LocalDateTime createdFrom, LocalDateTime createdTo) {
+        if (createdFrom != null && createdTo != null && createdFrom.isAfter(createdTo)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "createdFrom must be before or equal to createdTo");
+        }
+    }
+
+    private Pageable boundedPageable(Pageable pageable) {
+        int page = Math.max(0, pageable.getPageNumber());
+        int size = Math.max(1, Math.min(pageable.getPageSize(), MAX_PRODUCT_SALES_PAGE_SIZE));
+        return PageRequest.of(page, size);
+    }
+
+    private Pageable boundedAdminOrderPageable(Pageable pageable) {
+        int page = Math.max(0, pageable.getPageNumber());
+        int size = Math.max(1, Math.min(pageable.getPageSize(), MAX_ADMIN_ORDER_PAGE_SIZE));
+        // Stable, deterministic newest-first ordering regardless of any client-supplied sort.
+        return PageRequest.of(page, size, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
+    }
+
+    private Specification<Order> adminOrderSpecification(
+            String orderNo,
+            String username,
+            Long userId,
+            OrderStatus status,
+            String productId,
+            LocalDateTime createdFrom,
+            LocalDateTime createdTo) {
+        return (root, query, criteriaBuilder) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            if (StringUtils.hasText(orderNo)) {
+                predicates.add(criteriaBuilder.equal(root.get("orderNo"), orderNo.trim()));
+            }
+            if (StringUtils.hasText(username)) {
+                predicates.add(criteriaBuilder.equal(root.get("username"), username.trim()));
+            }
+            if (userId != null) {
+                predicates.add(criteriaBuilder.equal(root.get("userId"), userId));
+            }
+            if (status != null) {
+                predicates.add(criteriaBuilder.equal(root.get("status"), status));
+            }
+            if (StringUtils.hasText(productId)) {
+                predicates.add(criteriaBuilder.equal(root.get("productId"), productId.trim()));
+            }
+            if (createdFrom != null) {
+                predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("createdAt"), createdFrom));
+            }
+            if (createdTo != null) {
+                predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("createdAt"), createdTo));
+            }
+            return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
+        };
+    }
+
+    private String normalize(String value) {
+        return StringUtils.hasText(value) ? value.trim() : null;
     }
 }

@@ -6,12 +6,16 @@ import com.minimall.order.domain.Order;
 import com.minimall.order.domain.OrderStateMachine;
 import com.minimall.order.domain.OrderStatus;
 import java.math.BigDecimal;
+import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 @DataJpaTest(properties = {
@@ -159,6 +163,133 @@ class OrderRepositoryTest {
                 .satisfies(order -> assertThat(order.getStatus()).isEqualTo(OrderStatus.PAID));
     }
 
+    @Test
+    void aggregatesProductSalesWithFiltersAndStableOrdering() {
+        LocalDateTime dayStart = LocalDateTime.of(2026, 5, 20, 0, 0);
+        saveOrder(order(
+                "ORD-SALES-1001",
+                301L,
+                "SKU-SALES-A",
+                2,
+                new BigDecimal("20.00"),
+                OrderStatus.PAID),
+                dayStart.plusHours(1));
+        saveOrder(order(
+                "ORD-SALES-1002",
+                302L,
+                "SKU-SALES-A",
+                3,
+                new BigDecimal("20.00"),
+                OrderStatus.PAID),
+                dayStart.plusHours(2));
+        saveOrder(order(
+                "ORD-SALES-1003",
+                303L,
+                "SKU-SALES-B",
+                1,
+                new BigDecimal("9.99"),
+                OrderStatus.PAID),
+                dayStart.plusHours(3));
+        saveOrder(order(
+                "ORD-SALES-1004",
+                304L,
+                "SKU-SALES-A",
+                7,
+                new BigDecimal("20.00"),
+                OrderStatus.PENDING_PAYMENT),
+                dayStart.plusHours(4));
+
+        var page = orderRepository.aggregateProductSales(
+                null,
+                OrderStatus.PAID,
+                dayStart,
+                dayStart.plusDays(1),
+                PageRequest.of(0, 10));
+
+        assertThat(page.getTotalElements()).isEqualTo(2);
+        assertThat(page.getContent()).hasSize(2);
+        assertThat(page.getContent().get(0)).satisfies(aggregation -> {
+            assertThat(aggregation.getProductId()).isEqualTo("SKU-SALES-A");
+            assertThat(aggregation.getQuantitySold()).isEqualTo(5L);
+            assertThat(aggregation.getOrderCount()).isEqualTo(2L);
+            assertThat(aggregation.getTotalAmount()).isEqualByComparingTo("100.00");
+        });
+        assertThat(page.getContent().get(1)).satisfies(aggregation -> {
+            assertThat(aggregation.getProductId()).isEqualTo("SKU-SALES-B");
+            assertThat(aggregation.getQuantitySold()).isEqualTo(1L);
+            assertThat(aggregation.getOrderCount()).isEqualTo(1L);
+            assertThat(aggregation.getTotalAmount()).isEqualByComparingTo("9.99");
+        });
+    }
+
+    @Test
+    void aggregatesProductSalesByProductId() {
+        LocalDateTime createdAt = LocalDateTime.of(2026, 5, 21, 12, 0);
+        saveOrder(order(
+                "ORD-SALES-1005",
+                305L,
+                "SKU-SALES-C",
+                4,
+                new BigDecimal("15.00"),
+                OrderStatus.PAID),
+                createdAt);
+        saveOrder(order(
+                "ORD-SALES-1006",
+                306L,
+                "SKU-SALES-D",
+                2,
+                new BigDecimal("30.00"),
+                OrderStatus.PAID),
+                createdAt);
+
+        var page = orderRepository.aggregateProductSales(
+                "SKU-SALES-C",
+                null,
+                null,
+                null,
+                PageRequest.of(0, 10));
+
+        assertThat(page.getTotalElements()).isEqualTo(1);
+        assertThat(page.getContent())
+                .singleElement()
+                .satisfies(aggregation -> {
+                    assertThat(aggregation.getProductId()).isEqualTo("SKU-SALES-C");
+                    assertThat(aggregation.getQuantitySold()).isEqualTo(4L);
+                    assertThat(aggregation.getOrderCount()).isEqualTo(1L);
+                    assertThat(aggregation.getTotalAmount()).isEqualByComparingTo("60.00");
+                });
+    }
+
+    @Test
+    void findAllBySpecificationFiltersByStatusAndCreatedRangeNewestFirst() {
+        LocalDateTime base = LocalDateTime.of(2026, 5, 20, 0, 0);
+        saveOrder(order("ORD-SPEC-1001", 401L, "SKU-SPEC-A", 1, new BigDecimal("10.00"), OrderStatus.PAID),
+                base.plusDays(1));
+        saveOrder(order("ORD-SPEC-1002", 402L, "SKU-SPEC-B", 1, new BigDecimal("10.00"), OrderStatus.PAID),
+                base.plusDays(3));
+        // Out of status -> excluded.
+        saveOrder(order("ORD-SPEC-1003", 403L, "SKU-SPEC-C", 1, new BigDecimal("10.00"), OrderStatus.PENDING_PAYMENT),
+                base.plusDays(2));
+        // Out of date range -> excluded.
+        saveOrder(order("ORD-SPEC-1004", 404L, "SKU-SPEC-D", 1, new BigDecimal("10.00"), OrderStatus.PAID),
+                base.plusDays(10));
+
+        LocalDateTime from = base;
+        LocalDateTime to = base.plusDays(5);
+        Specification<Order> specification = (root, query, cb) -> cb.and(
+                cb.equal(root.get("status"), OrderStatus.PAID),
+                cb.greaterThanOrEqualTo(root.get("createdAt"), from),
+                cb.lessThanOrEqualTo(root.get("createdAt"), to));
+
+        Page<Order> page = orderRepository.findAll(specification,
+                PageRequest.of(0, 10, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"))));
+
+        assertThat(page.getTotalElements()).isEqualTo(2);
+        assertThat(page.getContent())
+                .extracting(Order::getOrderNo)
+                .containsExactly("ORD-SPEC-1002", "ORD-SPEC-1001");
+    }
+
     private Order order(String orderNo, Long userId, LocalDateTime expireAt) {
         return new Order(
                 orderNo,
@@ -171,5 +302,38 @@ class OrderRepositoryTest {
                 new BigDecimal("20.00"),
                 "idem-" + orderNo,
                 expireAt);
+    }
+
+    private Order order(
+            String orderNo,
+            Long userId,
+            String productId,
+            int quantity,
+            BigDecimal unitPrice,
+            OrderStatus status) {
+        Order order = new Order(
+                orderNo,
+                userId,
+                "sales-user",
+                productId,
+                "Sales Product",
+                quantity,
+                unitPrice,
+                unitPrice.multiply(BigDecimal.valueOf(quantity)),
+                "idem-" + orderNo,
+                null);
+        if (status != OrderStatus.PENDING_PAYMENT) {
+            new OrderStateMachine().transition(order, status, LocalDateTime.of(2026, 5, 20, 10, 0));
+        }
+        return order;
+    }
+
+    private void saveOrder(Order order, LocalDateTime createdAt) {
+        orderRepository.saveAndFlush(order);
+        jdbcTemplate.update(
+                "update orders set created_at = ?, updated_at = ? where order_no = ?",
+                Timestamp.valueOf(createdAt),
+                Timestamp.valueOf(createdAt),
+                order.getOrderNo());
     }
 }

@@ -3,6 +3,7 @@ package com.minimall.gateway;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.minimall.common.auth.constants.AuthHeaders;
+import com.minimall.common.auth.context.AuthRole;
 import com.minimall.common.auth.jwt.JwtUtils;
 import com.minimall.common.core.exception.ErrorCode;
 import com.minimall.gateway.ratelimit.GatewayRateLimitResult;
@@ -39,6 +40,7 @@ import reactor.core.publisher.Mono;
         "INVENTORY_SERVICE_BASE_URL=forward:/__gateway-regression/inventory",
         "ORDER_SERVICE_BASE_URL=forward:/__gateway-regression/order",
         "PAYMENT_SERVICE_BASE_URL=forward:/__gateway-regression/payment",
+        "NOTIFICATION_SERVICE_BASE_URL=forward:/__gateway-regression/notification",
         "minimall.auth.jwt.secret=test-gateway-regression-jwt-secret",
         "minimall.auth.jwt.expire-seconds=3600",
         "minimall.gateway.rate-limit.enabled=true",
@@ -80,6 +82,59 @@ class GatewayIntegrationRegressionTest {
     }
 
     @Test
+    void adminApiRequiresAdminBeforeRateLimiting() {
+        webTestClient.get()
+                .uri("/api/admin/products")
+                .exchange()
+                .expectStatus().isUnauthorized()
+                .expectHeader().contentTypeCompatibleWith("application/json")
+                .expectBody()
+                .jsonPath("$.success").isEqualTo(false)
+                .jsonPath("$.code").isEqualTo(ErrorCode.UNAUTHORIZED.getCode())
+                .jsonPath("$.message").isEqualTo("Missing token");
+
+        String userToken = jwtUtils.generateToken(43L, "alice", AuthRole.USER);
+        webTestClient.get()
+                .uri("/api/admin/products")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken)
+                .exchange()
+                .expectStatus().isForbidden()
+                .expectHeader().contentTypeCompatibleWith("application/json")
+                .expectBody()
+                .jsonPath("$.success").isEqualTo(false)
+                .jsonPath("$.code").isEqualTo(ErrorCode.FORBIDDEN.getCode())
+                .jsonPath("$.message").isEqualTo(ErrorCode.FORBIDDEN.getMessage());
+
+        assertThat(rateLimiter.keys()).isEmpty();
+    }
+
+    @Test
+    void routesAdminPrefixesToOwnersWithTrustedAdminRoleHeaders() {
+        String token = jwtUtils.generateToken(42L, "admin", AuthRole.ADMIN);
+
+        expectAdminRoute("/api/admin/me", "user", token);
+        expectAdminRoute("/api/admin/audit-logs", "user", token);
+        expectAdminRoute("/api/admin/products", "product", token);
+        expectAdminRoute("/api/admin/products/SKU-1", "product", token);
+        expectAdminRoute("/api/admin/inventories", "inventory", token);
+        expectAdminRoute("/api/admin/inventories/SKU-1", "inventory", token);
+        expectAdminRoute("/api/admin/ai/inventory/evidence/current/SKU-1", "inventory", token);
+        expectAdminPostRoute("/api/admin/ai/inventory/ask", "inventory", token);
+        expectAdminPostRoute("/api/admin/ai/inventory/low-stock-analysis", "inventory", token);
+        expectAdminPostRoute("/api/admin/ai/inventory/hot-products-analysis", "inventory", token);
+        expectAdminPostRoute("/api/admin/ai/replenishment-suggestions/generate", "inventory", token);
+        expectAdminRoute("/api/admin/ai/reports/daily", "inventory", token);
+        expectAdminRoute("/api/admin/orders", "order", token);
+        expectAdminRoute("/api/admin/orders/ORDER-1", "order", token);
+        expectAdminRoute("/api/admin/payments", "payment", token);
+        expectAdminRoute("/api/admin/payments/PAY-1", "payment", token);
+        expectAdminRoute("/api/admin/notifications", "notification", token);
+        expectAdminRoute("/api/admin/notifications/1", "notification", token);
+
+        assertThat(rateLimiter.keys()).hasSize(18).allMatch("user:42"::equals);
+    }
+
+    @Test
     void protectedApiRequiresJwtBeforeRateLimiting() {
         webTestClient.get()
                 .uri("/api/orders/my")
@@ -100,6 +155,28 @@ class GatewayIntegrationRegressionTest {
 
         webTestClient.options()
                 .uri("/api/orders/my")
+                .header(HttpHeaders.ORIGIN, "http://localhost:5173")
+                .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "GET")
+                .header(HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS, "Authorization, Content-Type")
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().valueEquals(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "http://localhost:5173")
+                .expectHeader().value(HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS,
+                        value -> assertThat(value).contains("GET"))
+                .expectHeader().value(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS,
+                        value -> assertThat(value).contains("Authorization"))
+                .expectHeader().value(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS,
+                        value -> assertThat(value).contains("Content-Type"));
+
+        assertThat(rateLimiter.keys()).isEmpty();
+    }
+
+    @Test
+    void adminCorsPreflightBypassesAuthenticationAndRateLimiting() {
+        rateLimiter.deny();
+
+        webTestClient.options()
+                .uri("/api/admin/products")
                 .header(HttpHeaders.ORIGIN, "http://localhost:5173")
                 .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "GET")
                 .header(HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS, "Authorization, Content-Type")
@@ -161,23 +238,27 @@ class GatewayIntegrationRegressionTest {
                 .uri("/api/users/login")
                 .header(AuthHeaders.USER_ID, "999")
                 .header(AuthHeaders.USERNAME, "mallory")
+                .header(AuthHeaders.USER_ROLE, AuthRole.ADMIN.name())
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
                 .jsonPath("$.service").isEqualTo("user")
                 .jsonPath("$.userId").isEqualTo("")
-                .jsonPath("$.username").isEqualTo("");
+                .jsonPath("$.username").isEqualTo("")
+                .jsonPath("$.role").isEqualTo("");
 
         webTestClient.post()
                 .uri("/api/users/register")
                 .header(AuthHeaders.USER_ID, "999")
                 .header(AuthHeaders.USERNAME, "mallory")
+                .header(AuthHeaders.USER_ROLE, AuthRole.ADMIN.name())
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
                 .jsonPath("$.service").isEqualTo("user")
                 .jsonPath("$.userId").isEqualTo("")
-                .jsonPath("$.username").isEqualTo("");
+                .jsonPath("$.username").isEqualTo("")
+                .jsonPath("$.role").isEqualTo("");
     }
 
     // Catalog reads are public (PRD 4.1): they route through without a token and
@@ -187,12 +268,14 @@ class GatewayIntegrationRegressionTest {
                 .uri(uri)
                 .header(AuthHeaders.USER_ID, "999")
                 .header(AuthHeaders.USERNAME, "mallory")
+                .header(AuthHeaders.USER_ROLE, AuthRole.ADMIN.name())
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
                 .jsonPath("$.service").isEqualTo(expectedService)
                 .jsonPath("$.userId").isEqualTo("")
-                .jsonPath("$.username").isEqualTo("");
+                .jsonPath("$.username").isEqualTo("")
+                .jsonPath("$.role").isEqualTo("");
     }
 
     private void expectProtectedRoute(String uri, String expectedService, String token) {
@@ -201,12 +284,46 @@ class GatewayIntegrationRegressionTest {
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                 .header(AuthHeaders.USER_ID, "999")
                 .header(AuthHeaders.USERNAME, "mallory")
+                .header(AuthHeaders.USER_ROLE, AuthRole.ADMIN.name())
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
                 .jsonPath("$.service").isEqualTo(expectedService)
                 .jsonPath("$.userId").isEqualTo("42")
-                .jsonPath("$.username").isEqualTo("alice");
+                .jsonPath("$.username").isEqualTo("alice")
+                .jsonPath("$.role").isEqualTo(AuthRole.USER.name());
+    }
+
+    private void expectAdminRoute(String uri, String expectedService, String token) {
+        webTestClient.get()
+                .uri(uri)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                .header(AuthHeaders.USER_ID, "999")
+                .header(AuthHeaders.USERNAME, "mallory")
+                .header(AuthHeaders.USER_ROLE, AuthRole.USER.name())
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.service").isEqualTo(expectedService)
+                .jsonPath("$.userId").isEqualTo("42")
+                .jsonPath("$.username").isEqualTo("admin")
+                .jsonPath("$.role").isEqualTo(AuthRole.ADMIN.name());
+    }
+
+    private void expectAdminPostRoute(String uri, String expectedService, String token) {
+        webTestClient.post()
+                .uri(uri)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                .header(AuthHeaders.USER_ID, "999")
+                .header(AuthHeaders.USERNAME, "mallory")
+                .header(AuthHeaders.USER_ROLE, AuthRole.USER.name())
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.service").isEqualTo(expectedService)
+                .jsonPath("$.userId").isEqualTo("42")
+                .jsonPath("$.username").isEqualTo("admin")
+                .jsonPath("$.role").isEqualTo(AuthRole.ADMIN.name());
     }
 
     private void expectInternalPathForbidden(String uri) {
@@ -272,7 +389,8 @@ class GatewayIntegrationRegressionTest {
             return Map.of(
                     "service", service,
                     "userId", headerValue(request, AuthHeaders.USER_ID),
-                    "username", headerValue(request, AuthHeaders.USERNAME));
+                    "username", headerValue(request, AuthHeaders.USERNAME),
+                    "role", headerValue(request, AuthHeaders.USER_ROLE));
         }
 
         private String headerValue(ServerHttpRequest request, String headerName) {

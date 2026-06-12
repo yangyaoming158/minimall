@@ -36,6 +36,7 @@ function onKey(event: KeyboardEvent) {
       <ProductCover
         :product-id="product.productId"
         :name="product.name"
+        :image-url="product.imageUrl"
         aspect="4:5"
         grade="list"
         size="full"

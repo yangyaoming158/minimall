@@ -3,6 +3,7 @@ package com.minimall.gateway;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.minimall.common.auth.constants.AuthHeaders;
+import com.minimall.common.auth.context.AuthRole;
 import com.minimall.common.auth.jwt.JwtUtils;
 import com.minimall.common.core.exception.ErrorCode;
 import com.minimall.gateway.ratelimit.GatewayRateLimitResult;
@@ -31,6 +32,7 @@ import reactor.core.publisher.Mono;
         "INVENTORY_SERVICE_BASE_URL=forward:/__gateway-auth-test",
         "ORDER_SERVICE_BASE_URL=forward:/__gateway-auth-test",
         "PAYMENT_SERVICE_BASE_URL=forward:/__gateway-auth-test",
+        "NOTIFICATION_SERVICE_BASE_URL=forward:/__gateway-auth-test",
         "minimall.auth.jwt.secret=test-gateway-auth-jwt-secret",
         "minimall.auth.jwt.expire-seconds=3600"
 })
@@ -82,7 +84,8 @@ class GatewayAuthenticationFilterTest {
                 .expectStatus().isOk()
                 .expectBody()
                 .jsonPath("$.userId").isEqualTo("42")
-                .jsonPath("$.username").isEqualTo("alice");
+                .jsonPath("$.username").isEqualTo("alice")
+                .jsonPath("$.role").isEqualTo(AuthRole.USER.name());
     }
 
     @Test
@@ -91,11 +94,13 @@ class GatewayAuthenticationFilterTest {
                 .uri("/api/users/login")
                 .header(AuthHeaders.USER_ID, "999")
                 .header(AuthHeaders.USERNAME, "mallory")
+                .header(AuthHeaders.USER_ROLE, AuthRole.ADMIN.name())
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
                 .jsonPath("$.userId").isEqualTo("")
-                .jsonPath("$.username").isEqualTo("");
+                .jsonPath("$.username").isEqualTo("")
+                .jsonPath("$.role").isEqualTo("");
     }
 
     @Test
@@ -104,11 +109,13 @@ class GatewayAuthenticationFilterTest {
                 .uri("/api/users/register")
                 .header(AuthHeaders.USER_ID, "999")
                 .header(AuthHeaders.USERNAME, "mallory")
+                .header(AuthHeaders.USER_ROLE, AuthRole.ADMIN.name())
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
                 .jsonPath("$.userId").isEqualTo("")
-                .jsonPath("$.username").isEqualTo("");
+                .jsonPath("$.username").isEqualTo("")
+                .jsonPath("$.role").isEqualTo("");
     }
 
     @Test
@@ -117,11 +124,75 @@ class GatewayAuthenticationFilterTest {
                 .uri("/api/products")
                 .header(AuthHeaders.USER_ID, "999")
                 .header(AuthHeaders.USERNAME, "mallory")
+                .header(AuthHeaders.USER_ROLE, AuthRole.ADMIN.name())
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
                 .jsonPath("$.userId").isEqualTo("")
-                .jsonPath("$.username").isEqualTo("");
+                .jsonPath("$.username").isEqualTo("")
+                .jsonPath("$.role").isEqualTo("");
+    }
+
+    @Test
+    void adminLoginPathBypassesJwtAndStripsSpoofedHeaders() {
+        webTestClient.post()
+                .uri("/api/admin/login")
+                .header(AuthHeaders.USER_ID, "999")
+                .header(AuthHeaders.USERNAME, "mallory")
+                .header(AuthHeaders.USER_ROLE, AuthRole.ADMIN.name())
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.userId").isEqualTo("")
+                .jsonPath("$.username").isEqualTo("")
+                .jsonPath("$.role").isEqualTo("");
+    }
+
+    @Test
+    void adminRouteWithoutJwtReturnsUnauthorizedApiResponse() {
+        webTestClient.get()
+                .uri("/api/admin/me")
+                .exchange()
+                .expectStatus().isUnauthorized()
+                .expectHeader().contentTypeCompatibleWith("application/json")
+                .expectBody()
+                .jsonPath("$.success").isEqualTo(false)
+                .jsonPath("$.code").isEqualTo(ErrorCode.UNAUTHORIZED.getCode())
+                .jsonPath("$.message").isEqualTo("Missing token");
+    }
+
+    @Test
+    void adminRouteWithUserJwtReturnsForbiddenApiResponse() {
+        String token = jwtUtils.generateToken(42L, "alice", AuthRole.USER);
+
+        webTestClient.get()
+                .uri("/api/admin/me")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                .exchange()
+                .expectStatus().isForbidden()
+                .expectHeader().contentTypeCompatibleWith("application/json")
+                .expectBody()
+                .jsonPath("$.success").isEqualTo(false)
+                .jsonPath("$.code").isEqualTo(ErrorCode.FORBIDDEN.getCode())
+                .jsonPath("$.message").isEqualTo(ErrorCode.FORBIDDEN.getMessage());
+    }
+
+    @Test
+    void adminRouteWithAdminJwtInjectsTrustedRoleAndStripsSpoofedHeaders() {
+        String token = jwtUtils.generateToken(42L, "admin", AuthRole.ADMIN);
+
+        webTestClient.get()
+                .uri("/api/admin/me")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                .header(AuthHeaders.USER_ID, "999")
+                .header(AuthHeaders.USERNAME, "mallory")
+                .header(AuthHeaders.USER_ROLE, AuthRole.USER.name())
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.userId").isEqualTo("42")
+                .jsonPath("$.username").isEqualTo("admin")
+                .jsonPath("$.role").isEqualTo(AuthRole.ADMIN.name());
     }
 
     @Test
@@ -202,7 +273,8 @@ class GatewayAuthenticationFilterTest {
         Map<String, String> headers(ServerHttpRequest request) {
             return Map.of(
                     "userId", headerValue(request, AuthHeaders.USER_ID),
-                    "username", headerValue(request, AuthHeaders.USERNAME));
+                    "username", headerValue(request, AuthHeaders.USERNAME),
+                    "role", headerValue(request, AuthHeaders.USER_ROLE));
         }
 
         private String headerValue(ServerHttpRequest request, String headerName) {

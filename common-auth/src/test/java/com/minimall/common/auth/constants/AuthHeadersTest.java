@@ -10,5 +10,6 @@ class AuthHeadersTest {
     void definesUserPropagationHeaderNames() {
         assertThat(AuthHeaders.USER_ID).isEqualTo("X-User-Id");
         assertThat(AuthHeaders.USERNAME).isEqualTo("X-Username");
+        assertThat(AuthHeaders.USER_ROLE).isEqualTo("X-User-Role");
     }
 }

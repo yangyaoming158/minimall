@@ -8,11 +8,12 @@ import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-public interface OrderRepository extends JpaRepository<Order, Long> {
+public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecificationExecutor<Order> {
 
     Optional<Order> findByOrderNo(String orderNo);
 
@@ -21,6 +22,35 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     Optional<Order> findByUserIdAndIdempotencyKey(Long userId, String idempotencyKey);
 
     Page<Order> findByUserId(Long userId, Pageable pageable);
+
+    @Query(
+            value = """
+                    select o.productId as productId,
+                           sum(o.quantity) as quantitySold,
+                           count(o.id) as orderCount,
+                           sum(o.totalAmount) as totalAmount
+                      from Order o
+                     where (:productId is null or o.productId = :productId)
+                       and (:status is null or o.status = :status)
+                       and (:createdFrom is null or o.createdAt >= :createdFrom)
+                       and (:createdTo is null or o.createdAt <= :createdTo)
+                     group by o.productId
+                     order by sum(o.totalAmount) desc, sum(o.quantity) desc, o.productId asc
+                    """,
+            countQuery = """
+                    select count(distinct o.productId)
+                      from Order o
+                     where (:productId is null or o.productId = :productId)
+                       and (:status is null or o.status = :status)
+                       and (:createdFrom is null or o.createdAt >= :createdFrom)
+                       and (:createdTo is null or o.createdAt <= :createdTo)
+                    """)
+    Page<ProductSalesAggregation> aggregateProductSales(
+            @Param("productId") String productId,
+            @Param("status") OrderStatus status,
+            @Param("createdFrom") LocalDateTime createdFrom,
+            @Param("createdTo") LocalDateTime createdTo,
+            Pageable pageable);
 
     @Query("""
             select o from Order o

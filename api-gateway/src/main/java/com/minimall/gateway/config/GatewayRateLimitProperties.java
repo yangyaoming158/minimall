@@ -11,6 +11,7 @@ public class GatewayRateLimitProperties {
     private int requestedTokens = 1;
     private String keyPrefix = "minimall:gateway:rate-limit";
     private boolean failOpen = true;
+    private boolean trustForwardedFor = false;
 
     public boolean isEnabled() {
         return enabled;
@@ -60,6 +61,14 @@ public class GatewayRateLimitProperties {
 
     public void setFailOpen(boolean failOpen) {
         this.failOpen = failOpen;
+    }
+
+    public boolean isTrustForwardedFor() {
+        return trustForwardedFor;
+    }
+
+    public void setTrustForwardedFor(boolean trustForwardedFor) {
+        this.trustForwardedFor = trustForwardedFor;
     }
 
     public int ttlSeconds() {

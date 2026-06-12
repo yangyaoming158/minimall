@@ -1,0 +1,932 @@
+Phase 2 PRD：MiniMall Admin Platform + RBAC + Admin-Safe APIs
+
+文件建议位置：
+.taskmaster/docs/phase2-admin-platform-prd.txt
+
+版本：
+v1.0
+
+目标阶段：
+Phase 2 - Admin Platform + RBAC + Admin-Safe APIs
+
+适用项目：
+MiniMall Order 微服务电商平台
+
+推荐技术栈：
+后端：Java 17 + Spring Boot 3 + Spring Cloud Gateway + MySQL + Redis + RabbitMQ
+前端：新增独立 admin-frontend，技术栈沿用 Vue 3 + TypeScript + Vite + Element Plus + Pinia + Vue Router + Axios
+
+核心判断：
+当前项目已经完成后端 MVP、Phase 0 API Contract Polish、Phase 1 用户前台和 UI 重构。现在可以进入管理员后台阶段，但不能直接把后台页面接到现有 /api/products 写接口上。
+
+原因：
+现有商品写接口、库存内部扣减/释放接口、支付与通知查询能力只是底层能力，不是正式 admin-safe API。Phase 2 的第一步必须补“管理员权限 + 管理端 API 契约 + 审计边界”，然后再开发后台 UI。
+
+
+一、背景
+
+当前系统已具备：
+
+1. 用户前台可通过 api-gateway 访问 canonical API。
+2. 商品查询、商品详情、库存查询、下单、取消订单、模拟支付、订单支付状态刷新已可用。
+3. Product service 已存在部分商品写能力：新增商品、修改商品、上架、下架。
+4. Inventory service 已存在前台库存查询能力和 internal 扣减/释放接口。
+5. Payment service 已存在模拟支付和支付单查询能力。
+6. Notification service 已存在支付成功事件消费和通知日志持久化能力。
+7. Gateway 已支持 JWT 鉴权、可信用户头注入、CORS、限流和 /internal/** 阻断。
+8. Phase 1 用户前台已完成初步验收和 UI 风格重构。
+
+当前缺口：
+
+1. 没有管理员角色和权限体系。
+2. 没有 /api/admin/** 管理端 API 契约。
+3. 商品写接口未区分普通用户和管理员。
+4. 商品图片字段缺失。
+5. 库存管理写接口缺失，不能把 /internal/inventories/deduct 和 /release 暴露给后台 UI。
+6. 订单后台查询能力不足。
+7. 支付单后台查询能力不足。
+8. 通知日志后台查询能力不足；通知重发能力暂不纳入 Phase 2 MVP。
+9. 没有管理员操作审计日志。
+10. 没有管理员后台前端页面。
+
+Phase 2 的目标是：在不破坏现有用户前台和后端 MVP 的前提下，新增一个 admin-safe 的后台管理系统。
+
+
+二、产品定位
+
+Phase 2 产品定位：
+
+MiniMall 管理员后台。
+
+它不是一个完整 ERP，也不是完整企业级中台。它是用于管理 MiniMall 商品、库存、订单、支付、通知的轻量后台平台。
+
+管理后台应服务于以下目标：
+
+1. 管理员可以登录后台。
+2. 管理员可以管理商品基础信息。
+3. 管理员可以设置商品图片展示字段。
+4. 管理员可以上架/下架商品。
+5. 管理员可以查看和调整库存。
+6. 管理员可以查看库存流水。
+7. 管理员可以查询订单列表和订单详情。
+8. 管理员可以查看订单状态和支付状态。
+9. 管理员可以查看通知日志。
+10. 管理员操作需要有基本审计记录。
+
+Phase 2 应优先保证：权限安全、API 边界清楚、后台可用、前后台不互相污染。
+
+
+三、阶段目标
+
+Phase 2 的目标是：
+
+1. 建立基于 users.role 的简化管理员角色体系。
+2. 在 api-gateway 层和服务层保护 /api/admin/**。
+3. 定义并实现 admin-safe API。
+4. 新增 /api/admin/products/** 商品写 API，并为旧 /api/products 写接口补 ADMIN 权限保护。
+5. 增加商品图片展示字段 imageUrl。
+6. 增加库存管理 API，包括库存初始化、库存调整、库存流水查询。
+7. 增加订单后台查询 API，包括订单列表、筛选、详情、状态查看。
+8. 增加支付后台查询 API。
+9. 增加通知日志查询能力；通知重发不纳入 Phase 2 MVP。
+10. 增加管理员操作审计日志。
+11. 开发独立管理员后台前端项目。
+12. 保持 Phase 1 用户前台购买闭环不被破坏。
+13. 编写 Phase 2 验收文档。
+
+
+四、非目标
+
+Phase 2 不做以下内容：
+
+1. 不做完整企业级权限中心。
+2. 不做多租户。
+3. 不做复杂组织架构。
+4. 不做完整对象存储系统。
+5. 不做真实第三方支付。
+6. 不做退款、对账、支付回调。
+7. 不做发货、物流、售后。
+8. 不做优惠券、促销、积分。
+9. 不做客服系统。
+10. 不做复杂 BI 大屏。
+11. 不做 Kubernetes、CI/CD、生产环境发布。
+12. 不直接暴露 /internal/** 给后台 UI。
+13. 不让后台 UI 直接访问微服务端口。
+14. 不破坏 Phase 1 用户前台 canonical API。
+
+商品图片说明：
+
+Phase 2 必须支持商品图片展示字段 imageUrl，并允许管理员在商品表单中填写或修改图片 URL。
+
+Phase 2 不实现 multipart 文件上传、本地静态文件上传或对象存储。MVP 只要求 imageUrl 字段、管理端 URL 编辑能力和用户前台图片展示。
+
+
+五、用户角色
+
+5.1 普通用户
+
+普通用户继续使用 Phase 1 用户前台。
+
+普通用户不能访问：
+
+1. admin-frontend 前端应用。
+2. /api/admin/** 后端接口。
+3. 商品写操作。
+4. 库存调整操作。
+5. 订单后台查询。
+6. 通知日志查询。
+
+5.2 管理员
+
+管理员可以访问管理后台。
+
+管理员能力：
+
+1. 登录管理后台。
+2. 查看当前管理员身份。
+3. 管理商品。
+4. 管理库存。
+5. 查看订单。
+6. 查看支付单。
+7. 查看通知日志。
+8. 查看操作审计记录。
+
+5.3 系统内部服务
+
+系统内部服务继续使用 /internal/**。
+
+要求：
+
+1. internal API 仍然不能暴露给浏览器。
+2. admin API 不能复用 internal 扣库存/释放库存接口作为 UI 直连接口。
+3. 管理员库存调整必须通过专门的 admin-safe API，并记录审计和库存流水。
+
+
+六、权限与认证设计
+
+6.1 管理员身份模型
+
+Phase 2 MVP 固定使用简化角色字段，不引入 roles / user_roles 表。
+
+在 users 表增加：
+
+1. role：USER / ADMIN
+
+要求：
+
+1. 已有普通用户默认 role=USER。
+2. 管理员账号必须 role=ADMIN。
+3. 角色字段在 Java 代码中必须使用 enum，不使用字符串散落判断。
+4. 不实现菜单级、按钮级、资源级权限；Phase 2 只区分 USER 与 ADMIN。
+
+6.2 JWT 中的角色信息
+
+登录成功后，JWT 和 /me 响应都应能让前端判断当前用户是否为管理员。
+
+MVP 固定做法：
+
+1. JWT claims 必须包含 role。
+2. /api/users/me 返回 role，便于用户前台和调试场景展示当前身份。
+3. /api/admin/me 必须校验 ADMIN，并返回当前管理员身份。
+4. admin 前端启动和路由守卫必须调用 /api/admin/me 校验管理员身份。
+5. Gateway 校验 JWT 并注入可信 X-User-Id、X-Username、X-User-Role。
+6. 下游 admin API 服务层必须再次校验管理员权限。
+
+6.3 Gateway 管理端保护
+
+Gateway 必须保护：
+
+/api/admin/**
+
+要求：
+
+1. 未登录访问 /api/admin/** 返回 401 ApiResponse。
+2. 登录但非 ADMIN 访问 /api/admin/** 返回 403 ApiResponse。
+3. ADMIN 访问 /api/admin/** 正常转发。
+4. 浏览器伪造 X-User-Id、X-Username、X-User-Role 必须被剥离。
+5. 可信用户头必须由 Gateway 注入。
+
+6.4 Gateway 管理端路由归属
+
+Gateway 必须将 /api/admin/** 按资源前缀转发到明确的下游服务：
+
+1. /api/admin/login、/api/admin/me -> user-service
+2. /api/admin/products/** -> product-service
+3. /api/admin/inventories/** -> inventory-service
+4. /api/admin/orders/** -> order-service
+5. /api/admin/payments/** -> payment-service
+6. /api/admin/notifications/** -> notification-service
+7. /api/admin/audit-logs/** -> user-service
+
+要求：
+
+1. 不新增 admin-service。
+2. 不让前端访问任何微服务直连端口。
+3. 不通过 /internal/** 暴露管理后台能力。
+
+6.5 admin-frontend 路由保护
+
+admin-frontend 固定路由：
+
+/login
+/
+/products
+/inventories
+/orders
+/payments
+/notifications
+/audit-logs
+
+要求：
+
+1. 未登录访问 admin-frontend 受保护路由时跳转 /login。
+2. 非管理员访问 admin-frontend 受保护路由时跳转 403。
+3. 管理员登录成功后进入 /products。
+4. Phase 1 用户商城 frontend 不注册上述后台路由。
+
+
+七、Admin API 路径规范
+
+所有管理端 API 使用 /api/admin/**。
+
+7.1 管理员认证 API
+
+1. POST /api/admin/login
+   说明：管理员登录。可复用 user-service 登录能力，但必须校验管理员身份。
+   要求：普通 USER 使用该接口登录必须返回 403 ApiResponse，不签发后台可用会话。
+
+2. GET /api/admin/me
+   说明：获取当前管理员信息。
+
+Phase 2 MVP 不定义服务端 logout API；前端只清理本地 token。
+
+7.2 商品管理 API
+
+1. GET /api/admin/products
+   说明：后台商品列表，支持分页、关键词、状态筛选。
+
+2. GET /api/admin/products/{productId}
+   说明：后台商品详情。
+
+3. POST /api/admin/products
+   说明：新增商品。
+
+4. PUT /api/admin/products/{productId}
+   说明：修改商品名称、描述、价格、图片 URL 等基础信息。
+
+5. PUT /api/admin/products/{productId}/status
+   说明：统一修改商品状态。请求体包含 status。
+
+Phase 2 MVP 不提供商品删除 API。后台只支持新增、修改、上架、下架。
+
+商品状态：
+
+1. ON_SHELF
+2. OFF_SHELF
+
+商品图片：
+
+1. imageUrl 字段必须进入 Product Entity、CreateProductRequest、UpdateProductRequest、ProductResponse 或 AdminProductResponse。
+2. 用户前台商品列表和详情页应使用 imageUrl；若为空，继续使用前端占位图。
+3. Phase 2 不实现真实文件上传。
+
+7.3 库存管理 API
+
+1. GET /api/admin/inventories
+   说明：库存列表，支持分页、商品关键词、库存状态筛选。
+
+2. GET /api/admin/inventories/{productId}
+   说明：商品库存详情。
+
+3. POST /api/admin/inventories
+   说明：为商品初始化库存。若库存已存在，返回 BusinessException 冲突错误，不覆盖现有库存。
+
+4. POST /api/admin/inventories/{productId}/adjust
+   说明：管理员调整库存。
+
+请求字段：
+
+- delta：调整数量，可正可负。
+- reason：调整原因。
+- requestId：幂等键，必填。
+
+要求：
+
+1. 不能把可用库存调整为负数。
+2. 调整必须记录 inventory_records。
+3. 调整必须记录 admin audit log。
+4. 调整接口必须按 requestId 幂等；同一 requestId 重复提交必须返回同一调整结果或明确的幂等结果。
+5. 调整操作不能复用订单 internal deduct/release 语义作为 UI API。
+
+5. GET /api/admin/inventories/{productId}/records
+   说明：查询该商品库存流水。
+
+7.4 订单管理 API
+
+1. GET /api/admin/orders
+   说明：后台订单列表。
+
+支持筛选：
+
+- orderNo
+- username 或 userId
+- status
+- productId
+- createdFrom
+- createdTo
+- page
+- size
+
+2. GET /api/admin/orders/{orderNo}
+   说明：后台订单详情。
+
+3. GET /api/admin/orders/{orderNo}/events
+   说明：订单事件时间线。若当前后端已有 order_events 表，可基于该表返回。若数据不足，可返回订单状态变更记录或最小事件集。
+
+Phase 2 不要求管理员直接修改订单状态，除非明确设计。订单状态写操作容易影响一致性，默认不开放。
+
+7.5 支付管理 API
+
+1. GET /api/admin/payments
+   说明：支付单列表。
+
+支持筛选：
+
+- paymentNo
+- orderNo
+- status
+- paidFrom
+- paidTo
+- page
+- size
+
+2. GET /api/admin/payments/{paymentNo}
+   说明：支付单详情。
+
+3. GET /api/admin/payments/order/{orderNo}
+   说明：按订单查询支付单。
+
+Phase 2 不做退款和对账，只做查询。
+
+7.6 通知管理 API
+
+1. GET /api/admin/notifications
+   说明：通知日志列表。
+
+支持筛选：
+
+- eventId
+- orderNo
+- status
+- channel
+- createdFrom
+- createdTo
+- page
+- size
+
+2. GET /api/admin/notifications/{id}
+   说明：通知日志详情。
+
+Phase 2 MVP 不提供通知重发 API。通知重发可作为后续阶段能力，当前只做日志查询和详情查看。
+
+7.7 审计日志 API
+
+审计日志归属固定如下：
+
+1. user-service 负责 admin_operation_logs 表结构、查询 API 和 /api/admin/audit-logs/** 路由承载。
+2. product-service、inventory-service、notification-service 等产生管理写操作的服务，直接向共享数据库表 admin_operation_logs 写入审计记录。
+3. common-core 只沉淀审计相关 enum、DTO 或轻量工具，不新增独立 admin-service，不通过 MQ 异步写审计。
+
+1. GET /api/admin/audit-logs
+   说明：查询管理员操作日志。
+
+筛选：
+
+- adminUserId
+- action
+- resourceType
+- resourceId
+- createdFrom
+- createdTo
+- page
+- size
+
+审计日志字段：
+
+1. id
+2. adminUserId
+3. adminUsername
+4. action
+5. resourceType
+6. resourceId
+7. summary
+8. beforeSnapshot，修改类操作记录
+9. afterSnapshot，新增和修改类操作记录
+10. ip，有请求上下文时记录
+11. userAgent，有请求上下文时记录
+12. createdAt
+
+
+八、后端模块改造范围
+
+8.1 common-auth
+
+可能需要增加：
+
+1. role 字段支持。
+2. AuthHeaders 增加 X-User-Role。
+3. UserContext 增加 role。
+4. UserContextFilter 解析 role。
+
+8.2 user-service
+
+可能需要增加：
+
+1. users.role 字段和 UserRole enum。
+2. 管理员登录和 admin 身份校验。
+3. /api/admin/me。
+4. 初始管理员账号 seed 方案。
+5. admin_operation_logs 表结构和 /api/admin/audit-logs 查询 API。
+
+初始管理员账号通过环境变量驱动的应用启动 seed 创建。未配置管理员环境变量时，不自动创建管理员。
+
+禁止硬编码生产密码。
+
+8.3 api-gateway
+
+需要增加：
+
+1. /api/admin/** 路由，并按 6.4 的固定归属转发。
+2. ADMIN 权限判断。
+3. 可信 role header 注入。
+4. 非管理员访问返回 403 ApiResponse。
+5. 继续阻断 /internal/**。
+
+8.4 product-service
+
+需要增加：
+
+1. imageUrl 字段。
+2. AdminProductController。
+3. admin product request/response DTO。
+4. 统一 status mutation：PUT /api/admin/products/{productId}/status。
+5. 处理已有 /api/products 写接口的安全策略。
+
+要求：
+
+1. 现有 /api/products 的写接口可以暂时保留兼容，但必须要求 ADMIN 权限。
+2. 正式后台统一使用 /api/admin/products/**。
+3. 普通 USER 不能通过旧商品写接口创建、修改、上架或下架商品。
+
+8.5 inventory-service
+
+需要增加：
+
+1. AdminInventoryController。
+2. 库存初始化 API。
+3. 库存调整 API。
+4. 库存流水查询 API。
+5. 调整原因和管理员信息记录。
+6. 防负库存。
+7. 必填 requestId 幂等机制。
+
+8.6 order-service
+
+需要增加：
+
+1. AdminOrderController。
+2. 订单列表筛选。
+3. 订单详情。
+4. 订单事件时间线。
+
+默认不增加管理员手动改订单状态能力。
+
+8.7 payment-service
+
+需要增加：
+
+1. AdminPaymentController。
+2. 支付列表筛选。
+3. 支付详情。
+
+默认不增加退款、回调、对账。
+
+8.8 notification-service
+
+需要增加：
+
+1. AdminNotificationController。
+2. 通知日志列表。
+3. 通知详情。
+
+明确不增加通知重发接口。
+
+8.9 common-core
+
+可能需要增加：
+
+1. PageResponse<T> 共享分页结构，如尚未统一。
+2. Admin 相关 ErrorCode。
+3. 审计日志公共枚举和 DTO。
+
+
+九、管理员前端页面范围
+
+管理员前端必须是独立后台项目，不是在 Phase 1 用户商城 frontend 中增加管理员账号、管理员菜单或管理员页面。
+
+固定方案：
+
+1. 新增独立目录：admin-frontend。
+2. admin-frontend 使用 Vue 3 + TypeScript + Vite + Element Plus + Pinia + Vue Router + Axios。
+3. Phase 1 的 frontend 继续只承载用户商城，不出现管理员入口、管理员菜单或后台页面。
+4. admin-frontend 拥有独立 package.json、Vite 配置、路由、布局、登录页、API client、状态管理和 README。
+5. admin-frontend 只能通过 api-gateway 调用 /api/admin/** 和必要的公开只读 API。
+6. admin-frontend 不能调用 /internal/**，不能直连微服务端口，不能主动发送 X-User-Id、X-Username、X-User-Role。
+7. 两个前端可以复用设计语言、类型命名和后端 DTO 约定，但不能共用同一个浏览器应用入口。
+8. 商品 imageUrl 在用户商城 frontend 展示属于商品字段回归，不代表管理员后台并入用户商城。
+
+9.1 管理员登录页
+
+admin-frontend 路由：
+/login
+
+功能：
+
+1. 管理员登录。
+2. 登录成功进入 /products。
+3. 非管理员账号登录失败或提示无权限。
+
+9.2 管理后台布局
+
+admin-frontend 根路由：
+/
+
+要求：
+
+1. / 默认重定向到 /products。
+
+布局：
+
+1. 左侧菜单。
+2. 顶部栏。
+3. 当前管理员信息。
+4. 退出登录。
+
+菜单：
+
+1. 商品管理。
+2. 库存管理。
+3. 订单管理。
+4. 支付管理。
+5. 通知管理。
+6. 操作日志。
+
+9.3 商品管理页
+
+admin-frontend 路由：
+/products
+
+功能：
+
+1. 商品列表。
+2. 分页。
+3. 关键词搜索。
+4. 状态筛选。
+5. 新增商品。
+6. 编辑商品。
+7. 修改 imageUrl。
+8. 上架/下架。
+9. 查看商品详情。
+
+9.4 库存管理页
+
+admin-frontend 路由：
+/inventories
+
+功能：
+
+1. 库存列表。
+2. 商品搜索。
+3. 库存状态筛选。
+4. 初始化库存。
+5. 调整库存。
+6. 查看库存流水。
+7. 调整原因必填。
+
+9.5 订单管理页
+
+admin-frontend 路由：
+/orders
+
+功能：
+
+1. 订单列表。
+2. 订单状态筛选。
+3. 订单号搜索。
+4. 用户筛选。
+5. 时间范围筛选。
+6. 查看订单详情。
+7. 查看订单事件时间线。
+
+9.6 支付管理页
+
+admin-frontend 路由：
+/payments
+
+功能：
+
+1. 支付单列表。
+2. 支付状态筛选。
+3. paymentNo / orderNo 搜索。
+4. 时间范围筛选。
+5. 查看支付详情。
+
+9.7 通知管理页
+
+admin-frontend 路由：
+/notifications
+
+功能：
+
+1. 通知日志列表。
+2. 状态筛选。
+3. eventId / orderNo 搜索。
+4. 查看通知详情。
+Phase 2 MVP 不提供通知重发入口。
+
+9.8 操作日志页
+
+admin-frontend 路由：
+/audit-logs
+
+功能：
+
+1. 操作日志列表。
+2. 管理员筛选。
+3. 操作类型筛选。
+4. 资源类型筛选。
+5. 时间范围筛选。
+6. 查看操作详情。
+
+
+十、UI 风格要求
+
+管理员后台应与用户前台区分。
+
+用户前台：极简现代电商风。
+管理员后台：清晰、高效、数据管理导向。
+
+后台 UI 推荐风格：
+
+1. Element Plus 管理后台风可以接受。
+2. 左侧菜单 + 顶部栏。
+3. 表格、筛选栏、弹窗表单为主。
+4. 状态标签明确。
+5. 危险操作需要确认。
+6. 库存调整、上架/下架必须有确认弹窗。
+7. 错误提示必须清晰。
+8. 不追求花哨视觉，优先信息密度和可操作性。
+
+
+十一、数据与数据库要求
+
+Phase 2 可能需要新增 migration。
+
+需要新增或修改：
+
+1. users.role。
+2. products.image_url。
+3. admin_operation_logs。
+4. inventory_records 增加 admin 操作相关字段，如已有可复用则不重复。
+5. 必要索引：订单状态、订单创建时间、支付状态、通知状态、审计日志时间。
+
+禁止：
+
+1. 直接修改线上数据语义。
+2. 删除已有核心表。
+3. 破坏现有订单、库存、支付幂等约束。
+
+
+十二、审计要求
+
+以下操作必须记录 audit log：
+
+1. 新增商品。
+2. 修改商品。
+3. 上架商品。
+4. 下架商品。
+5. 初始化库存。
+6. 调整库存。
+
+Phase 2 MVP 不记录通知重发，因为本阶段不实现通知重发。
+
+以下操作不纳入 Phase 2 MVP 审计要求：
+
+1. 管理员登录。
+2. 管理员查看敏感详情。
+
+审计日志至少包含：
+
+1. 操作人。
+2. 操作类型。
+3. 资源类型。
+4. 资源标识。
+5. 操作摘要。
+6. 操作时间。
+
+
+十三、测试要求
+
+13.1 后端测试
+
+必须覆盖：
+
+1. 非登录访问 /api/admin/** 返回 401。
+2. 普通用户访问 /api/admin/** 返回 403。
+3. ADMIN 访问 /api/admin/** 成功。
+4. 浏览器伪造 role header 无效。
+5. 商品新增、修改、状态修改。
+6. 商品 imageUrl 保存和返回。
+7. 库存初始化。
+8. 库存调整不能导致负库存。
+9. 库存调整记录流水。
+10. 库存调整记录审计。
+11. 订单后台列表筛选。
+12. 支付后台列表筛选。
+13. 通知后台列表筛选。
+14. 审计日志查询。
+
+13.2 前端测试或验证
+
+至少需要：
+
+1. admin-frontend npm run build 通过。
+2. 管理员登录成功。
+3. 普通用户访问后台被拒绝。
+4. 商品新增、编辑、上架、下架流程可用。
+5. 商品 imageUrl 在用户前台展示。
+6. 库存初始化和调整流程可用。
+7. 订单列表和详情可用。
+8. 支付列表和详情可用。
+9. 通知日志列表可用。
+10. 审计日志可用。
+11. 后台所有 API 通过 api-gateway 调用。
+12. 后台不调用 /internal/**。
+
+13.3 回归测试
+
+必须确认 Phase 1 用户前台仍然可用：
+
+1. 用户注册。
+2. 用户登录。
+3. 商品列表。
+4. 商品详情。
+5. 下单。
+6. 支付。
+7. 订单变 PAID。
+
+
+十四、验收标准
+
+Phase 2 完成后，必须满足：
+
+1. TaskMaster phase2-admin-platform tag 中所有任务 done。
+2. mvn test 通过，或在非受限环境中通过。
+3. mvn clean package -DskipTests 通过。
+4. docker compose config 校验通过。
+5. frontend npm run build 和 admin-frontend npm run build 通过。
+6. /api/admin/** 需要 ADMIN 权限。
+7. 普通用户无法访问 admin API。
+8. 未登录用户无法访问 admin API。
+9. 浏览器伪造管理员 header 无效。
+10. 商品管理页面可新增、修改、上架、下架商品。
+11. 商品 imageUrl 能被保存，并在用户前台展示。
+12. 库存管理页面可初始化和调整库存。
+13. 库存调整不能导致负库存。
+14. 库存调整记录库存流水。
+15. 关键管理操作记录审计日志。
+16. 订单后台页面可查询订单列表和详情。
+17. 支付后台页面可查询支付单列表和详情。
+18. 通知后台页面可查询通知日志。
+19. 用户前台完整购买闭环仍然可用。
+20. docs/phase2-admin-acceptance.md 记录验收结果。
+
+
+十五、推荐任务拆分方向
+
+建议 TaskMaster 解析为 14 到 16 个顶层任务。
+
+推荐任务：
+
+1. 审查当前后台能力与定义 admin API 契约。
+2. 实现管理员角色模型和初始管理员账号。
+3. 扩展 JWT/UserContext/Gateway，实现 /api/admin/** 权限保护。
+4. 实现 admin audit log 基础设施。
+5. 实现 Product admin API，包括 imageUrl 和统一 status mutation。
+6. 实现 Inventory admin API，包括库存初始化、调整、流水查询。
+7. 实现 Order admin API，包括订单列表、筛选、详情、事件时间线。
+8. 实现 Payment admin API，包括支付列表、筛选、详情。
+9. 实现 Notification admin API，包括日志列表、详情，不包括重发。
+10. 初始化独立 admin-frontend 项目、路由、布局、权限守卫和 API client。
+11. 在 admin-frontend 实现管理员登录和后台框架。
+12. 在 admin-frontend 实现商品管理页面，并在用户商城 frontend 回归 imageUrl 展示。
+13. 在 admin-frontend 实现库存管理页面。
+14. 在 admin-frontend 实现订单、支付、通知、审计页面。
+15. 完成前后台联调和用户前台回归。
+16. 编写 Phase 2 文档与最终验收。
+
+如需控制任务数量，可合并：
+
+1. 7、8、9 合并为后台查询 API。
+2. 14 拆成多个 subtask。
+3. 15、16 可合并为验收与文档。
+
+
+十六、TaskMaster 使用建议
+
+本 PRD 应作为新的独立任务树输入，不应追加到 master、phase0-api-polish 或 phase1-customer-frontend 任务树。
+
+建议使用独立 tag：
+
+phase2-admin-platform
+
+推荐命令：
+
+task-master add-tag phase2-admin-platform --description="Phase 2 admin platform with RBAC and admin-safe APIs"
+
+task-master use-tag phase2-admin-platform
+
+task-master parse-prd .taskmaster/docs/phase2-admin-platform-prd.txt --num-tasks=15
+
+task-master list
+
+task-master validate-dependencies
+
+如果本地没有全局 task-master 命令，可使用：
+
+node node_modules/task-master-ai/dist/task-master.js add-tag phase2-admin-platform --description="Phase 2 admin platform with RBAC and admin-safe APIs"
+
+node node_modules/task-master-ai/dist/task-master.js use-tag phase2-admin-platform
+
+node node_modules/task-master-ai/dist/task-master.js parse-prd .taskmaster/docs/phase2-admin-platform-prd.txt --num-tasks=15
+
+node node_modules/task-master-ai/dist/task-master.js list
+
+node node_modules/task-master-ai/dist/task-master.js validate-dependencies
+
+解析前建议备份：
+
+mkdir -p .taskmaster/backups
+
+cp .taskmaster/tasks/tasks.json .taskmaster/backups/tasks-before-phase2-admin-platform.json
+
+如果存在 .taskmaster/state.json，也建议备份：
+
+cp .taskmaster/state.json .taskmaster/backups/state-before-phase2-admin-platform.json
+
+注意：
+
+1. 不要覆盖 .taskmaster/docs/prd.txt。
+2. 不要覆盖 Phase 0 和 Phase 1 PRD。
+3. 不要在 master、phase0-api-polish、phase1-customer-frontend 上 parse-prd。
+4. 不要手动编辑 .taskmaster/state.json。
+5. 不要把 Phase 2 任务追加到旧任务树中。
+
+
+十七、给开发 Agent 的边界说明
+
+如果由 Claude、Codex 或其他 agent 执行本阶段，应遵守：
+
+1. 先读取本 PRD。
+2. 先读取 docs/frontend-integration.md。
+3. 先读取 docs/api-gateway-contract.md。
+4. 先读取 docs/phase0-acceptance.md 和 Phase 1 前端验收文档。
+5. 先读取 README.md。
+6. 当前 TaskMaster tag 必须是 phase2-admin-platform。
+7. 每次只执行一个 task 或 subtask。
+8. 先输出计划，再修改代码。
+9. 不修改与当前任务无关的代码。
+10. 不破坏用户前台购买闭环。
+11. 不直接暴露 /internal/**。
+12. 不让前端访问微服务端口。
+13. 不跳过权限和审计要求。
+14. 不引入未要求的大型架构。
+15. 完成后必须运行相应测试或构建。
+16. 需要记录修改文件、运行命令、验证结果和遗留问题。
+
+
+十八、Phase 2 通过后的后续方向
+
+Phase 2 完成后，项目将具备：
+
+1. 后端 MVP。
+2. 用户前台。
+3. 管理员后台。
+4. RBAC 或管理员权限体系。
+5. 商品、库存、订单、支付、通知的基本管理能力。
+
+后续可以进入：
+
+1. Phase 3：高并发与生产化强化。
+2. Phase 4：支付/订单生命周期扩展，包括退款、对账、回调、发货。
+3. Phase 5：AI Admin Copilot，包括自然语言查询订单、库存分析、运营日报、异常诊断。

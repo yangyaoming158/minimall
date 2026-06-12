@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.minimall.user.domain.User;
+import com.minimall.user.domain.UserRole;
 import com.minimall.user.domain.UserStatus;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +32,7 @@ class UserRepositoryTest {
                 .get()
                 .extracting(User::getEmail)
                 .isEqualTo("alice@example.com");
+        assertThat(saved.getRole()).isEqualTo(UserRole.USER);
         assertThat(userRepository.existsByUsername("alice")).isTrue();
     }
 
@@ -45,6 +47,34 @@ class UserRepositoryTest {
                 .get()
                 .extracting(User::getStatus)
                 .isEqualTo(UserStatus.DISABLED);
+    }
+
+    @Test
+    void persistsRoleAsEnumValue() {
+        User user = new User("admin-user", "$2a$10$hash", null, null);
+        user.setRole(UserRole.ADMIN);
+        userRepository.saveAndFlush(user);
+
+        assertThat(userRepository.findByUsername("admin-user"))
+                .isPresent()
+                .get()
+                .extracting(User::getRole)
+                .isEqualTo(UserRole.ADMIN);
+    }
+
+    @Test
+    void defaultsNullRoleToUserOnPersist() {
+        User user = new User("default-role", "$2a$10$hash", null, null);
+        user.setRole(null);
+
+        User saved = userRepository.saveAndFlush(user);
+
+        assertThat(saved.getRole()).isEqualTo(UserRole.USER);
+        assertThat(userRepository.findByUsername("default-role"))
+                .isPresent()
+                .get()
+                .extracting(User::getRole)
+                .isEqualTo(UserRole.USER);
     }
 
     @Test

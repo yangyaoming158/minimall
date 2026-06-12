@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.minimall.common.core.exception.ErrorCode;
 import com.minimall.inventory.domain.Inventory;
 import com.minimall.inventory.domain.InventoryChangeType;
+import com.minimall.inventory.domain.InventoryRecordSourceType;
 import com.minimall.inventory.dto.InventoryChangeRequest;
 import com.minimall.inventory.repository.InventoryRecordRepository;
 import com.minimall.inventory.repository.InventoryRepository;
@@ -86,6 +87,13 @@ class InternalInventoryControllerTest {
                 .get()
                 .satisfies(record -> {
                     assertThat(record.getProductId()).isEqualTo("SKU-STOCK-1");
+                    assertThat(record.getOrderNo()).isEqualTo("ORDER-DED-1");
+                    assertThat(record.getRequestId()).isEqualTo("ORDER-DED-1");
+                    assertThat(record.getSourceType()).isEqualTo(InventoryRecordSourceType.ORDER_DEDUCT);
+                    assertThat(record.getReferenceNo()).isEqualTo("ORDER-DED-1");
+                    assertThat(record.getReason()).isNull();
+                    assertThat(record.getAdminUserId()).isNull();
+                    assertThat(record.getAdminUsername()).isNull();
                     assertThat(record.getQuantity()).isEqualTo(3);
                 });
     }
@@ -151,8 +159,12 @@ class InternalInventoryControllerTest {
         assertThat(inventoryRecordRepository.findByOrderNoAndChangeType("ORDER-REL-1", InventoryChangeType.RELEASE))
                 .isPresent()
                 .get()
-                .extracting("quantity")
-                .isEqualTo(2);
+                .satisfies(record -> {
+                    assertThat(record.getQuantity()).isEqualTo(2);
+                    assertThat(record.getRequestId()).isEqualTo("ORDER-REL-1");
+                    assertThat(record.getSourceType()).isEqualTo(InventoryRecordSourceType.ORDER_RELEASE);
+                    assertThat(record.getReferenceNo()).isEqualTo("ORDER-REL-1");
+                });
     }
 
     @Test

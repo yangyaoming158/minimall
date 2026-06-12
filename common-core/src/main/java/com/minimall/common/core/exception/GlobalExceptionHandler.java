@@ -2,6 +2,7 @@ package com.minimall.common.core.exception;
 
 import com.minimall.common.core.response.ApiResponse;
 import jakarta.validation.ConstraintViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -49,6 +50,13 @@ public class GlobalExceptionHandler {
         }
 
         return buildResponse(HttpStatus.BAD_REQUEST, ErrorCode.VALIDATION_ERROR, message);
+    }
+
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    public ResponseEntity<ApiResponse<Void>> handleOptimisticLockingFailureException(
+            OptimisticLockingFailureException exception) {
+        return buildResponse(HttpStatus.CONFLICT, ErrorCode.CONFLICT,
+                "Resource was modified concurrently, please retry");
     }
 
     @ExceptionHandler(Exception.class)

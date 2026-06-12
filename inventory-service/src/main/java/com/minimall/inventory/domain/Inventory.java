@@ -11,6 +11,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import jakarta.persistence.Version;
 import java.time.LocalDateTime;
 
 @Entity
@@ -32,9 +33,16 @@ public class Inventory {
     @Column(name = "locked_stock", nullable = false)
     private int lockedStock;
 
+    @Column(name = "safety_stock", nullable = false)
+    private int safetyStock;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32)
     private InventoryStatus status = InventoryStatus.ACTIVE;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private long version;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
@@ -84,8 +92,36 @@ public class Inventory {
         return lockedStock;
     }
 
+    public int getSafetyStock() {
+        return safetyStock;
+    }
+
+    public long getVersion() {
+        return version;
+    }
+
     public InventoryStatus getStatus() {
         return status;
+    }
+
+    /**
+     * Derived current stock state, centralized here so admin/customer reads and
+     * later AI replenishment analysis share one definition.
+     */
+    public StockState stockState() {
+        if (status != InventoryStatus.ACTIVE) {
+            return StockState.INACTIVE;
+        }
+        return availableStock > 0 ? StockState.IN_STOCK : StockState.OUT_OF_STOCK;
+    }
+
+    /**
+     * Structured low-stock signal: an active product whose available stock has
+     * fallen to or below its configured safety threshold. A threshold of 0
+     * means low-stock tracking is disabled for the product.
+     */
+    public boolean isLowStock() {
+        return status == InventoryStatus.ACTIVE && safetyStock > 0 && availableStock <= safetyStock;
     }
 
     public LocalDateTime getCreatedAt() {
@@ -98,5 +134,21 @@ public class Inventory {
 
     public void setStatus(InventoryStatus status) {
         this.status = status;
+    }
+
+    public void setSafetyStock(int safetyStock) {
+        this.safetyStock = safetyStock;
+    }
+
+    /**
+     * Apply an admin adjustment to available stock. Callers must validate the
+     * resulting stock is non-negative; this guards as a last line of defense.
+     */
+    public void adjustAvailableStock(int delta) {
+        int updated = this.availableStock + delta;
+        if (updated < 0) {
+            throw new IllegalArgumentException("available stock must not become negative");
+        }
+        this.availableStock = updated;
     }
 }
