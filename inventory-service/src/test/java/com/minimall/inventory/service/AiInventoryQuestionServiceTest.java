@@ -99,7 +99,7 @@ class AiInventoryQuestionServiceTest {
         });
         assertThat(response.limitations())
                 .contains(
-                        "Inventory Q&A is read-only and does not reserve, deduct, or adjust stock.",
+                        "库存问答为只读查询，不会锁定、扣减或调整库存。",
                         "AI limitation");
         assertThat(inventoryRepository.count()).isEqualTo(inventoryCount);
         assertThat(inventoryRecordRepository.count()).isEqualTo(recordCount);
@@ -148,7 +148,7 @@ class AiInventoryQuestionServiceTest {
                 .containsExactly("SKU-QA-LOW");
         assertThat(response.evidence().records()).isEmpty();
         assertThat(response.limitations())
-                .contains("Q&A evidence uses backend-computed low-stock candidates only.", "AI limitation");
+                .contains("问答证据仅使用后端计算的低库存候选。", "AI limitation");
     }
 
     @Test
@@ -164,7 +164,7 @@ class AiInventoryQuestionServiceTest {
         assertThat(response.intent()).isEqualTo(AiInventoryQuestionIntent.PRODUCT_STATUS);
         assertThat(response.supported()).isTrue();
         assertThat(response.answer()).isEqualTo("AI inventory answer");
-        assertThat(response.limitations()).contains("Product status is derived from current inventory evidence.");
+        assertThat(response.limitations()).contains("商品状态由当前库存证据推导。");
     }
 
     @Test
@@ -186,7 +186,7 @@ class AiInventoryQuestionServiceTest {
             assertThat(record.requestId()).isEqualTo("REQ-QA-1");
         });
         assertThat(response.limitations())
-                .contains("Record evidence is bounded to recent records for the requested product.");
+                .contains("流水证据仅限该商品最近的记录。");
     }
 
     @Test
@@ -200,10 +200,42 @@ class AiInventoryQuestionServiceTest {
         assertThat(response.intent()).isEqualTo(AiInventoryQuestionIntent.UNSUPPORTED);
         assertThat(response.supported()).isFalse();
         assertThat(response.evidence()).isNull();
-        assertThat(response.answer()).isEqualTo("Unsupported inventory question intent.");
+        assertThat(response.answer()).isEqualTo("暂不支持该类库存问题。");
         assertThat(response.limitations()).singleElement()
-                .isEqualTo("Supported questions cover current stock, low-stock lists, product status, and recent records.");
+                .isEqualTo("支持的问题类型：当前库存、低库存清单、商品状态、近期流水。");
         then(analysisService).should(never()).generateValidatedAnalysis(any());
+    }
+
+    @Test
+    void extractsProductIdFromQuestionTextWhenFieldIsMissing() {
+        inventoryRepository.saveAndFlush(inventory("PH3-AI-LOW-TEA", 4, 1, 12));
+
+        AiInventoryAskResponse response = questionService.answer(new AiInventoryAskRequest(
+                "PH3-AI-LOW-TEA 当前库存多少",
+                null,
+                null,
+                0));
+
+        assertThat(response.intent()).isEqualTo(AiInventoryQuestionIntent.CURRENT_STOCK);
+        assertThat(response.supported()).isTrue();
+        assertThat(response.evidence().inventories()).singleElement()
+                .satisfies(item -> assertThat(item.productId()).isEqualTo("PH3-AI-LOW-TEA"));
+    }
+
+    @Test
+    void ignoresQuestionTokensThatAreNotExistingProducts() {
+        inventoryRepository.saveAndFlush(inventory("PH3-AI-LOW-TEA", 4, 1, 12));
+
+        AiInventoryAskResponse response = questionService.answer(new AiInventoryAskRequest(
+                "show current stock for PH3-AI-LOW-TEA please",
+                null,
+                null,
+                0));
+
+        // earlier non-product tokens ("show", "current", ...) must not be
+        // trusted; the verified inventory row wins.
+        assertThat(response.evidence().inventories()).singleElement()
+                .satisfies(item -> assertThat(item.productId()).isEqualTo("PH3-AI-LOW-TEA"));
     }
 
     @Test
@@ -215,8 +247,7 @@ class AiInventoryQuestionServiceTest {
                         null)))
                 .isInstanceOfSatisfying(BusinessException.class, exception -> {
                     assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.BAD_REQUEST);
-                    assertThat(exception.getMessage()).isEqualTo(
-                            "productId is required for CURRENT_STOCK questions");
+                    assertThat(exception.getMessage()).contains("无法识别商品 ID");
                 });
         then(analysisService).should(never()).generateValidatedAnalysis(any());
     }

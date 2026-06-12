@@ -13,6 +13,7 @@ import com.minimall.inventory.domain.AiInventoryQuestionIntent;
 import com.minimall.inventory.dto.AiInventoryAskRequest;
 import com.minimall.inventory.dto.AiInventoryAskResponse;
 import com.minimall.inventory.dto.AiInventoryEvidenceResponse;
+import com.minimall.inventory.repository.InventoryRepository;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -21,6 +22,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -29,14 +32,22 @@ public class AiInventoryQuestionService {
     static final int DEFAULT_LIMIT = 20;
     static final int DEFAULT_RECORD_LIMIT = 5;
 
+    // SKU-shaped tokens inside the question text; a candidate is trusted as a
+    // productId only after it matches an existing inventory row.
+    private static final Pattern PRODUCT_ID_TOKEN = Pattern.compile("[A-Za-z][A-Za-z0-9_-]{2,63}");
+    private static final int MAX_PRODUCT_ID_CANDIDATES = 8;
+
     private final AiInventoryEvidenceFacade evidenceFacade;
     private final AiInventoryAnalysisService analysisService;
+    private final InventoryRepository inventoryRepository;
 
     public AiInventoryQuestionService(
             AiInventoryEvidenceFacade evidenceFacade,
-            AiInventoryAnalysisService analysisService) {
+            AiInventoryAnalysisService analysisService,
+            InventoryRepository inventoryRepository) {
         this.evidenceFacade = evidenceFacade;
         this.analysisService = analysisService;
+        this.inventoryRepository = inventoryRepository;
     }
 
     public AiInventoryAskResponse answer(AiInventoryAskRequest request) {
@@ -60,7 +71,7 @@ public class AiInventoryQuestionService {
                 AiInventoryQuestionIntent.LOW_STOCK_LIST,
                 queryTime,
                 evidence,
-                List.of("Q&A evidence uses backend-computed low-stock candidates only."));
+                List.of("问答证据仅使用后端计算的低库存候选。"));
     }
 
     private AiInventoryAskResponse currentInventoryResponse(
@@ -74,7 +85,7 @@ public class AiInventoryQuestionService {
                 intent,
                 queryTime,
                 evidence,
-                List.of("Inventory Q&A is read-only and does not reserve, deduct, or adjust stock."));
+                List.of("库存问答为只读查询，不会锁定、扣减或调整库存。"));
     }
 
     private AiInventoryAskResponse productStatusResponse(AiInventoryAskRequest request, LocalDateTime queryTime) {
@@ -85,7 +96,7 @@ public class AiInventoryQuestionService {
                 AiInventoryQuestionIntent.PRODUCT_STATUS,
                 queryTime,
                 evidence,
-                List.of("Product status is derived from current inventory evidence."));
+                List.of("商品状态由当前库存证据推导。"));
     }
 
     private AiInventoryAskResponse recentRecordsResponse(AiInventoryAskRequest request, LocalDateTime queryTime) {
@@ -96,17 +107,17 @@ public class AiInventoryQuestionService {
                 AiInventoryQuestionIntent.RECENT_RECORDS,
                 queryTime,
                 evidence,
-                List.of("Record evidence is bounded to recent records for the requested product."));
+                List.of("流水证据仅限该商品最近的记录。"));
     }
 
     private AiInventoryAskResponse unsupportedResponse(LocalDateTime queryTime) {
         return new AiInventoryAskResponse(
                 AiInventoryQuestionIntent.UNSUPPORTED,
                 false,
-                "Unsupported inventory question intent.",
+                "暂不支持该类库存问题。",
                 queryTime,
                 null,
-                List.of("Supported questions cover current stock, low-stock lists, product status, and recent records."));
+                List.of("支持的问题类型：当前库存、低库存清单、商品状态、近期流水。"));
     }
 
     private AiInventoryQuestionIntent detectIntent(String question) {
@@ -143,10 +154,28 @@ public class AiInventoryQuestionService {
     }
 
     private String requireProductId(AiInventoryAskRequest request, AiInventoryQuestionIntent intent) {
-        if (request.productId() == null || request.productId().isBlank()) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST, "productId is required for " + intent + " questions");
+        if (request.productId() != null && !request.productId().isBlank()) {
+            return request.productId().trim();
         }
-        return request.productId().trim();
+        String extracted = extractProductIdFromQuestion(request.question());
+        if (extracted != null) {
+            return extracted;
+        }
+        throw new BusinessException(ErrorCode.BAD_REQUEST,
+                "无法识别商品 ID：请填写商品 ID 字段，或在问题中包含完整的商品编号");
+    }
+
+    private String extractProductIdFromQuestion(String question) {
+        Matcher matcher = PRODUCT_ID_TOKEN.matcher(question);
+        int checked = 0;
+        while (matcher.find() && checked < MAX_PRODUCT_ID_CANDIDATES) {
+            checked++;
+            String candidate = matcher.group();
+            if (inventoryRepository.findByProductId(candidate).isPresent()) {
+                return candidate;
+            }
+        }
+        return null;
     }
 
     private int limit(AiInventoryAskRequest request) {

@@ -88,8 +88,8 @@ public class AiDailyInventoryReportService {
 
     private List<String> limitations(AiInventorySalesEvidenceResponse evidence) {
         List<String> limitations = new ArrayList<>();
-        limitations.add("Daily report counts use the service-local current day.");
-        limitations.add("Low-stock count is a current inventory snapshot, not a daily event count.");
+        limitations.add("日报统计使用服务所在时区的自然日。");
+        limitations.add("低库存数量为当前库存快照，并非当日事件计数。");
         if (evidence != null) {
             limitations.addAll(evidence.limitations());
         }

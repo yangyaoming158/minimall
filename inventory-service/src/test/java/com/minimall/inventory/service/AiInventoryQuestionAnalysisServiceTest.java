@@ -45,7 +45,8 @@ class AiInventoryQuestionAnalysisServiceTest {
         given(evidenceFacade.currentInventory("SKU-QA-AI", 0)).willReturn(evidence("SKU-QA-AI"));
         AiInventoryQuestionService service = new AiInventoryQuestionService(
                 evidenceFacade,
-                analysisService(provider));
+                analysisService(provider),
+                mock(com.minimall.inventory.repository.InventoryRepository.class));
 
         AiInventoryAskResponse response = service.answer(new AiInventoryAskRequest(
                 "What is the current stock?",
@@ -59,7 +60,7 @@ class AiInventoryQuestionAnalysisServiceTest {
         assertThat(response.evidence().inventories()).singleElement()
                 .satisfies(item -> assertThat(item.productId()).isEqualTo("SKU-QA-AI"));
         assertThat(response.limitations()).contains(
-                "Inventory Q&A is read-only and does not reserve, deduct, or adjust stock.",
+                "库存问答为只读查询，不会锁定、扣减或调整库存。",
                 "Answer is based on current inventory evidence only.");
         then(evidenceFacade).should().currentInventory("SKU-QA-AI", 0);
         assertThat(provider.lastRequest.promptVersion()).isEqualTo("inventory-qa-v2");
@@ -81,7 +82,8 @@ class AiInventoryQuestionAnalysisServiceTest {
         given(evidenceFacade.currentInventory("SKU-QA-AI", 0)).willReturn(evidence("SKU-QA-AI"));
         AiInventoryQuestionService service = new AiInventoryQuestionService(
                 evidenceFacade,
-                analysisService(provider));
+                analysisService(provider),
+                mock(com.minimall.inventory.repository.InventoryRepository.class));
 
         assertThatThrownBy(() -> service.answer(new AiInventoryAskRequest(
                         "What is the current stock?",

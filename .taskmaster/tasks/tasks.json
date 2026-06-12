@@ -3080,10 +3080,11 @@
             "title": "QA productId extraction and Chinese backend copy",
             "description": "Extract SKU-like productId from question text when the field is empty (verified against inventory); Chinese error guidance. Localize backend-generated strings: evidence limitations, replenishment inputSummary, daily report limitations.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 14,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-06-12T12:56:05.918Z"
           },
           {
             "id": 3,
@@ -3096,12 +3097,12 @@
             "parentId": "undefined"
           }
         ],
-        "updatedAt": "2026-06-11T16:13:56.697Z"
+        "updatedAt": "2026-06-12T12:56:05.918Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-06-11T16:13:56.700Z",
+      "lastModified": "2026-06-12T12:56:05.920Z",
       "taskCount": 14,
       "completedCount": 13,
       "tags": [

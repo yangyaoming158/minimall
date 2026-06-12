@@ -167,7 +167,7 @@ class AdminAiInventoryAnalysisControllerTest {
                 .andExpect(jsonPath("$.data.items[0].reason")
                         .value("Available stock is below safety stock with recent paid sales."))
                 .andExpect(jsonPath("$.data.limitations[0]")
-                        .value("Sales evidence is limited to paid orders in the selected window."))
+                        .value("销量证据仅统计所选时间窗内的已支付订单。"))
                 .andExpect(jsonPath("$.data.limitations[2]")
                         .value("Model output is advisory and requires administrator review."));
 
@@ -298,7 +298,7 @@ class AdminAiInventoryAnalysisControllerTest {
                 .andExpect(jsonPath("$.data.items[0].reason")
                         .value("Hot sales velocity may outpace current available stock."))
                 .andExpect(jsonPath("$.data.limitations[0]")
-                        .value("Sales evidence is limited to paid orders in the selected window."))
+                        .value("销量证据仅统计所选时间窗内的已支付订单。"))
                 .andExpect(jsonPath("$.data.limitations[2]")
                         .value("Model output is advisory and requires administrator review."));
 

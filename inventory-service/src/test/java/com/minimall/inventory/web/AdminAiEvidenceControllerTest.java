@@ -225,9 +225,9 @@ class AdminAiEvidenceControllerTest {
                 .andExpect(jsonPath("$.data.products[1].productId").value("SKU-AI-HOT-MISSING"))
                 .andExpect(jsonPath("$.data.products[1].inventory").doesNotExist())
                 .andExpect(jsonPath("$.data.products[1].limitations[0]")
-                        .value("No recent inventory record evidence found."))
+                        .value("无近期库存流水证据。"))
                 .andExpect(jsonPath("$.data.products[1].limitations[1]")
-                        .value("Current inventory evidence is unavailable for this product."));
+                        .value("该商品当前库存证据缺失。"));
     }
 
     @Test

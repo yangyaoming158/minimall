@@ -97,7 +97,7 @@ public class AiInventoryEvidenceFacade {
                 generatedAt,
                 window.from(),
                 window.to(),
-                boundedLimitations("Low-stock candidates", inventoryPage.getTotalElements(), products.size()),
+                boundedLimitations("低库存候选", inventoryPage.getTotalElements(), products.size()),
                 products);
     }
 
@@ -134,7 +134,7 @@ public class AiInventoryEvidenceFacade {
                 generatedAt,
                 window.from(),
                 window.to(),
-                boundedLimitations("Hot-product sales evidence", totalElements(salesPage), products.size()),
+                boundedLimitations("热销商品证据", totalElements(salesPage), products.size()),
                 products);
     }
 
@@ -197,13 +197,13 @@ public class AiInventoryEvidenceFacade {
 
     private List<String> boundedLimitations(String evidenceName, long totalElements, int returnedElements) {
         List<String> limitations = new ArrayList<>();
-        limitations.add("Sales evidence is limited to paid orders in the selected window.");
-        limitations.add("Inventory record evidence is limited to recent records per product.");
+        limitations.add("销量证据仅统计所选时间窗内的已支付订单。");
+        limitations.add("库存流水证据仅包含每个商品最近的记录。");
         if (returnedElements == 0) {
-            limitations.add(evidenceName + " is empty for the selected window.");
+            limitations.add(evidenceName + "在所选时间窗内为空。");
         }
         if (totalElements > returnedElements) {
-            limitations.add(evidenceName + " is limited to the first " + returnedElements + " products.");
+            limitations.add(evidenceName + "仅展示前 " + returnedElements + " 个商品。");
         }
         return limitations;
     }
@@ -214,13 +214,13 @@ public class AiInventoryEvidenceFacade {
             Inventory inventory) {
         List<String> limitations = new ArrayList<>();
         if (sales.soldQuantity() == 0 && sales.orderCount() == 0) {
-            limitations.add("No paid sales evidence found in selected window.");
+            limitations.add("所选时间窗内无已支付销量证据。");
         }
         if (records.isEmpty()) {
-            limitations.add("No recent inventory record evidence found.");
+            limitations.add("无近期库存流水证据。");
         }
         if (inventory == null) {
-            limitations.add("Current inventory evidence is unavailable for this product.");
+            limitations.add("该商品当前库存证据缺失。");
         }
         return limitations;
     }

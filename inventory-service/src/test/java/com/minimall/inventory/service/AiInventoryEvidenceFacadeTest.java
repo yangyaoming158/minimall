@@ -205,7 +205,7 @@ class AiInventoryEvidenceFacadeTest {
         assertThat(response.dataFrom()).isEqualTo(response.generatedAt().minusDays(7));
         assertThat(response.dataTo()).isEqualTo(response.generatedAt());
         assertThat(response.limitations())
-                .contains("Sales evidence is limited to paid orders in the selected window.");
+                .contains("销量证据仅统计所选时间窗内的已支付订单。");
         assertThat(response.products())
                 .extracting(product -> product.productId())
                 .containsExactly("SKU-LOW-AI-A", "SKU-LOW-AI-B");
@@ -224,8 +224,8 @@ class AiInventoryEvidenceFacadeTest {
             assertThat(product.sales().soldQuantity()).isZero();
             assertThat(product.sales().orderCount()).isZero();
             assertThat(product.limitations())
-                    .contains("No paid sales evidence found in selected window.")
-                    .contains("No recent inventory record evidence found.");
+                    .contains("所选时间窗内无已支付销量证据。")
+                    .contains("无近期库存流水证据。");
         });
         assertThat(inventoryRepository.count()).isEqualTo(inventoryCount);
         assertThat(inventoryRecordRepository.count()).isEqualTo(recordCount);
@@ -254,7 +254,7 @@ class AiInventoryEvidenceFacadeTest {
         assertThat(response.dataFrom()).isEqualTo(response.generatedAt().minusDays(30));
         assertThat(response.dataTo()).isEqualTo(response.generatedAt());
         assertThat(response.limitations())
-                .contains("Hot-product sales evidence is limited to the first 2 products.");
+                .contains("热销商品证据仅展示前 2 个商品。");
         assertThat(response.products())
                 .extracting(product -> product.productId())
                 .containsExactly("SKU-HOT-AI-A", "SKU-HOT-MISSING");
@@ -273,8 +273,8 @@ class AiInventoryEvidenceFacadeTest {
             assertThat(product.inventory()).isNull();
             assertThat(product.sales().orderCount()).isEqualTo(3);
             assertThat(product.limitations())
-                    .contains("Current inventory evidence is unavailable for this product.")
-                    .contains("No recent inventory record evidence found.");
+                    .contains("该商品当前库存证据缺失。")
+                    .contains("无近期库存流水证据。");
         });
         assertThat(inventoryRepository.count()).isEqualTo(inventoryCount);
         assertThat(inventoryRecordRepository.count()).isEqualTo(recordCount);

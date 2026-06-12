@@ -149,7 +149,7 @@ class AdminAiInventoryQuestionControllerTest {
                 .andExpect(jsonPath("$.data.evidence.inventories[0].lockedStock").value(2))
                 .andExpect(jsonPath("$.data.evidence.records[0].requestId").value("REQ-ASK-1"))
                 .andExpect(jsonPath("$.data.limitations[0]")
-                        .value("Inventory Q&A is read-only and does not reserve, deduct, or adjust stock."))
+                        .value("库存问答为只读查询，不会锁定、扣减或调整库存。"))
                 .andExpect(jsonPath("$.data.limitations[1]").value("AI limitation"));
 
         assertThat(inventoryRepository.count()).isEqualTo(beforeInventoryCount);
@@ -178,10 +178,10 @@ class AdminAiInventoryQuestionControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.intent").value("UNSUPPORTED"))
                 .andExpect(jsonPath("$.data.supported").value(false))
-                .andExpect(jsonPath("$.data.answer").value("Unsupported inventory question intent."))
+                .andExpect(jsonPath("$.data.answer").value("暂不支持该类库存问题。"))
                 .andExpect(jsonPath("$.data.evidence").doesNotExist())
                 .andExpect(jsonPath("$.data.limitations[0]")
-                        .value("Supported questions cover current stock, low-stock lists, product status, and recent records."));
+                        .value("支持的问题类型：当前库存、低库存清单、商品状态、近期流水。"));
 
         verify(analysisService, never()).generateValidatedAnalysis(any());
         verify(adminAuditWriter, never()).write(any());

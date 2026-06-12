@@ -270,10 +270,10 @@ public class AiReplenishmentSuggestionService {
             AiInventorySalesEvidenceResponse lowStockEvidence,
             AiInventorySalesEvidenceResponse hotProductsEvidence,
             int itemCount) {
-        return "Replenishment evidence: " + lowStockEvidence.products().size()
-                + " low-stock candidate(s), " + hotProductsEvidence.products().size()
-                + " hot product(s) over " + HOT_PRODUCT_SALES_DAYS + " day(s), "
-                + itemCount + " suggested item(s).";
+        return "补货证据：低库存候选 " + lowStockEvidence.products().size()
+                + " 个，近 " + HOT_PRODUCT_SALES_DAYS + " 天有销量商品 "
+                + hotProductsEvidence.products().size() + " 个，建议明细 "
+                + itemCount + " 项。";
     }
 
     private String truncate(String value, int maxLength) {

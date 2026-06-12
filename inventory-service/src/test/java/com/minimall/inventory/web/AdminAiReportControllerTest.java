@@ -157,9 +157,9 @@ class AdminAiReportControllerTest {
                 .andExpect(jsonPath("$.data.suggestions.convertedDrafts").value(1))
                 .andExpect(jsonPath("$.data.inboundOrders.appliedInboundOrders").value(1))
                 .andExpect(jsonPath("$.data.limitations[0]")
-                        .value("Daily report counts use the service-local current day."))
+                        .value("日报统计使用服务所在时区的自然日。"))
                 .andExpect(jsonPath("$.data.limitations[1]")
-                        .value("Low-stock count is a current inventory snapshot, not a daily event count."));
+                        .value("低库存数量为当前库存快照，并非当日事件计数。"));
 
         assertThat(inventoryRepository.count()).isEqualTo(beforeInventoryCount);
         assertThat(inventoryRecordRepository.count()).isEqualTo(beforeRecordCount);
