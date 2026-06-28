@@ -6,6 +6,14 @@ Phase 0 PRD：MiniMall API Contract Polish
 版本：
 v1.0
 
+当前说明：
+本 PRD 是已完成的 Phase 0 API Contract Polish 历史基线，负责把早期
+gateway/service-prefix 路径收敛到 canonical browser API。Phase 2 后台、
+Phase 2.5 AI 库存准备、Phase 3 AI 库存助手的当前接口现状，以对应阶段
+合同和验收文档为边界背景；当前唯一浏览器/API 接口总览以
+docs/api-gateway-contract.md 为准。不要把本文中的“未来/暂不定义 admin
+API”表述当作当前项目状态。
+
 目标阶段：
 Phase 0 - API Contract Polish
 

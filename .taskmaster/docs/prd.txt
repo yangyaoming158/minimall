@@ -2,6 +2,12 @@
 
 # MiniMall Order 微服务电商订单系统
 
+> Historical baseline note: this is the original backend MVP PRD for the
+> completed `master` TaskMaster tag. It intentionally reflects early endpoint
+> sketches and service boundaries. The single current browser/API endpoint
+> overview is `docs/api-gateway-contract.md`; do not use this file as the
+> current API index.
+
 ## 1. Introduction
 
 MiniMall Order 是一个面向后端开发、微服务架构和高并发订单场景的简化电商系统。项目目标不是构建复杂前端页面，而是实现一个可运行、可压测、可部署、可观测，并可用于简历展示的后端微服务项目。

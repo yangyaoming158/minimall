@@ -9,6 +9,10 @@ v1.0
 目标阶段：
 Phase 2 - Admin Platform + RBAC + Admin-Safe APIs
 
+当前说明：
+本 PRD 是已完成的 Phase 2 历史基线，接口表保留阶段设计和验收上下文。
+当前唯一浏览器/API 接口总览以 docs/api-gateway-contract.md 为准。
+
 适用项目：
 MiniMall Order 微服务电商平台
 

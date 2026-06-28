@@ -7,6 +7,10 @@ Phase 1 PRD：MiniMall Customer Frontend
 阶段：Phase 1 - Customer Frontend
 默认技术栈：Vue 3 + TypeScript + Vite + Element Plus + Pinia + Vue Router + Axios
 
+当前说明：
+本 PRD 是已完成的 Phase 1 历史基线，接口列表保留阶段设计上下文。
+当前唯一浏览器/API 接口总览以 docs/api-gateway-contract.md 为准。
+
 说明：
 如果后续决定使用 React，也可以改为 React + TypeScript + Vite + Ant Design + React Router + Zustand/Redux Toolkit + Axios。
 当前 PRD 默认采用 Vue 3 + Element Plus，原因是开发效率高、表单/表格/分页组件成熟，后续管理员后台也可复用。

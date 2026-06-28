@@ -113,7 +113,7 @@
 
 > 以下为与负责人对齐后的最终口径，后续任务以此为准。
 
-1. **环境变量名**：统一用 `VITE_API_BASE_URL`，默认 `http://localhost:8080`。`docs/frontend-integration.md` 里的 `VITE_MINIMALL_API_BASE_URL` 不采用。
+1. **环境变量名**：统一用 `VITE_API_BASE_URL`，默认 `http://localhost:8080`；该名称也已同步到 `docs/frontend-integration.md`。
 2. **商品列表搜索**：**不做**。后端无 keyword，Phase 1 不实现搜索框（含本地过滤），避免无效请求。
 3. **商品列表状态展示**：**全部展示并弱化下架**。列表拉取全部状态（不强制 `status=ON_SHELF`）；`OFF_SHELF` 商品打灰色"已下架"标签、弱化购买入口；详情页对下架商品禁用下单。（对应 R3，按 PRD 6.4 描述实现。）
 4. **后端文档修订**：`docs/frontend-integration.md` 的订单示例（扁平 → `items[]`）与错误码 wire 值说明，**放进 Task #12（文档与验收）一并更正**，本阶段不单独改。

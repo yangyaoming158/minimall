@@ -7,6 +7,56 @@
 
 ---
 
+## 收尾更新（2026-06-12）
+
+> 本节是 2026-06-10 中期审查之后的落地结论。**下面"第一~第七部分"是当时的历史快照，原文保留不改**——它记录了项目在 6/13 进度时的真实状态。本节负责回答一个问题：评审点出的缺口，后来怎么样了。
+
+**一句话**：评审里 P0/P1 路线图**全部完成**，Phase 3 于 2026-06-11 通过验收（13/13 任务，554 后端测试 + 116 前端测试全绿，`docs/phase3-acceptance.md`），项目 2026-06-12 合并 main 并打 `v1.0.0`。评审当时的最大风险——"做得对但演示不出来"——已消除：完整 AI 闭环现在能在浏览器里端到端走通。
+
+### 评审缺口 → 落地结果对照
+
+| 评审缺口（当时） | 现状 | 证据 |
+|---|---|---|
+| **建议生成落库（Task 8）** ——"有审批无来源"的核心断点 | ✅ 已实现 | `service/AiReplenishmentSuggestionService.java` + `POST /api/admin/ai/replenishment-suggestions/generate`；产出一条 `PENDING_REVIEW` 建议，带完整模型元数据快照 |
+| **hot-product 端点（Task 7.2/7.3）** | ✅ 已实现 | `POST /api/admin/ai/inventory/hot-products-analysis` + 证据端点；ADMIN 双层校验 + 无副作用测试 |
+| **APPLIED 状态同步（Task 9）** | ✅ 已实现 | `service/AiSuggestionAppliedSynchronizer.java`：入库确认事务内回写建议状态为 APPLIED，requestId 幂等 |
+| **MockAiProvider 空 items** ——离线演示走不通 | ✅ 已修复 | `MockAiProvider` 现从输入快照确定性派生 items（`suggestedQuantity = max(2×safety − available, 7日销量, 1)`），MOCK 路径必过校验、可离线演示完整闭环 |
+| **AI 前端页面（Task 10）** ——零 AI 页面 | ✅ 已实现 | admin-frontend 新增 `/ai-inventory`（5 个 tab：问答/低库存/热销/生成建议/日报）、`/ai-suggestions`、`/inbound-orders` 三页 |
+| **compose 不透传 AI_\* 变量** | ✅ 已修复 | `docker-compose.yml` 把 7 个 `AI_*` 变量传给 inventory-service（**仅此一个服务**，API key 不进共享锚点，避免泄漏给其他容器）；默认 MOCK |
+| **演示种子数据（Task 12）** | ✅ 已实现 | `demo/DemoDataRunner` + 3 个 `*SeedContributor`，dev/test profile 下确定性生成；默认关闭 |
+| **契约 GET/POST 漂移（M5）** | ✅ 已修复 | `phase3-ai-inventory-contract.md` 与代码现均为 POST |
+| **分析调用历史持久化（P2）** | ◻️ 仍未做（刻意） | 分析/问答只返回不落库；只有最终落库的建议带 prompt_version/model 元数据。PRD P1 范畴，非缺陷 |
+| **日报（Task 11，原列 P2 暂缓）** | ✅ 已实现 | `service/AiDailyInventoryReportService.java` + `GET /api/admin/ai/reports/daily`，只读统计 |
+
+### 评审"类型判定"的修订
+
+评审当时判 **D 成立、E 完成约 70%——"中间生成→落库一环缺失"**。该环现已接通：
+
+```
+分析 → 校验后建议(PENDING_REVIEW) → 管理员审批 → 转入库草稿(CONVERTED_TO_DRAFT)
+→ 入库 DRAFT → 管理员确认(requestId 幂等) → 库存事务 + 流水 + 审计 → 建议 APPLIED
+```
+
+整条链路有 `Phase3AiLoopAcceptanceTest` 端到端锁定（MOCK provider 下"库存恰好一次"地在确认环节增加，重复确认不重复加库存）。**E 现已成立**：可落库、可审批、可执行、全链可审计的补货建议系统。
+
+### Prompt 演进
+
+评审时 4 个模板均为 v1。2026-06-11 晚的真实 LLM（DeepSeek）首次冒烟暴露了 5 个只在真实模型下出现的问题（v1 prompt 自己诱导模型违规、limitations 类型不稳、问答内嵌商品号未解析等）；已升级到 **v2**（强制省略快照中缺失字段、限定 limitations 为字符串数组、温度参数化、数量上限写进 prompt），并把问答意图识别扩展为从问题文本提取 productId。详见 `docs/ai-assistant-smoke-findings-2026-06-12.md`。**反幻觉校验器的任何断言均未放松——只允许加严**。
+
+### 安全风险登记的现状
+
+- **M5**（契约漂移）：已修复，移出登记。
+- **M1–M4 + lockedStock**：作为**刻意的已知取舍**保留，并已发布到 README "Known Limitations" 节（评审 P1 路线图的最后一项，2026-06-12 落地）。它们是"能自圆其说的设计点"，不是待修 bug——改动需显式批准，禁止顺手"修复"。
+- **High 风险**：仍为 0。
+
+### 仍然成立、不要回炉的评审结论
+
+- **不重构、不堆新功能**：架构边界一致、依赖单向、惯例统一的判断未变；项目现处维护模式，新功能需新 PRD。
+- **不建议做**：拆 ai-assistant-service、payment 改 HTTP 调用、RBAC 细化、自主 agent / 工具循环、RAG / 向量库——评审当时反对，现在依然反对。
+- 下面"第八~第十部分 + 演示流程 / 简历写法 / 面试追问"在闭环补完后**更加适用**，可直接作为展示脚本与话术使用。
+
+---
+
 ## 第一部分：事实盘点（不含结论）
 
 ### 项目结构
@@ -36,7 +86,7 @@
 - `POST /api/admin/ai/inventory/ask`
 - `POST /api/admin/ai/inventory/low-stock-analysis`
 - `GET /api/admin/ai/inventory/evidence/current/{productId}` / `low-stock-candidates` / `low-stock-analysis` / `hot-products`
-- Phase 2.5: `GET/POST /api/admin/ai-suggestions/**`（list/detail/reject/convert-inbound-draft）、`/api/admin/inbound-orders/**`（draft/list/detail/cancel/confirm）
+- Phase 2.5: `GET /api/admin/ai-suggestions`、`GET /api/admin/ai-suggestions/{suggestionNo}`、`POST /api/admin/ai-suggestions/{suggestionNo}/reject`、`POST /api/admin/ai-suggestions/{suggestionNo}/convert-inbound-draft`、`/api/admin/inbound-orders/**`（draft/list/detail/cancel/confirm）
 - 网关 `/api/admin/ai/**` 已路由至 inventory-service（`api-gateway/src/main/resources/application.yml:23`）
 
 数据表:

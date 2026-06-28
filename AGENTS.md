@@ -6,19 +6,24 @@ e-commerce system: 7 services behind an api-gateway, two independent
 frontends (`frontend` storefront, `admin-frontend` console), MySQL/Redis/
 RabbitMQ via Docker Compose.
 
-Current phase: Phase 3 AI Inventory Assistant.
-- Active TaskMaster tag: `phase3-ai-inventory-assistant` (6/13 done; next is
-  7.2, then 7.3 → 8 → 9 → 10 → 11–13).
+Current status: maintenance mode after Phase 3 AI Inventory Assistant
+acceptance.
+- Default TaskMaster tag for Phase 3 follow-up work:
+  `phase3-ai-inventory-assistant` (14/14 done; no ready next task unless a
+  new PRD or explicit follow-up is approved).
 - Authoritative docs, in priority order:
-  1. docs/phase3-ai-inventory-contract.md (locked AI boundaries and APIs)
-  2. .taskmaster/docs/phase3-ai-inventory-assistant-prd.txt
-  3. docs/architecture-ai-review-2026-06-10.md (full-repo review: known
-     issues M1–M5, P0/P1/P2 roadmap, demo gaps)
-  4. CLAUDE.md (phase rules; keep AGENTS.md and CLAUDE.md consistent)
+  1. docs/api-gateway-contract.md (single current browser/API endpoint index)
+  2. docs/phase3-ai-inventory-contract.md (locked AI boundaries)
+  3. .taskmaster/docs/phase3-ai-inventory-assistant-prd.txt
+  4. docs/phase3-acceptance.md (Phase 3 closeout evidence)
+  5. docs/architecture-ai-review-2026-06-10.md (full-repo review and
+     follow-up status)
+  6. CLAUDE.md (phase rules; keep AGENTS.md and CLAUDE.md consistent)
 
 Completed task trees that must not be reopened or regressed: `master`
 (backend MVP 20/20), `phase0-api-polish`, `phase1-customer-frontend`,
-`phase2-admin-platform`, `phase2-5-ai-inventory-readiness`.
+`phase2-admin-platform`, `phase2-5-ai-inventory-readiness`,
+`phase3-ai-inventory-assistant`.
 
 ## Task Workflow
 Use TaskMaster as the source of truth.

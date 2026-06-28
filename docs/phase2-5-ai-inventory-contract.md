@@ -8,6 +8,10 @@ This document locks the Phase 2.5 boundary before implementation. It extends the
 Phase 2 admin API contract without changing the completed admin platform or
 starting Phase 3 model integration.
 
+Current endpoint index note: this file preserves Phase 2.5 AI inventory
+boundaries and stock-mutation rules. The single current browser/API endpoint
+overview is `docs/api-gateway-contract.md`.
+
 Phase 2.5 prepares structured backend contracts for a later AI inventory
 assistant. The assistant remains advisory: it may use backend-provided
 structured data to create suggestions or drafts, but confirmed inventory changes
@@ -205,14 +209,17 @@ but the current Phase 2 sales aggregation remains valid existing context.
 | `POST` | `/api/admin/inbound-orders/drafts` | `inventory-service` | Creates a draft only; no stock change |
 | `POST` | `/api/admin/inbound-orders/{inboundNo}/cancel` | `inventory-service` | Cancels a draft only; no stock change |
 | `POST` | `/api/admin/inbound-orders/{inboundNo}/confirm` | `inventory-service` | Admin-only formal inventory increase |
-| `POST` | `/api/admin/ai-suggestions` | `inventory-service` | Stores a backend-validated suggestion only; no stock change |
 | `POST` | `/api/admin/ai-suggestions/{suggestionNo}/reject` | `inventory-service` | Rejects suggestion only; no stock change |
 | `POST` | `/api/admin/ai-suggestions/{suggestionNo}/convert-inbound-draft` | `inventory-service` | Creates linked inbound draft only; no stock change |
 
 Phase 3 AI backend may generate a validated suggestion record, but human
 administrators own rejection, conversion, and inbound confirmation decisions.
-Even if Phase 3 exposes convenience AI endpoints under `/api/admin/ai/**`, those
-endpoints must delegate to the same service boundaries above.
+The current implementation does not expose a root
+`POST /api/admin/ai-suggestions` browser API. Validated AI suggestion creation
+is exposed through the Phase 3 endpoint
+`POST /api/admin/ai/replenishment-suggestions/generate`, which persists one
+`PENDING_REVIEW` suggestion without changing stock. Review actions remain on
+the Phase 2.5 `/api/admin/ai-suggestions/**` APIs above.
 
 ## 9. Phase 3 AI Consumption Rules
 

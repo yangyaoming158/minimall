@@ -9,6 +9,10 @@ It records the current system baseline, the required `/api/admin/**` contract,
 the independent `admin-frontend` boundary, and the regression rules that later
 Phase 2 tasks must preserve.
 
+Current endpoint index note: this file preserves the Phase 2 boundary and
+historical contract decisions. The single current browser/API endpoint overview
+is `docs/api-gateway-contract.md`.
+
 ## 1. Current Baseline
 
 Phase 0 and Phase 1 established a working customer-facing flow through

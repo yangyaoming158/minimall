@@ -5,7 +5,8 @@
 All six phases are COMPLETE: master backend MVP, phase0-api-polish,
 phase1-customer-frontend, phase2-admin-platform,
 phase2-5-ai-inventory-readiness, and phase3-ai-inventory-assistant
-(13/13 tasks; acceptance: docs/phase3-acceptance.md, 2026-06-11).
+(14/14 tasks; acceptance: docs/phase3-acceptance.md, 2026-06-11; real-provider
+smoke fixes: docs/ai-assistant-smoke-findings-2026-06-12.md).
 
 There is NO active phase. The project is in maintenance mode: new features
 need a new PRD or explicit user direction. Nothing may regress:
@@ -18,6 +19,8 @@ need a new PRD or explicit user direction. Nothing may regress:
 
 Key references:
 
+- Current API endpoint index (authoritative for browser-facing paths):
+  docs/api-gateway-contract.md
 - Locked AI API contract (authoritative for AI boundaries):
   docs/phase3-ai-inventory-contract.md
 - Architecture & AI review (2026-06-10):

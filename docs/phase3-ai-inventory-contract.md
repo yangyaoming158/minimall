@@ -8,6 +8,10 @@ This document locks the Phase 3 AI inventory assistant contract before model
 integration begins. It builds on the completed Phase 2.5 readiness gate without
 reopening the stock-mutation foundation.
 
+Current endpoint index note: this file remains authoritative for AI boundaries
+and forbidden behavior. The single current browser/API endpoint overview is
+`docs/api-gateway-contract.md`.
+
 Phase 3 adds AI analysis, model-provider integration, suggestion generation, and
 admin frontend workflows. The assistant is advisory: it may read structured
 backend data and create validated suggestions, but formal inventory changes

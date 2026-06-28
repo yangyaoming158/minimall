@@ -106,7 +106,10 @@ Browsers must call the gateway only. Service ports (`8101`–`8106`) are not
 published by Compose and are never a frontend contract; `/internal/**` is
 blocked at the gateway.
 
-Canonical API prefixes:
+Canonical API route families:
+
+The table below is a high-level routing summary. The single current
+browser/API endpoint index is `docs/api-gateway-contract.md`.
 
 | Area | Gateway prefix | Owner |
 | --- | --- | --- |
@@ -129,7 +132,8 @@ The admin console's `/ai-inventory` page offers inventory Q&A, low-stock
 analysis, hot-product analysis, replenishment-suggestion generation, and a
 daily operations report. All AI endpoints live under `/api/admin/ai/**`
 (inventory-service, ADMIN-only). The locked contract is
-`docs/phase3-ai-inventory-contract.md`.
+`docs/phase3-ai-inventory-contract.md`; concrete endpoint paths are indexed in
+`docs/api-gateway-contract.md`.
 
 Hard boundary — AI never changes stock. The only stock-affecting flow is:
 
@@ -198,7 +202,7 @@ Deliberate trade-offs and accepted risks, from
 - `docs/dev-quickstart.md`: day-to-day local startup commands (Chinese).
 - `docs/architecture.md`: module boundaries, request flow, data model, events.
 - `docs/deployment.md`: deployment, env variables, startup order, health.
-- `docs/api-gateway-contract.md`: stable gateway routes, auth, CORS, rate limits.
+- `docs/api-gateway-contract.md`: single current browser/API endpoint index, gateway route ownership, auth, CORS, rate limits.
 - `docs/phase3-ai-inventory-contract.md`: locked AI API contract (authoritative for AI boundaries).
 - `docs/architecture-ai-review-2026-06-10.md`: whole-repo architecture & AI review; source of the known-limitations registry.
 - `docs/ai-assistant-smoke-findings-2026-06-12.md`: real-LLM smoke findings and prompt-v2 fixes.

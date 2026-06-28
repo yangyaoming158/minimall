@@ -8,6 +8,10 @@ Suggested TaskMaster tag:
 
 `phase2-5-ai-inventory-readiness`
 
+Current note: this PRD is the completed Phase 2.5 historical baseline. It
+preserves AI inventory readiness scope and constraints; the single current
+browser/API endpoint overview is `docs/api-gateway-contract.md`.
+
 ## 1. Phase 2.5 Goal
 
 Phase 2.5 prepares MiniMall for a later Phase 3 AI inventory assistant without

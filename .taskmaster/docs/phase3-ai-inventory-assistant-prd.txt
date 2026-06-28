@@ -6,6 +6,10 @@ Suggested TaskMaster tag:
 
 Date: 2026-06-06
 
+Current note: this PRD is the completed Phase 3 historical baseline. It
+preserves AI assistant scope and acceptance context; the single current
+browser/API endpoint overview is `docs/api-gateway-contract.md`.
+
 ## 1. Current Baseline
 
 Phase 3 starts after the completed Phase 2.5 readiness gate.
@@ -318,10 +322,23 @@ All new endpoints are under `/api/admin/ai/**` and return `ApiResponse`.
 P0 APIs:
 
 1. `POST /api/admin/ai/inventory/ask`
-2. `GET /api/admin/ai/inventory/low-stock-analysis?days=7`
-3. `GET /api/admin/ai/inventory/hot-products?days=7`
-4. `GET /api/admin/ai/inventory/hot-products?days=30`
-5. `POST /api/admin/ai/replenishment-suggestions/generate`
+2. `POST /api/admin/ai/inventory/low-stock-analysis`
+3. `POST /api/admin/ai/inventory/hot-products-analysis`
+4. `GET /api/admin/ai/inventory/evidence/current/{productId}`
+5. `GET /api/admin/ai/inventory/evidence/low-stock-candidates`
+6. `GET /api/admin/ai/inventory/evidence/low-stock-analysis`
+7. `GET /api/admin/ai/inventory/evidence/hot-products?days=7|30`
+8. `POST /api/admin/ai/replenishment-suggestions/generate`
+
+The analysis endpoint table above reflects the final Phase 3 contract and
+implementation. The early draft used GET query-parameter forms for
+low-stock/hot-product analysis; Task 7.3 replaced those with POST request-body
+forms so optional analysis controls can be validated consistently:
+
+1. Low-stock analysis body: optional `limit` (1-100) and `recordLimit` (0-20);
+   sales window is fixed at 7 days.
+2. Hot-product analysis body: required/normalized `days` (7 or 30), optional
+   `limit` (1-100), and optional `recordLimit` (0-20).
 
 P1 APIs:
 
@@ -378,7 +395,7 @@ invented trends.
 
 Behavior:
 
-1. Supports `days=7` and `days=30`.
+1. Supports `days=7` and `days=30` in the POST request body.
 2. Reads sales aggregation from the existing operation-stat API.
 3. Joins current inventory evidence through backend services.
 4. Returns product id, product name, sold quantity, order count, sales amount,
